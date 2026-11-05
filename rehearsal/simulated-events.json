@@ -1,0 +1,104 @@
+{
+  "warning": "All events are simulated; never import/replay as live owner authority",
+  "events": [
+    {
+      "id": "sim-owner-brief-send-v1",
+      "simulated": true,
+      "actor": "fictional-owner",
+      "action": "release-frozen-brief",
+      "artifact": "brief-v1:70bb8798f4d8b30b82ab09d723c7b81da8eedd8d65f0a6404c684b23835e8335",
+      "scope": "SIMULATION ONLY; no desk command sent",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-client-brief-v1",
+      "simulated": true,
+      "actor": "fictional-client",
+      "action": "approve-brief",
+      "artifact": "brief-v1:70bb8798f4d8b30b82ab09d723c7b81da8eedd8d65f0a6404c684b23835e8335",
+      "scope": "SIMULATION ONLY; business decisions selected for offline exercise",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-owner-architecture-v1",
+      "simulated": true,
+      "actor": "fictional-owner",
+      "action": "approve-architecture",
+      "artifact": "architecture-v1",
+      "scope": "SIMULATION ONLY",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-owner-deploy-v1",
+      "simulated": true,
+      "actor": "fictional-owner",
+      "action": "release-deploy",
+      "artifact": "cf1d8d5ef7cd8ddce0b4267a18395707c87973f8",
+      "scope": "SIMULATION ONLY; real local deployment separately authorized by lane spec",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-client-deployed-v1",
+      "simulated": true,
+      "actor": "fictional-client",
+      "action": "approve-deployed-commit",
+      "artifact": "cf1d8d5ef7cd8ddce0b4267a18395707c87973f8",
+      "scope": "SIMULATION ONLY; no real client decision",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-owner-brief-send-v2",
+      "simulated": true,
+      "actor": "fictional-owner",
+      "action": "release-frozen-brief",
+      "artifact": "brief-v2:ed5f4281357533ac42dcbd724bd86d8341b2400d34bd6385424b656b0953b240",
+      "scope": "SIMULATION ONLY; no desk command sent",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-client-brief-v2",
+      "simulated": true,
+      "actor": "fictional-client",
+      "action": "approve-brief",
+      "artifact": "brief-v2:ed5f4281357533ac42dcbd724bd86d8341b2400d34bd6385424b656b0953b240",
+      "scope": "SIMULATION ONLY; business decisions selected for offline exercise",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-owner-architecture-v2",
+      "simulated": true,
+      "actor": "fictional-owner",
+      "action": "approve-architecture",
+      "artifact": "architecture-v2",
+      "scope": "SIMULATION ONLY",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-owner-deploy-v2",
+      "simulated": true,
+      "actor": "fictional-owner",
+      "action": "release-deploy",
+      "artifact": "2db3750373bd3180b8388f1af3f56e458a8eb52d",
+      "scope": "SIMULATION ONLY; real local deployment separately authorized by lane spec",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-client-deployed-v2",
+      "simulated": true,
+      "actor": "fictional-client",
+      "action": "approve-deployed-commit",
+      "artifact": "2db3750373bd3180b8388f1af3f56e458a8eb52d",
+      "scope": "SIMULATION ONLY; no real client decision",
+      "liveAuthority": false
+    },
+    {
+      "id": "sim-reopen-v2",
+      "simulated": true,
+      "actor": "hand-played-lead",
+      "action": "invalidate-affected-approvals",
+      "artifact": "brief-v2",
+      "scope": "v1 build/review/deploy/client/video approvals cannot release v2",
+      "liveAuthority": false
+    }
+  ]
+}
