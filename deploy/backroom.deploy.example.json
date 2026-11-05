@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "storage": [{ "name": "data", "target": "/data", "uid": 1000, "gid": 1000 }],
+  "settings": {
+    "DATABASE_PATH": "/data/orders.sqlite",
+    "OWNER_PASSWORD_FILE": "/run/secrets/owner-password"
+  },
+  "secrets": [{ "name": "owner_password", "target": "/run/secrets/owner-password" }]
+}
