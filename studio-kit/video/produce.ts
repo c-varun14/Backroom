@@ -1,0 +1,35 @@
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+const root=resolve("studio-kit/video"),out=root+"/artifacts";
+if (!Bun.argv.includes("--finish-only")) await rm(out,{recursive:true,force:true});
+await mkdir(out,{recursive:true});
+const env=Object.fromEntries(["PATH","HOME","LANG","CHROMIUM_EXECUTABLE"].flatMap(k=>process.env[k]?[[k,process.env[k]!]]:[]));
+Object.assign(env,{HF_HOME:root+"/.cache/huggingface",XDG_CACHE_HOME:root+"/.cache",TOKENIZERS_PARALLELISM:"false",PLAYWRIGHT_BROWSERS_PATH:root+"/.cache/ms-playwright"});
+async function run(args:string[]) {
+ const p=Bun.spawn(args,{env,stdout:"pipe",stderr:"pipe"});
+ const [stdout,stderr,code]=await Promise.all([new Response(p.stdout).text(),new Response(p.stderr).text(),p.exited]);
+ if(code)throw new Error(`${args[0]} failed (${code}): ${stderr.slice(-1800)}${stdout.slice(-1000)}`);
+ return {stdout,stderr};
+}
+if (!Bun.argv.includes("--finish-only")) await run(["bun","--no-env-file",root+"/record.ts"]).then(r=>console.log(r.stdout.trim()));
+if (!Bun.argv.includes("--finish-only")) await run([root+"/.venv/bin/python",root+"/narrate.py"]).then(r=>console.log(r.stdout.trim()));
+const ff=["ffmpeg","-hide_banner","-loglevel","error","-y"];
+const filter="acompressor=threshold=-26dB:ratio=2.5:attack=15:release=200,loudnorm=I=-16:TP=-2:LRA=7";
+const measured=await run(["ffmpeg","-hide_banner","-i",out+"/narration-raw.wav","-af",filter+":print_format=json","-f","null","-"]);
+const m=JSON.parse(measured.stderr.match(/\{\s*"input_i"[\s\S]*?\}/)![0]);
+const norm=`${filter}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true`;
+await run([...ff,"-i",out+"/narration-raw.wav","-af",norm,"-ar","48000","-ac","1",out+"/narration.wav"]);
+await run([...ff,"-ss","0.2","-i",out+"/capture.webm","-t","36","-vf","fps=30","-an","-c:v","libx264","-preset","fast","-crf","21","-pix_fmt","yuv420p",out+"/silent.mp4"]);
+await run([...ff,"-i",out+"/silent.mp4","-i",out+"/narration.wav","-map","0:v:0","-map","1:a:0","-c:v","copy","-c:a","aac","-b:a","192k","-movflags","+faststart","-t","36",out+"/old-shop-narrated.mp4"]);
+await run([...ff,"-i",out+"/old-shop-narrated.mp4","-c:v","libvpx-vp9","-crf","32","-b:v","0","-row-mt","1","-c:a","libopus","-b:a","96k",out+"/old-shop-narrated.webm"]);
+const probe=JSON.parse((await run(["ffprobe","-v","error","-show_format","-show_streams","-of","json",out+"/old-shop-narrated.mp4"])).stdout);
+const video=probe.streams.find((s:any)=>s.codec_type==="video"),audio=probe.streams.find((s:any)=>s.codec_type==="audio");
+if(video.width!==1920||video.height!==1080||!audio||Number(probe.format.duration)<30||Number(probe.format.duration)>45)throw new Error("Media contract failed");
+const loudness=await run(["ffmpeg","-hide_banner","-i",out+"/old-shop-narrated.mp4","-af","loudnorm=I=-16:TP=-1.5:LRA=7:print_format=json","-f","null","-"]);
+const loud=JSON.parse(loudness.stderr.match(/\{\s*"input_i"[\s\S]*?\}/)![0]);
+if (Math.abs(Number(loud.input_i)+16)>0.5 || Number(loud.input_tp)>-1.5) throw new Error("Final loudness/peak gate failed");
+const bytes=await Bun.file(out+"/old-shop-narrated.mp4").arrayBuffer();
+const hash=Buffer.from(await crypto.subtle.digest("SHA-256",bytes)).toString("hex");
+await writeFile(out+"/manifest.json",JSON.stringify({sample:true,path:"old-shop-narrated.mp4",sha256:hash,bytes:bytes.byteLength,voice:"af_heart",engine:"kokoro 0.9.4",modelRevision:"f3ff3571791e39611d31c381e3a41a3af07b4987",model:"hexgrad/Kokoro-82M",probe,loudness:loud,humanListeningPass:false,asrCheck:false},null,2));
+await run([...ff,"-i",out+"/old-shop-narrated.mp4","-vf","fps=1/3,scale=480:270,tile=4x3","-frames:v","1",out+"/contact-sheet.jpg"]);
+console.log(`Verified ${probe.format.duration}s ${video.width}x${video.height} ${video.codec_name}/${audio.codec_name}; ${loud.input_i} LUFS, ${loud.input_tp} dBTP; sha256 ${hash}`);
