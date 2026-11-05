@@ -1,0 +1,10 @@
+{
+  "name": "morrowcrumb-rehearsal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "start": "bun server.ts",
+    "demo": "bun demo.ts"
+  }
+}
