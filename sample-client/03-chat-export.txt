@@ -1,0 +1,23 @@
+FICTIONAL SAMPLE — invented chat export for Morrowcrumb Bakery; no real accounts or messages.
+
+5 Nov 2026 · copied from the planning group by Mira
+
+18:02 Mira: Here is the third document. I want to stop remembering baskets in my head. If a customer sees a confirmation, their order needs to be on my pickup list. If saving fails, say so. Don't show a cheerful tick and lose the order.
+
+18:04 Ishan (baker): Midnight is too late. I weigh the next day's dough at eight in the evening. Close it at 20:00 the evening BEFORE pickup, not eight on pickup morning. If I am still awake at midnight that is not extra capacity. Six is what Theo wrote because he wanted the list before going home. We need one answer from Mira, but I am saying eight works in the kitchen.
+
+18:05 Mira: That makes sense. I haven't checked the printed sign, though. It definitely says morning collection. Let's settle the collection hours in the brief before the website copies the wrong thing.
+
+18:07 Theo: And forty means units, right? Someone ordered twelve things in one basket last Sunday. Forty orders could be hundreds of things. The cookie box counts as one because it's already packed. I don't want to count individual cookies in the queue.
+
+18:08 Ishan: Yes, forty menu units in a day is all the oven and packing bench can handle for online preorders. Walk-in stock is separate. No borrowing tomorrow's capacity. If Friday sells out, Saturday can still have forty. We are open for this Thursday through Sunday; don't offer Monday just because a calendar lets you click it. For the demo a week ahead is plenty.
+
+18:11 Mira: Show the next seven calendar days, with only our open days available? Nobody should schedule Christmas next year. If somebody is looking at yesterday's page and presses confirm after the deadline, check again then. Don't just remove a button and assume that solves it. I will need you to explain the final rule in normal words so I can approve it.
+
+18:13 Theo: Please keep the allergen lines on the small phone layout too. A collapsed “more information” thing that nobody notices isn't helpful. And use the shared-kitchen warning. We are not promising allergy-safe food. I'll check the sample descriptions with Mira before anything gets called final.
+
+18:16 Mira: Do we need blockchain for a receipt number? My cousin says so. If a normal saved record survives a restart and can't be changed by a customer, that sounds fine to me. Same with the app: a link that works on my phone is what I need this week. Don't quote me for an app store launch just because I used the word app.
+
+18:19 Theo: Keep the private list private. Confirmation only needs the customer's own order. Handle cancellations by talking to people; no cancellation screen or password reset. Don't collect delivery addresses: nobody is delivering anything.
+
+18:23 Mira: Right, send me the plain brief with the unanswered bits called out. I need to approve it, and then see a working link before we call it done. I might ask about evening collection later, but don't put two sessions in the first version just because it came up in this chat.
