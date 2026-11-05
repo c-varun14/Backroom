@@ -1,0 +1,5 @@
+{"sample":true,"events":[
+{"event":"message","data":{"type":"message","room_id":"sample-studio","payload":{"sender":"@switch-member-sample-owner:localhost","sender_name":"Sample Owner","sender_kind":null,"message_id":"sw_sample_1","timestamp":1793884941855,"body":"@desk send 7f3a","attachments":[]}}},
+{"event":"message","data":{"type":"message","room_id":"sample-studio","payload":{"sender":"@switch-agent-sample:localhost","sender_name":"Sample Builder","sender_kind":null,"message_id":"sw_sample_2","timestamp":1793884942855,"body":"SAMPLE build ready. <script>alert(1)</script>","attachments":[{"filename":"SAMPLE-notes.txt","mxc":"switch-media://sample"}],"links":["https://example.test/review","javascript:alert(1)"]}}},
+{"native_approval_room_record":{"kind":"approval","roomId":"sample-studio","requestId":"sample-request","title":"SAMPLE inspect build","detail":"Read fictional build output","options":[{"id":"0","label":"Allow once","decision":"accept"},{"id":"2","label":"Decline","decision":"decline"}],"state":"answered","answer":"0","answeredBy":"user:sample-owner","answeredAt":"2026-11-05T13:23:01.855Z"}}
+]}
