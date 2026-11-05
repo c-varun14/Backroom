@@ -1,0 +1,22 @@
+# SAMPLE DATA — fictional project registry; local paths only, no remote repos created.
+schema_version: 1
+projects:
+  - id: old-shop
+    sample: true
+    name: Lantern Crate Sample Shop
+    repo: ./sample-projects/old-shop
+    repo_state: local-directory-not-yet-a-separate-git-repository
+    stack:
+      runtime: bun
+      language: javascript
+      server: bun-serve
+      storage: in-memory
+    packages: []
+    tags:
+      - orders
+      - browser-sent-prices
+      - customer-contact-data
+    affected_by_lessons:
+      - server-owned-prices
+    backward_fix_status: awaiting-owner-authorisation
+    deployment: none
