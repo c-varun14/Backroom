@@ -304,7 +304,6 @@ export class RealStagesLoop extends StagesLoop {
     if(this.real.clientSurface==='forum'&&(!this.get('buildReady')||this.get('reviewPaused')||this.get('buildStopped')))throw new Error('Passing build evidence required');
     const sources=await this.buildSources();
     if(this.git("rev-parse","HEAD")!==sha||this.git("status","--porcelain"))throw new Error("Clean exact product checkpoint required before review");
-    if(this.github)this.git('cat-file','-e',sha+':backroom.deploy.json');
     if(this.github&&!ciReady){
       const previous=this.get('candidate');
       if(previous!==sha){
@@ -317,7 +316,8 @@ export class RealStagesLoop extends StagesLoop {
       await this.pollGitHub();return;
     }
     if(this.get("candidate")===sha&&this.get("reviewer")?.sources===sources&&this.get("reviewer")?.generation===this.get("assignmentGeneration")&&this.get("reviewVerdict")!=="fail")return;
-    this.git("cat-file","-e",sha+":backroom.deploy.json");
+    // The deploy contract belongs to Docker Compose. A Nix deployment needs no file in the app.
+    if(this.real.clientSurface!=='forum')this.git("cat-file","-e",sha+":backroom.deploy.json");
     this.invalidate("build");this.set("candidate",sha);this.set("reviewVerdict",null);
     const round=(this.get("reviewRound")??0)+1;this.set("reviewRound",round);
     const reviewer=await this.realControl.freshReviewer(round);

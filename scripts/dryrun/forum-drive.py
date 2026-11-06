@@ -222,8 +222,8 @@ every AC in the real running app with fictional test data. Supply one AC-n: PASS
 line per criterion in build-report.md and actual command/output blocks. Capture a real PNG and
 build-verification.json with the actual local running URL, relative PNG path and sample:false.
 SAMPLE refers to the client; sample:false means the image is a real app capture, not a fixture.
-Keep the running local app available for review. Ensure a backroom.deploy.json exists at the
-checkpoint (use the base contract; never invent a deployment result). Bounded local commits in
+Keep the running local app available for review. No deploy contract file is needed: this
+stack deploys through Nix. Never invent a deployment result. Bounded local commits in
 this disposable product clone are authorized after checks during the later live rehearsal;
 never commit Backroom. Return build-ready build-report.md at a clean exact checkpoint.
 Ask blockers via ask: <question>. Desk routes failures and questions; wait for its assignment.'''
