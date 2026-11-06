@@ -12,7 +12,7 @@ import { SwitchAPI, SwitchTransport } from "./switch-transport";
 import { VisibleLoop, type SwitchEvent } from "./visible-loop";
 import type { Artifact, Stage } from "./types";
 import type { Identity } from "./switch-identities";
-import { LocalComposeDeployer } from "../../deploy/local-compose";
+import type { ManagedDeployer } from "./types";
 
 export interface RehearsalConfig extends ForumConfig { github?:import("./github").GitHubConfig; mode?:"real";stack?:string;videoEnabled?:boolean;deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
 export type Control = { github?:import("./github").GitHub; prepareBuild?:()=>Promise<void>; now?:()=>number; freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void|{id:string;name:string}> };
@@ -26,7 +26,7 @@ export class StagesLoop {
   readonly gate:Desk;
   readonly brief:VisibleLoop;
   constructor(readonly store:Store,readonly api:SwitchAPI,readonly transport:SwitchTransport,readonly config:RehearsalConfig,
-    readonly deployer:LocalComposeDeployer,private identities:()=>Identity[],private control:Control,private root:string) {
+    readonly deployer:ManagedDeployer,private identities:()=>Identity[],private control:Control,private root:string) {
     api=this.api=scopeStudio(api,config,room=>this.brief.cursor(room).connection_id);
     const proxy=Object.create(api) as SwitchAPI;
     proxy.post=(room,text,files=[])=>api.post(room,room===config.studioRoomId?text.replace(/^@lead\b/,`@${config.leadName}`):text,files);

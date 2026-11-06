@@ -7,6 +7,7 @@ import { SwitchAPI, SwitchTransport } from "./switch-transport";
 import { VisibleLoop, type LoopConfig } from "./visible-loop";
 import {RealStagesLoop,type RealConfig} from "./real-loop";
 import {LocalComposeDeployer} from "../../deploy/local-compose";
+import {NixDeployer, type NixOptions, type NixProjectConfig} from "../../deploy/nix-deployer";
 import {verifiedSender,switchIdentities} from "./switch-identities";
 
 const root = resolve(import.meta.dir,"../..");
@@ -15,11 +16,11 @@ const runtime = join(root,".switch-runtime");
 const secretRoot = join(root,".secrets");
 mkdirSync(secretRoot,{recursive:true,mode:0o700});
 const configPath = resolve(process.argv[2] ?? process.env.BACKROOM_CLIENT_CONFIG ?? join(runtime,"block1.json"));
-const config: LoopConfig & Partial<RealConfig> & {credentialsFile?:string;databasePath?:string;filesPath?:string;ownerPasswordFile?:string;healthFile?:string;simulateRequest?:string;switchBase?:string} = JSON.parse(readFileSync(configPath,"utf8"));
+const config: LoopConfig & Partial<RealConfig> & {credentialsFile?:string;databasePath?:string;filesPath?:string;ownerPasswordFile?:string;healthFile?:string;simulateRequest?:string;switchBase?:string;deployTarget?:"compose"|"nix";nixDeploy?:Omit<NixOptions,"run"|"stateRoot"> & Omit<NixProjectConfig,"repoPath">} = JSON.parse(readFileSync(configPath,"utf8"));
 // Reject public/wrong-owner repositories before connecting any other service.
 if(config.clientSurface==='forum'&&config.github)await new GhGitHub(config.github,config.workspace!).verifyRepo();
 // Read only the needed credential field. Never echo this object or errors.
-if(configPath !== join(runtime,"block1.json") && ![config.credentialsFile,config.databasePath,config.filesPath,config.workspace,config.healthFile,config.simulateRequest,config.ownerPasswordFile].every(Boolean))throw new Error("Per-client config requires isolated runtime paths");
+if(configPath !== join(runtime,"block1.json") && ![config.credentialsFile,config.databasePath,config.filesPath,config.workspace,config.healthFile,config.simulateRequest,...(config.deployTarget==="nix"?[]:[config.ownerPasswordFile])].every(Boolean))throw new Error("Per-client config requires isolated runtime paths");
 const key = JSON.parse(readFileSync(config.credentialsFile ?? join(secretRoot,"block1-credentials.json"),"utf8")).desk.api_key;
 const api = new SwitchAPI(config.switchBase ?? "http://127.0.0.1:8000",config.deskId,key);
 const store = new Store(config.databasePath ?? join(secretRoot,"desk-stage1.sqlite"));
@@ -33,7 +34,11 @@ function identities(){
   const c=JSON.parse(readFileSync(configPath,"utf8"));
   return switchIdentities({...c,probeId:c.probeId,agentIds:[c.frontId,c.builderId,...(c.reviewerIds??[])].filter(Boolean)});
 }
-const deployer=new LocalComposeDeployer({[config.projectId]:{repoPath:config.workspace??join(root,"workspaces",config.projectId+"-real"),containerPort:3210,healthPath:"/health",persistData:true,ownerPasswordFile:config.ownerPasswordFile ?? join(secretRoot,config.projectId+"-product-owner")}},join(runtime,"real-deploy"));
+if(config.deployTarget!==undefined && !["compose","nix"].includes(config.deployTarget))throw new Error("Unknown deploy target");
+if(config.deployTarget==="nix"&&!config.nixDeploy)throw new Error("Nix deploy configuration required");
+const deployer=config.deployTarget==="nix"
+  ? new NixDeployer({[config.projectId]:{...config.nixDeploy!,repoPath:config.workspace!}},{...config.nixDeploy!,stateRoot:join(runtime,"nix-deploy")})
+  : new LocalComposeDeployer({[config.projectId]:{repoPath:config.workspace??join(root,"workspaces",config.projectId+"-real"),containerPort:3210,healthPath:"/health",persistData:true,ownerPasswordFile:config.ownerPasswordFile ?? join(secretRoot,config.projectId+"-product-owner")}},join(runtime,"real-deploy"));
 const deploy=deployer.deploy.bind(deployer);
 deployer.deploy=async input=>{const old=process.umask(0o022);try{await deploy(input);}finally{process.umask(old);}};
 const loop = config.mode==="real"

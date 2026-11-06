@@ -46,6 +46,11 @@ export interface Transport {
 export interface Deployer {
   deploy(input: { project: string; commitSha: string; intentId: string }): Promise<void>;
 }
+export interface CurrentDeployment { url: string; commitSha: string; intentId: string }
+export interface ManagedDeployer extends Deployer {
+  current(project: string): Promise<CurrentDeployment | null>;
+  checkHealth(project: string): Promise<void>;
+}
 export interface Message {
   senderId: string;
   senderKind: "human" | "agent";

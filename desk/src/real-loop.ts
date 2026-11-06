@@ -14,7 +14,7 @@ import {type SwitchEvent} from "./visible-loop";
 import {type Artifact, type Stage} from "./types";
 import {approvalCard, leakWord, neutralise, parseLeadDraft, stageCard, stageLabel,deskAddress,ownerCommand,bareAgreement,needsApprovalText} from "./cards";
 import {sha256} from "./gate";
-import {type LocalComposeDeployer} from "../../deploy/local-compose";
+import type {ManagedDeployer} from "./types";
 import {EventJournal} from "./event-journal";
 import {classifyClient,parseClientApproval} from "./client-intake";
 import {smallChange} from './small-change';
@@ -30,7 +30,7 @@ export class RealStagesLoop extends StagesLoop {
   private combinedRelease=false;
   private journal:EventJournal<SwitchEvent>;
   constructor(store:Store,api:SwitchAPI,transport:SwitchTransport,readonly real:RealConfig,
-    deployer:LocalComposeDeployer,private identitySource:()=>Identity[],private realControl:Control,private projectRoot:string) {
+    deployer:ManagedDeployer,private identitySource:()=>Identity[],private realControl:Control,private projectRoot:string) {
     super(store,api,transport,real,deployer,identitySource,realControl,projectRoot);
     store.db.exec(`CREATE TABLE IF NOT EXISTS small_change_releases(id TEXT PRIMARY KEY,project TEXT,sha TEXT,base TEXT,status TEXT,post TEXT,url TEXT,message TEXT);
       CREATE TABLE IF NOT EXISTS delivery_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,project TEXT,ticket INTEGER,sha TEXT,action TEXT,line TEXT);`);
