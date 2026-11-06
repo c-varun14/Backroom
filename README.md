@@ -10,6 +10,27 @@ A solo agency owner is tired of carrying conflicting client documents between pe
 
 ## Verify after cloning
 
+With Docker and Compose installed, run the account-free Switch demo:
+
+```sh
+bash demo.sh
+```
+
+It pulls pinned Switch 0.31.0 images anonymously, provisions disposable native
+SAMPLE accounts and private rooms from the template, and runs the real desk
+against real Switch. Role CLIs and human decisions are explicitly scripted;
+there are no AI/model calls. It checks rejected sends, a reviewed exact-commit
+bakery deployment, a client revision, and a package promotion. It then stops
+Switch, attempts four operations, prints their real errors, restarts Switch,
+and checks recovery. Open `demo/out/receipt.html` and the printed loopback bakery
+URL. The synthetic video is only an exact-file gate fixture. This demo does not
+prove AI reasoning or production video quality. [Demo details](demo/README.md).
+
+`bash demo.sh --down` removes only the `backroom-judge-demo` containers, network
+and volumes. No host Bun, Python, accounts or keys are needed for this demo.
+
+For the separate Docker-free test suite:
+
 Install **Bun1.3.14** ([official versioned-install instructions](https://bun.sh/docs/installation#installing-older-versions)), Bash and Python3, then run from the repository root:
 
 ```sh

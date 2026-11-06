@@ -54,6 +54,7 @@ cookies.txt
 *.tar.gz
 .venv/
 .cache/
+/demo/out/
 
 # Generated diagnostics from any lane, including reproduction drills.
 **/*-output.txt
