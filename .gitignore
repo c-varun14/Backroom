@@ -58,3 +58,4 @@ cookies.txt
 # Generated diagnostics from any lane, including reproduction drills.
 **/*-output.txt
 **/*-output.json
+/rehearsal/bakery/fresh-demo-*.png
