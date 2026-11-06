@@ -1,12 +1,32 @@
 # Backroom
 
-**A client revision becomes a reviewed local bakery app, with exact-version release gates in Switch.** The six-stage workflow has been exercised using clearly labelled simulation accounts; the core checks run without an AI login. [Rehearsal evidence](reports/block-2.md) · [no-account/clean-copy results](reports/lane-repro.md) · [public proof page](receipt/public.html) · [GitHub Pages entry](docs/index.html) · [sample receipt](receipt/sample.html) · [fresh bakery demo](rehearsal/bakery/README.md).
+**A one-person agency that never makes the same mistake twice.**
+
+Clients talk to one person in one chat. Behind that chat, AI teammates on [Switch](https://github.com/sandbox-quantum/switch) write the brief, build, review and deploy. The owner releases every step, and each approved lesson carries into the next project.
+
+```sh
+bash demo.sh
+```
+
+That one command needs only Docker. It starts a real Switch server, runs the workflow with scripted agents, then turns Switch off to show what breaks. It takes about 90 seconds once images are pulled, and needs no accounts.
+
+- **Live sample app:** [Morrowcrumb Bakery](https://98-91-25-101.sslip.io/)
+- **Proof page, no login:** [one client change, start to finish](https://98-91-25-101.sslip.io/proof/)
 
 ![Simulated rehearsal montage: brief and review evidence from the public receipt, then a separate fresh fictional bakery app saving a sample pre-order.](docs/media/backroom-demo.gif)
 
 *Simulated rehearsal montage. Receipt evidence and a separate fresh local app run; no live client handoff is shown.*
 
-A solo agency owner is tired of carrying conflicting client documents between people and AI tools. Backroom gives a fictional bakery one point of contact: plain-code `desk` forwards its request into a private Switch studio, agents turn it into a brief and product, and the owner decides what may leave. A later pickup-session change reopens the affected approvals instead of reusing yesterday's OK. The aim is an owner who decides rather than copies; the evidence distinguishes simulated decisions from real client use.
+## Quick answers
+
+| Question | Answer | Check it |
+| --- | --- | --- |
+| Is Switch central? Would it stop working without it? | Yes. With Switch off, client messages don't arrive, handoffs stop, the owner can't be verified so nothing is released, and lessons can't reach a project. Each is a real failed call, followed by recovery | `bash demo.sh`, and [how Backroom uses Switch](docs/SWITCH.md) |
+| Does it run? Can someone clone and reproduce it? | Yes. One command runs 17 live checks against a real Switch server, and `bash scripts/repro/test-all.sh` runs the code suite | [Demo report](reports/one-command-demo.md) |
+| Is it a fresh idea for a real problem? | A small agency owner spends the day carrying messages between clients and AI tools. Backroom removes the carrying but keeps the owner's decision, and lessons learned on one project improve the next | [Six stages](#six-stages) |
+| How is Switch used? | Rooms are the wall, handoffs run through mentions and documents, verified sender identity is the release gate, and packages carry memory | [Feature table](docs/SWITCH.md) |
+
+A solo agency owner is tired of carrying conflicting client documents between people and AI tools. The client talks only to plain-code `desk`, which forwards work into a private Switch studio. `lead` writes the plan, `builder` builds it, a fresh `reviewer` checks it, and nothing reaches the client until the owner releases that exact version.
 
 ## Verify after cloning
 
@@ -56,26 +76,9 @@ For a product-only demo, run `bun --no-env-file rehearsal/bakery/demo.ts` and op
 
 Questions preserve the stage. Suggestions create a version. Scope changes reopen affected later approvals. The [completed native Switch rehearsal](reports/block-2.md) exercised learning before video and closed both without bypassing the video gates. All its owner/client commands were SIMULATION actions. The [hand rehearsal](reports/lane-stages-rehearsal.md) covers the pickup-session model change with same-session implementation/review. Block2's native revision loop concerns the confirmation heading; these are separate checks.
 
-## Where Switch matters — and what can fail
+## How Backroom uses Switch
 
-| Dependency | Observed job | Failing case and evidence |
-| --- | --- | --- |
-| Rooms are the wall | Client/studio separation, with AI identities under a different non-admin owner | Shared-admin-owner isolation **failed**. Separate-owner client post/self-invite returned403; tested again on managed lead. [Block0](reports/block-0.md), [Block1](reports/block-1.md) |
-| Handoffs and versioned context | Mentioned handoffs, room documents and exact review rounds | Document versions survived agent-client restart. Stale ticket identities/review SHAs and changed artifacts have rejection fixtures. A late reply to an earlier client message is rejected by a [generation check](tests/adversarial/stale-generation.test.ts); live lost-message fault testing is unproven. [Block0](reports/block-0.md), [Block1](reports/block-1.md), [Block2](reports/block-2.md) |
-| Verified owner identity is the gate | Sender/room identity plus the code/SHA for frozen bytes permits release | A real agent-authored release was rejected with no client message increase. Bare yes, wrong room, changed bytes and duplicate events are covered by gate tests. Raw sender_kind alone is insufficient. [Block1](reports/block-1.md) |
-| Approved memory crosses projects | A cited price lesson shapes the build; an approved privacy lesson enters a Gateway package and drives an older-shop fix | Pending/derived text cannot self-authorize promotion in offline checks; live poisoned-package rejection is **not proven**. Backward result is a local branch/PR description, not a hosted PR. [Content](reports/lane-content.md), [Block2](reports/block-2.md), [adversarial checklist](tests/adversarial/checklist.md) |
-
-## Switch features actually exercised
-
-- **Agent protocol:** plain-code desk receives messages/files and posts controlled outputs. [Block0](reports/block-0.md), [Block1](reports/block-1.md).
-- **Attachments and room documents:** exact bytes/hash forwarding, persistent source/brief/review documents and frozen outgoing files. [Block1](reports/block-1.md), [studio UX](reports/studio-ux.md).
-- **Mentions and addressing:** provider handoff and private-studio routing; participation policy is not a release approval. [Block0](reports/block-0.md), [Block1](reports/block-1.md).
-- **read_context:** working-room context/reply checks after a scoped lead restart. [Studio UX](reports/studio-ux.md).
-- **Providers on plan logins:** Claude→Codex handoff was tested; Codex runs use gpt-6.1-sol. The completed Block2 run later used a Codex lead. [Block0](reports/block-0.md), [Block2](reports/block-2.md).
-- **Packages through Gateway:** operator-mediated attachment after exact-version simulated owner promotion. [Block2](reports/block-2.md).
-- **Native tool approval:** one real request and verified-owner decline was observed; visual rendering/reliability were not established. It does not replace desk's release gate. [Block0](reports/block-0.md).
-
-The [template](switch/backroom.template.yaml) is pinned to server/controller0.31.0 and Console0.40.1 and statically validated. Its corrected private-room scaffolding was imported into a fresh disposable 0.31.0 stack and checked, then removed. Human membership requires separate setup: unbridged v1 templates cannot attach human users. [Import evidence](reports/submission-pack.md#job-5--disposable-import-follow-up). Room groups as a workflow dependency and a reference-library feature remain unproven. [Validation details](switch/README.md).
+See [docs/SWITCH.md](docs/SWITCH.md) for each feature, its job, and its failing case.
 
 ## What lives outside Switch
 
@@ -85,7 +88,7 @@ Git holds source, [studio playbooks](studio-kit/agents/), [sample lessons](studi
 
 - Everything here uses a **fictional client** and sample data. Native rehearsal owner/client approvals are **simulated**. Human Discord intake, linked-owner release and client review were not proved by bot activity; Discord card/attachment rendering remained unverified. [Block1](reports/block-1.md), [studio UX](reports/studio-ux.md).
 - Same-machine CLI agents are **not a strong sandbox**. Separate Switch owners/private rooms mitigate the demonstrated room breach, but do not isolate an OS user. Block0 also records a credential-output incident and required login rotation; a later clean scan does not retract it. [Block0](reports/block-0.md).
-- Deployments are **localhost-only**, with downtime and incomplete crash/migration rollback. A passing health check alone does not prove configured readiness or durability. [Deployer](reports/lane-deployer.md).
+- Client app deployments in the workflow are **localhost-only**, with downtime and incomplete crash/migration rollback. A passing health check alone does not prove configured readiness or durability. [Deployer](reports/lane-deployer.md). The public sample app is a separate fictional demo on a small [NixOS host](deploy/nixos/configuration.nix), with no secrets or AI logins on it.
 - The final reviewer identity/session was fresh, but the final review was bounded to its stated finding and historical room context could remain visible. A local fix branch/description is not a submitted PR. [Block2](reports/block-2.md).
 - Generated videos, the accepted live workspace, raw room histories and runtime state stay local. The [public proof page](receipt/public.html) exports the fictional request, approved versions/reply, exact reviewed deployment, embedded bakery screenshot, blocked-send reason and older-project diff without requiring those files. The bundled sample receipt remains a separate fixture. The reported video had technical QC, but no human listening/ASR pass. [Block2](reports/block-2.md).
 - The registry can lag the later local fix; use the exact evidence/code under test rather than treating its original fixture status as current release authority. No clean-copy test establishes a complete real-client deployment or universal prompt-injection resistance.
