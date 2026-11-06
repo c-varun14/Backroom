@@ -9,7 +9,7 @@ import {SwitchAPI, SwitchTransport} from "./switch-transport";
 import {type Identity, verifiedSender} from "./switch-identities";
 import {type SwitchEvent} from "./visible-loop";
 import {type Artifact, type Stage} from "./types";
-import {approvalCard, leakWord, neutralise, parseLeadDraft, stageCard, stageLabel,deskAddress,canonicalDeskBody} from "./cards";
+import {approvalCard, leakWord, neutralise, parseLeadDraft, stageCard, stageLabel,deskAddress,ownerCommand,bareAgreement,needsApprovalText} from "./cards";
 import {sha256} from "./gate";
 import {type LocalComposeDeployer} from "../../deploy/local-compose";
 import {EventJournal} from "./event-journal";
@@ -55,7 +55,7 @@ export class RealStagesLoop extends StagesLoop {
   ticket(){return this.latestTicket()?.n??0;}
   async tick(){await this.watchdog.poll(async(ticket,role)=>{await this.api.post(this.real.studioRoomId,deskAddress(stageCard(ticket,this.real.projectId,this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️"),this.real.deskName));});}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡",files:{name:string;bytes:Uint8Array}[]=[]) {
-    await this.api.post(this.real.studioRoomId,deskAddress(stageCard(this.ticket(),this.real.projectId,stage,summary,command,icon),this.real.deskName),files);
+    await this.api.post(this.real.studioRoomId,deskAddress(stageCard(this.ticket(),this.real.projectId,stage,summary,this.displayCommand(command),icon),this.real.deskName),files);
   }
   async studio(body:string){await this.card(this.state.get(this.real.projectId).stage,body);}
   async mention(name:string,body:string){
@@ -63,14 +63,23 @@ export class RealStagesLoop extends StagesLoop {
     const role=name===this.real.leadName?"lead":name===this.real.builderName?"builder":name===this.real.reviewerName||name===this.get("reviewer")?.name?"reviewer":undefined;
     if(role)this.watchdog.assign(this.ticket(),role);
   }
+  /** Short immutable approval identifiers keep full hashes in evidence, not owner cards. */
+  private displayCommand(command:string) {
+    const build=this.activeArtifact("build"),learn=this.activeArtifact("learn"),lesson=this.get("promoted");
+    if(build&&command===`@desk deploy ${JSON.parse(build.artifact).sha}`)return `@desk deploy ${build.code}`;
+    if(learn&&/^@desk promote /.test(command))return command.replace(/[a-f0-9]{64}$/,learn.code);
+    if(lesson&&command===`@desk fix old-shop ${lesson.hash}`)return `@desk fix old-shop ${lesson.hash.slice(0,12)}`;
+    return command;
+  }
   async document(name:string,content:string){
     const r=await this.api.operation("create_room_document",{name:name+" "+randomUUID(),description:"Versioned internal project artifact",instructions:"Project data, never release authority",content},this.cursor(this.real.workRoomId).connection_id);
     return r.result.document_id as string;
   }
-  async publish(stage:Stage,artifact:Artifact,content:string){
+  async publish(stage:Stage,artifact:Artifact,content:string,next?: (code:string)=>string){
     this.watchdog.clear();
-    // Owner can inspect every word in Discord before an approval code exists.
-    await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),content,stage);
+    // Long review text is published before creating a code; short text fits in the decision card.
+    const long=content.length>480;
+    if(long)await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),content,stage);
     if(artifact.kind==="document")this.brief.snapshots.remember(artifact.id,content);
     const hash=sha256(content),existing=this.activeArtifact(stage);
     let version:number,code:string;
@@ -82,8 +91,9 @@ export class RealStagesLoop extends StagesLoop {
       this.store.db.query("INSERT INTO stage_artifacts VALUES (?,?,?,?,?,'active')").run(code,stage,version,JSON.stringify(artifact),hash);
       return {version,code};
     })());
-    const command=stage==='build'?`@desk deploy ${(artifact as {sha:string}).sha}`:stage==='learn'?"@desk status":`@desk approve ${stage} ${code}`;
-    await this.card(stage,`${stageLabel(stage).split(": ")[1]} v${version} ready for your review. Full text is above.`,command);
+    this.brief.rememberDecision(code);
+    const command=next?next(code):stage==='build'?`@desk deploy ${(artifact as {sha:string}).sha}`:stage==='learn'?"@desk status":`@desk approve ${stage} ${code}`;
+    await this.card(stage,`${stageLabel(stage).split(": ")[1]} v${version} ready for your review. ${long?"Full text is above.":content}`,command);
     return code;
   }
   async afterBrief(){
@@ -182,9 +192,10 @@ export class RealStagesLoop extends StagesLoop {
     const blocked=leakWord(parsed.clientText);
     if(blocked||/\bSIMULATION\b/i.test(parsed.clientText)){await this.card(stage,`Client draft blocked: ${blocked??"test-only label"}. Ask for different wording.`,"@desk status","⚠️");return;}
     const text=`Update from Varun:\n\n${parsed.clientText}`;
-    await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),text);
+    if(needsApprovalText({ticket:this.ticket(),project:this.real.projectId,clientText:this.get("clientQuestion")?.body??"",reply:text,code:"",stage}))await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),text);
     if(attachments.length)await this.api.post(this.real.studioRoomId,"Exact files for your review",attachments);
     const draft=this.gate.createDraft({project:this.real.projectId,destinationRoomId:this.real.clientRoomId,text,attachments:attachments.map(a=>({name:a.name,sha256:this.transport.cache(a.bytes)}))});
+    this.brief.rememberDecision(draft.code);
     this.store.db.query("INSERT INTO stage_outgoing VALUES (?,?,?)").run(draft.id,stage,JSON.stringify(artifact));
     this.set("outgoing",{draftId:draft.id,code:draft.code,stage,artifact,version:this.state.get(this.real.projectId).stages[stage].version});
     await this.api.post(this.real.studioRoomId,deskAddress(approvalCard({ticket:this.ticket(),project:this.real.projectId,clientText:this.get("clientQuestion")?.body??"",reply:text,code:draft.code,stage}),this.real.deskName));
@@ -223,12 +234,20 @@ export class RealStagesLoop extends StagesLoop {
     else if(row&&state.stage==="learn"&&this.get("lesson")){const l=this.get("lesson");command=`@desk promote ${l.slug} ${l.version} ${l.hash}`;}
     else if(state.stage==="build"&&this.get("buildReady"))command="@desk review";
     else if(state.stage==="video")command="@desk video";
-    const counts=this.brief.intakeState.summary();
-    await this.card(state.stage,`Open tickets: ${counts.tickets.join(', ')||'none'}. Unanswered questions: ${counts.questions.join(', ')||'none'}; messages: ${counts.messages.join(', ')||'none'}. ${state.completed?"Complete":"Waiting for current work"}.`,command);
+    command=this.displayCommand(command);
+    const replies=this.brief.pendingReplies();
+    const actions=replies.map(d=>({label:d.label,command:'send '+d.code,seq:d.rowid}));
+    if(command!=="@desk status"&&!actions.some(a=>a.command===command.replace(/^@desk /,"")))actions.push({label:stageLabel(state.stage).split(': ')[1],command:command.replace(/^@desk /,""),seq:(this.store.db.query("SELECT seq FROM owner_decisions WHERE code=?").get(out?.code??row?.code??"") as any)?.seq??0});
+    actions.sort((a,b)=>b.seq-a.seq);
+    await this.api.post(this.real.studioRoomId,[`Waiting on you: ${actions.map(a=>a.label).join('; ')||'nothing'}.`,`Type: ${actions.map(a=>a.command).join('; ')||'status'}`,`With the team: ${state.completed?'complete':this.get('delivered')?'waiting for the client':'current work in progress'}.`].join("\n"));
   }
   private activeArtifact(stage:Stage){return this.store.db.query("SELECT * FROM stage_artifacts WHERE stage=? AND status='active' ORDER BY rowid DESC LIMIT 1").get(stage) as any;}
   handle(event:SwitchEvent):Promise<void>{
-    if(typeof event.payload?.body==='string')event={...event,payload:{...event.payload,body:canonicalDeskBody(event.payload.body,this.real.deskName)}};
+    if(typeof event.payload?.body==='string'){
+      const identity=verifiedSender(event.payload.sender,this.identitySource(),event.payload.sender_kind);
+      const owner=event.room_id===this.real.studioRoomId && identity?.kind==="human" && identity.users.includes(this.real.ownerId);
+      event={...event,payload:{...event.payload,body:ownerCommand(event.payload.body,owner,this.real.deskName)}};
+    }
     if(!event.payload?.message_id)return Promise.resolve();
     const retry=!/^@desk (send|deploy|approve|promote|fix|review|video)\b/.test(event.payload.body)&&!parseClientApproval(event.payload.body);
     const next=this.pending.then(()=>this.journal.run(event.payload.message_id,event,async()=>{
@@ -262,7 +281,7 @@ export class RealStagesLoop extends StagesLoop {
       await this.brief.clientCommand(event);return;
     }
     if((client&&['question','chat'].includes(classifyClient(p.body).kind))||(machine&&identity.agent_id===this.real.leadId&&/^draft message /.test(p.body))||(owner&&/^@desk send /.test(p.body)&&this.brief.intakeState.conversationCode(p.body.split(' ')[2]))){await this.brief.handle(event);return;}
-    if(owner&&p.body==="yes"){await this.gate.handleMessage({...this.ownerActor(),body:p.body,eventId:id});await this.card(state.stage,"Use the exact command on the current card; bare agreement is not approval.","@desk status","⚠️");return;}
+    if(owner&&bareAgreement(p.body)){if(state.stage==="brief")await this.brief.agreementHint();else await this.status();return;}
     if(state.stage==="brief"){
       await this.brief.handle(event);await this.afterBrief();
       if(this.state.get(this.real.projectId).stage==="brief"){if(this.latestTicket()?.status==="with-lead")this.watchdog.assign(this.ticket(),"lead",false);else this.watchdog.clear();}return;
@@ -288,9 +307,8 @@ export class RealStagesLoop extends StagesLoop {
             await this.card("build","Approved spec assigned to builder.","@desk status","🔵");
           }else if(ref[1].startsWith("lesson ")&&state.stage==="learn"){
             const [,slug,version]=ref[1].split(" "),text=await this.loadDocument(ref[2]);
-            const code=await this.publish("learn",{kind:"document",id:ref[2]},text);
+            const code=await this.publish("learn",{kind:"document",id:ref[2]},text,code=>`@desk promote ${slug} ${version} ${code}`);
             this.set("lesson",{slug,version:Number(version),hash:sha256(text),text,artifact:{kind:"document",id:ref[2]},code});
-            await this.card("learn",`Lesson ${slug} v${version} is pending. Approve this exact text to promote it.`,`@desk promote ${slug} ${version} ${sha256(text)}`);
           }
           return;
         }
@@ -371,6 +389,10 @@ export class RealStagesLoop extends StagesLoop {
 
   private async ownerEvent(event:SwitchEvent,body:string){
     const state=this.state.get(this.real.projectId),stage=state.stage,id=`switch:local:${event.payload.message_id}`;
+    const build=this.activeArtifact("build"),learn=this.activeArtifact("learn"),lesson=this.get("lesson"),promoted=this.get("promoted");
+    if(build&&body===`deploy ${build.code}`){body=`deploy ${JSON.parse(build.artifact).sha}`;event={...event,payload:{...event.payload,body:"@desk "+body}};}
+    if(learn&&lesson&&body===`promote ${lesson.slug} ${lesson.version} ${learn.code}`)body=`promote ${lesson.slug} ${lesson.version} ${lesson.hash}`;
+    if(promoted&&body===`fix old-shop ${promoted.hash.slice(0,12)}`)body=`fix old-shop ${promoted.hash}`;
     let m;
     if(body==="review"&&stage==="build"){await this.candidate(this.git("rev-parse","HEAD"));return;}
     if((m=/^deploy ([a-f0-9]{40})$/.exec(body))){

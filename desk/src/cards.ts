@@ -35,19 +35,30 @@ const oneLine = (text: string) => neutralise(text).replace(/[\r\n\t]+/g, " ");
 export const projectName = (id: string) => clip(oneLine(id), 60).replace(/^./, c => c.toUpperCase());
 export function lineCard(ticket: number, text: string, icon = "🔵") { return clip(`${icon} Ticket #${ticket} · ${oneLine(text)}`, 900); }
 export function blockedCard(ticket: number, reason: string) { return lineCard(ticket, `draft blocked: ${reason}`, "⚠️"); }
-export function approvalCard(input: { ticket: number; project: string; clientText: string; reply: string; code: string; replacement?: boolean; simulated?: boolean; workRoom?: boolean; stage?: import("./types").Stage }) {
-  const stage = input.stage ?? "brief";
-  const heading = `🟡 Ticket #${input.ticket} · ${projectName(input.project)} · ${stageLabel(stage)} · needs your OK`;
-  const context = input.replacement ? "\nnew client message, replaces the earlier draft" : "";
-  const simulated = input.simulated ? "\nSIMULATION · cannot be sent" : "";
+export function approvalCard(input: { ticket: number; project: string; clientText: string; reply: string; code: string; replacement?: boolean; simulated?: boolean; workRoom?: boolean; stage?: import("./types").Stage; name?: "Ticket" | "Message" | "Question"; suggestTicket?: boolean }) {
+  const name = input.name ?? "Ticket";
+  const heading = `${name === "Ticket" ? "🟡" : name === "Question" ? "❓" : "💬"} ${projectName(input.project)} · ${name} #${input.ticket} · client wrote:`;
+  const context = input.replacement ? "\nNew client message, replaces the earlier draft." : "";
   const client = clip(oneLine(input.clientText), 140).replace(/"/g, "”");
-  const footer = input.simulated ? "\n\n✏️ Change it: type what to change here." : `\n\n✅ Send it: @desk send ${input.code}\n✏️ Change it: type what to change here.`;
-  const thread = "… full outgoing text attached and numbered above";
-  const prefix = `${heading}${context}${simulated}\nClient said: "${client}"\n\nReply to send:\n`;
-  const budget = Math.max(0, 900 - prefix.length - footer.length - thread.length - 5);
-  let quote = input.reply.split("\n").map(line => `> ${neutralise(line)}`).join("\n");
-  if (quote.length > budget) quote = `${quote.slice(0, budget)}\n${thread}`;
-  return `${prefix}${quote}${footer}`;
+  const footer = (input.simulated ? "\n\nSIMULATION · cannot be sent" : `\n\n✅ To send it, type: send ${input.code}\n\`${input.code}\``)
+    + "\n✏️ To change it, just type what to change."
+    + (input.suggestTicket ? "\n📁 To start a project from this, type: ticket" : "");
+  const prefix = `${heading}${context}\n${client ? '"'+client+'"' : 'A file arrived.'}\n\nI'd reply:\n`;
+  const quote = input.reply.split("\n").map(line => `> ${neutralise(line)}`).join("\n");
+  const overflow = "… full outgoing text attached and numbered above";
+  const budget = 900 - prefix.length - footer.length;
+  return prefix + (quote.length <= budget ? quote : clip(quote, Math.max(0,budget-overflow.length-1))+"\n"+overflow) + footer;
+}
+export const bareAgreement = (body: string) => /^(?:ok|okay|yes|yep|send|approve|approved|looks good|lgtm)[\s\p{P}]*$/iu.test(body.trim());
+/** Call before routing or journal retry classification; shortcuts never cross the identity/room boundary. */
+export function ownerCommand(body: string, ownerInStudio: boolean, name = "desk") {
+  const canonical = canonicalDeskBody(body, name);
+  if (!ownerInStudio || canonical !== body || bareAgreement(body)) return canonical;
+  const trimmed = body.trim();
+  return /^(?:send|deploy|status|ticket|intro|approve|promote|fix|review|video)(?:\s|$)/.test(trimmed) ? "@desk " + trimmed : body;
+}
+export function needsApprovalText(input: Parameters<typeof approvalCard>[0]) {
+  return approvalCard({...input, code:"0".repeat(64)}).includes("… full outgoing text attached");
 }
 
 const stageNames = {brief:"Brief",architecture:"Architecture",build:"Build",client_review:"Client review",video:"Video",learn:"Learn"};
@@ -56,9 +67,11 @@ export function stageLabel(stage: import("./types").Stage) {
 }
 export function stageCard(ticket: number, project: string, stage: import("./types").Stage, summary: string, command: string, icon = "🟡") {
   if (!/^@desk [^\r\n]+$/.test(command)) throw new Error("Exact desk command required");
-  const footer = `\n\nNext: ${command}\n✏️ Change it: type what to change here.`;
+  const plain = command.replace(/^@desk /, "");
+  const code = plain.split(" ").at(-1)!;
+  const footer = `\n\nNext: ${plain}${/^[a-f0-9]{10,64}$/.test(code)?`\n\`${code}\``:""}\n✏️ To change it, just type what to change.`;
   const prefix = `${icon} Ticket #${ticket} · ${projectName(project)} · ${stageLabel(stage)}\n`;
-  return prefix + clip(oneLine(summary), 900 - prefix.length - footer.length) + footer;
+  return prefix + clip(oneLine(summary).replace(/\b[a-f0-9]{40,64}\b/g, "the reviewed version"), 900 - prefix.length - footer.length) + footer;
 }
 
 /** Preserve every character, including whitespace and surrogate pairs. */

@@ -48,7 +48,7 @@ test("labelled Hii then labelled Wt ticket stays one work conversation, one clie
   expect(f.loop.latestDraft().kind).toBe("reply");
   expect(f.loop.latestDraft().version).toBeNull();
   expect(f.loop.latestDraft().code).not.toBe(old);
-  expect(f.sent.some(m => m.text.startsWith("🟡") && m.text.includes("new client message, replaces the earlier draft"))).toBe(true);
+  expect(f.sent.some(m => m.text.startsWith("🟡") && m.text.includes("New client message, replaces the earlier draft"))).toBe(true);
 });
 
 test("a sent reply followed by client approve never records brief acceptance", async () => {
@@ -107,7 +107,7 @@ test("long card stays under 900 characters; thread gets the full exact release t
   expect(approvalCard({ ticket: 1, project: "SAMPLE".repeat(200), clientText: "@lead\n".repeat(500), reply: text, code: "a".repeat(64), replacement: true, workRoom: true }).length).toBeLessThanOrEqual(900);
 });
 
-test("agents cannot use status or release from a thread; owner status uses at most 8 lines", async () => {
+test("agents cannot use status or release from a thread; owner status uses at most 3 lines", async () => {
   const f = fixture(), c = f.config;
   await f.loop.handle(f.event(c.clientRoomId, "verified-client", "request: Hii"));
   await f.loop.handle(f.event(c.studioRoomId, "verified-lead", protocol(1, "reply", "Hello!")));
@@ -123,12 +123,12 @@ test("agents cannot use status or release from a thread; owner status uses at mo
   expect(f.sent.filter(m => m.room === c.clientRoomId)).toHaveLength(1);
   await f.loop.handle(inThread("verified-owner", "@desk status"));
   const status = f.sent.at(-1).text;
-  expect(status.split("\n").length).toBeLessThanOrEqual(8);
-  expect(status).toContain(`Next command: @desk send ${code}`);
-  expect(status).toContain("Waiting on: Varun");
+  expect(status.split("\n").length).toBeLessThanOrEqual(3);
+  expect(status).toContain(`Type: send ${code}`);
+  expect(status).toContain("Waiting on you: Ticket #1");
   const beforeWrongRoom = f.loop.latestTicket();
   await f.loop.handle(inThread("verified-owner", "@desk status", c.clientRoomId));
-  expect(f.sent.filter(m => m.text.startsWith("Project:"))).toHaveLength(1);
+  expect(f.sent.filter(m => m.text.startsWith("Waiting on you:"))).toHaveLength(1);
   expect(f.loop.latestTicket()).toEqual(beforeWrongRoom);
 });
 
@@ -196,7 +196,7 @@ test("clipped reply publishes exact studio Markdown bytes and numbered text befo
   expect(parts.every(m => m.text.length < 1800)).toBe(true);
   expect(parts.map(m => m.text.slice(m.text.indexOf("\n") + 1)).join("")).toBe(outgoing);
   expect(f.sent.filter(m => m.room === c.studioRoomId).every(m => !m.text.includes("SAMPLE internal private note"))).toBe(true);
-  expect(f.sent.at(-1).text).toContain("Change it: type what to change here.");
+  expect(f.sent.at(-1).text).toContain("To change it, just type what to change.");
 });
 
 test("attachment failure uses lossless numbered studio fallback; fallback failure creates no code", async () => {

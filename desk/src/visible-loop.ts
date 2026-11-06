@@ -4,7 +4,7 @@ import { Store } from "./store";
 import { StageMachine } from "./workflow";
 import { SwitchAPI, SwitchTransport } from "./switch-transport";
 import { switchIdentities, verifiedSender, type Identity } from "./switch-identities";
-import { approvalCard, blockedCard, leakWord, lineCard, neutralise, parseLeadDraft, projectName,stageLabel,deskAddress,canonicalDeskBody } from "./cards";
+import { approvalCard, blockedCard, leakWord, lineCard, neutralise, parseLeadDraft, projectName,deskAddress,ownerCommand,bareAgreement,needsApprovalText } from "./cards";
 import {EventJournal} from "./event-journal";
 import {DeliveryRecovery} from "./delivery-recovery";
 import {DocumentSnapshots} from "./document-snapshots";
@@ -33,7 +33,8 @@ export class VisibleLoop {
   constructor(readonly store: Store, private api: SwitchAPI, readonly transport: SwitchTransport, readonly config: LoopConfig, identitySource?: () => Identity[]) {
     this.identities = identitySource ?? (() => switchIdentities({ ownerId: config.ownerId, bridgeId: config.bridgeId, deskId: config.deskId, leadId: config.leadId, probeId: config.probeId }));
     store.register({ id:config.projectId, ownerId:config.ownerId, studioRoomId:config.studioRoomId, clientRoomId:config.clientRoomId, clientIds:["verified-client-channel-human"] });
-    store.db.exec(`CREATE TABLE IF NOT EXISTS intake_events(id TEXT PRIMARY KEY);
+    store.db.exec(`CREATE TABLE IF NOT EXISTS owner_decisions(seq INTEGER PRIMARY KEY AUTOINCREMENT,code TEXT UNIQUE NOT NULL);
+      CREATE TABLE IF NOT EXISTS intake_events(id TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS tickets(n INTEGER PRIMARY KEY AUTOINCREMENT,event_id TEXT UNIQUE,simulated INTEGER NOT NULL,status TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS visible_drafts(id TEXT PRIMARY KEY,ticket INTEGER,version INTEGER,artifact TEXT,simulated INTEGER);
       CREATE TABLE IF NOT EXISTS room_cursors(room TEXT PRIMARY KEY,connection_id TEXT NOT NULL,cursor INTEGER NOT NULL);
@@ -87,10 +88,6 @@ export class VisibleLoop {
     ws.onerror = () => {};
   }
   private async studio(text: string) {
-    if(this.config.mode==='real'&&!text.includes(' of 6:')){
-      const suffix=`\n${stageLabel(this.workflow.get(this.config.projectId).stage)}\nNext: @desk status`;
-      text=text.slice(0,900-suffix.length)+suffix;
-    }
     return this.api.post(this.config.studioRoomId, deskAddress(text,this.config.deskName));
   }
   private machineRoom() { return this.config.workRoomId ?? this.config.studioRoomId; }
@@ -154,7 +151,7 @@ export class VisibleLoop {
     await this.thread(ticket, `Exact outgoing text (everything below this line):\n${content}`);
     if (parsed.internalNotes) await this.thread(ticket, `Internal notes (never sent):\n${neutralise(parsed.internalNotes)}`);
     const preview = { ticket: ticket.n, project: this.config.projectId, clientText: ticket.client_text, reply: content, replacement: ticket.generation > 1, simulated: Boolean(ticket.simulated) };
-    if (approvalCard({ ...preview, code: "0".repeat(64) }).includes("… full outgoing text")) {
+    if (needsApprovalText({ ...preview, code: "" })) {
       const hash = await this.api.publishApprovalText(this.config.studioRoomId, ticket.n, content);
       if (hash !== sha256(content)) throw new Error("Approval preview hash mismatch");
     }
@@ -173,6 +170,7 @@ export class VisibleLoop {
     this.store.db.query("INSERT INTO visible_drafts(id,ticket,version,artifact,simulated,kind,generation) VALUES (?,?,?,?,?,?,?)")
       .run(draft.id, ticket.n, version, artifact, ticket.simulated, parsed.kind, ticket.generation);
     this.store.db.query("UPDATE tickets SET status='awaiting-owner' WHERE n=?").run(ticket.n);
+    this.rememberDecision(draft.code);
     await this.studio(approvalCard({ ...preview, code: draft.code }));
   }
   private async chatPrompt(message:any){
@@ -197,19 +195,17 @@ export class VisibleLoop {
     const message=this.intakeState.message(parsed.messageId);
     if(!message||message.converted||!['question','chat'].includes(message.kind))return;
     const title=message.kind==='question'?`❓ Question #${message.n}`:`💬 Message #${message.n}`;
-    if(parsed.kind!=='reply'){await this.studio(`${title} · brief rejected; this message is not a ticket.\nNext: @desk ticket`);return;}
-    if(!parsed.clientText){await this.studio(`${title} · needs Varun personally.\nNext: @desk status`);return;}
-    const word=leakWord(parsed.clientText)??(this.config.mode==='real'&&/\bSIMULATION\b/i.test(parsed.clientText)?'test-only label':undefined);if(word){await this.studio(`${title} · reply blocked: ${word}.\nNext: @desk status`);return;}
+    if(parsed.kind!=='reply'){await this.studio(`${title} · brief rejected; this message is not a ticket.\nNext: ticket`);return;}
+    if(!parsed.clientText){await this.studio(`${title} · needs Varun personally.\nNext: status`);return;}
+    const word=leakWord(parsed.clientText)??(this.config.mode==='real'&&/\bSIMULATION\b/i.test(parsed.clientText)?'test-only label':undefined);if(word){await this.studio(`${title} · reply blocked: ${word}.\nNext: status`);return;}
     const text=`Update from Varun:\n\n${parsed.clientText}`;
-    await this.api.publishApprovalText(this.config.studioRoomId,message.n,text);
+    const preview = {ticket:message.n,project:this.config.projectId,clientText:message.body,reply:text,code:"",name:(message.kind==='question'?'Question':'Message') as "Question"|"Message",suggestTicket:true};
+    if(needsApprovalText(preview))await this.api.publishApprovalText(this.config.studioRoomId,message.n,text,"outgoing",preview.name);
     const draft=this.gate.createDraft({project:this.config.projectId,destinationRoomId:this.config.clientRoomId,threadId:`conversation:${message.n}`,text,attachments:[]});
     this.store.db.query("INSERT INTO conversation_drafts VALUES (?,?,?)").run(draft.id,message.n,message.kind);
     this.store.db.query("UPDATE client_messages SET status='awaiting-owner' WHERE n=?").run(message.n);
-    const suggested=/REQUEST_SUGGESTED:\s*yes|looks like (?:a )?request/i.test(parsed.internalNotes)||JSON.parse(message.files).length>0;
-    let card=approvalCard({ticket:message.n,project:this.config.projectId,clientText:message.body,reply:text,code:draft.code,stage:this.workflow.get(this.config.projectId).stage});
-    card=card.replace(/^🟡 Ticket #[0-9]+/,title);
-    if(!message.body)card=card.replace('Client said: ""','A file arrived.');
-    if(suggested){const note=JSON.parse(message.files).length?'A file arrived. Make it a ticket: @desk ticket':'Looks like a request. Make it a ticket: @desk ticket';if(card.length+note.length+1>900){const footer=card.slice(card.indexOf('\n\n✅'));card=card.slice(0,500)+'\n… full outgoing text attached and numbered above'+footer;}card+='\n'+note;}
+    this.rememberDecision(draft.code);
+    const card=approvalCard({...preview,code:draft.code});
     await this.studio(card);
   }
   async clientCommand(event:SwitchEvent):Promise<boolean>{
@@ -218,10 +214,10 @@ export class VisibleLoop {
     if(!identity||identity.kind!=='human'||!identity.users.includes(this.config.ownerId)||event.room_id!==this.config.studioRoomId){this.store.log("client intake command rejected: verified studio owner required");return true;}
     if(event.payload.body==='@desk intro'){
       const result=await this.gate.postFixedLine(this.config.projectId,'clientIntro',{},`client-intro:${this.config.projectId}`);
-      await this.studio(`Client guide ${result.status}.\nNext: @desk status`);return true;
+      await this.studio(`Client guide ${result.status}.\nNext: status`);return true;
     }
     const message=this.intakeState.latestConvertible();
-    if(!message||(message.converted&&message.ticket)){await this.studio('No new question/message to turn into a ticket.\nNext: @desk status');return true;}
+    if(!message||(message.converted&&message.ticket)){await this.studio('No new question/message to turn into a ticket.\nNext: status');return true;}
     this.store.db.query("UPDATE client_messages SET converted=1,status='converted' WHERE n=?").run(message.n);
     this.store.db.query("UPDATE drafts SET status='superseded' WHERE thread=? AND status='active'").run(`conversation:${message.n}`);
     await this.intakeMessage(`conversion:${message.event_id}`,message.body,JSON.parse(message.files),Boolean(message.simulated),[],true);
@@ -264,17 +260,33 @@ export class VisibleLoop {
   }
   private async status(owner: boolean, room: string) {
     if (!owner || room !== this.config.studioRoomId) { this.store.log("status rejected: verified studio owner required", undefined, this.config.projectId); return; }
-    let ticket = this.latestTicket();
-    if (ticket) ticket = await this.ensureThread(ticket);
-    const draft = this.latestDraft();
-    const stage = this.workflow.get(this.config.projectId).stage;
-    const counts=this.intakeState.summary();
-    const active = draft?.status === "active" && draft.ticket === ticket?.n && !draft.simulated;
-    const waiting = active ? "Varun" : ticket?.status === "with-lead" ? "lead" : ticket?.status === "awaiting-client" || ticket?.status === "awaiting-client-reply" ? "client" : ticket?.status === "blocked" ? "Varun personally / rewording" : "client / new safe draft";
-    await this.studio([`Project: ${projectName(this.config.projectId)}`, stageLabel(stage), `Open tickets: ${counts.tickets.join(', ')||'none'}`, `Unanswered questions: ${counts.questions.join(', ')||'none'}; messages: ${counts.messages.join(', ')||'none'}`, `Waiting on: ${waiting}`, `Next command: ${active ? "@desk send " + draft.code : "@desk status"}`, "Changes: type what to change here. Long outgoing text: attachment and numbered studio messages."].join("\n"));
+    const waiting = this.pendingReplies();
+    const counts = this.intakeState.summary();
+    await this.studio([
+      `Waiting on you: ${waiting.map(d=>d.label).join('; ') || 'nothing to send'}.`,
+      `Type: ${waiting.map(d=>'send '+d.code).join('; ') || 'status'}`,
+      `With the team: ${this.latestTicket()?.status==='with-lead'?'drafting your project reply':this.latestTicket()?.status?.startsWith('awaiting-client')?'waiting for the client': 'questions '+(counts.questions.join(', ')||'none')+'; messages '+(counts.messages.join(', ')||'none')}.`,
+    ].join("\n"));
   }
+  rememberDecision(code:string) { this.store.db.query("INSERT OR IGNORE INTO owner_decisions(code) VALUES (?)").run(code); }
+  pendingReplies(): {label:string;code:string;rowid:number}[] {
+    return (this.store.db.query(`SELECT d.code,COALESCE(o.seq,0) AS rowid,v.ticket,c.message,c.kind FROM drafts d LEFT JOIN owner_decisions o ON o.code=d.code
+      LEFT JOIN visible_drafts v ON v.id=d.id LEFT JOIN conversation_drafts c ON c.id=d.id LEFT JOIN client_messages m ON m.n=c.message
+      WHERE d.project=? AND d.status='active' AND COALESCE(v.simulated,m.simulated,0)=0
+      AND (v.id IS NOT NULL OR c.id IS NOT NULL) ORDER BY COALESCE(o.seq,0) DESC,d.rowid DESC`).all(this.config.projectId) as any[])
+      .map(d=>({code:d.code,rowid:d.rowid,label:d.message?`${d.kind==='question'?'Question':'Message'} #${d.message}`:`Ticket #${d.ticket}`}));
+  }
+  async agreementHint() {
+    const next=this.pendingReplies()[0];
+    await this.studio(next?`To send it to the client, type: send ${next.code}`:'Nothing is waiting for you to send. Type: status');
+  }
+
   handle(event: SwitchEvent) {
-    if(typeof event.payload?.body==='string')event={...event,payload:{...event.payload,body:canonicalDeskBody(event.payload.body,this.config.deskName)}};
+    if(typeof event.payload?.body==='string'){
+      const identity=verifiedSender(event.payload.sender,this.identities(),event.payload.sender_kind);
+      const owner=event.room_id===this.config.studioRoomId && identity?.kind==="human" && identity.users.includes(this.config.ownerId);
+      event={...event,payload:{...event.payload,body:ownerCommand(event.payload.body,owner,this.config.deskName)}};
+    }
     if(!event.payload?.message_id)return Promise.resolve();
     const retry=!/^@desk (send|deploy|approve|promote|fix|review|video)\b/.test(event.payload.body)&&!parseClientApproval(event.payload.body);
     return this.serial(() => this.journal.run(event.payload.message_id,event,async()=>{this.recoverDeliveries();await this.handleEvent(event);},retry));
@@ -288,6 +300,7 @@ export class VisibleLoop {
     // Legacy rows are already completed; new events use the received/completed journal.
     if(this.store.db.query("SELECT id FROM intake_events WHERE id=?").get(id))return;
     const owner = identity.kind === "human" && identity.users.includes(this.config.ownerId);
+    if(owner&&event.room_id===this.config.studioRoomId&&bareAgreement(p.body)){await this.agreementHint();return;}
     if(await this.clientCommand(event))return;
     if (p.body === "@desk status") { await this.status(owner, event.room_id); return; }
     if (event.room_id === this.config.clientRoomId) {
@@ -332,11 +345,11 @@ export class VisibleLoop {
       const code = /^@desk send ([a-f0-9]{10,64})$/.exec(p.body)?.[1];
       const conversation=code?this.intakeState.conversationCode(code):undefined;
       if(conversation){
-        if(owner&&conversation.simulated){await this.studio('Test conversation cannot be released.\nNext: @desk status');return;}
+        if(owner&&conversation.simulated){await this.studio('Test conversation cannot be released.\nNext: status');return;}
         if(owner&&event.room_id===this.config.studioRoomId)this.deliveries.track(conversation.id,"conversation",{message:conversation.message});
         const result=await this.gate.handleMessage({senderId:owner?this.config.ownerId:p.sender,senderKind:identity.kind,roomId:event.room_id,body:p.body,eventId:id});
         if(result.status==='sent')this.recoverDeliveries();
-        await this.studio(`${conversation.kind==='question'?'❓ Question':'💬 Message'} #${conversation.message} · reply ${result.status}.\nNext: @desk status`);return;
+        await this.studio(`${conversation.kind==='question'?'❓ Question':'💬 Message'} #${conversation.message} · reply ${result.status}.\nNext: status`);return;
       }
       const draft = code ? this.store.db.query("SELECT v.*,d.code,d.status FROM visible_drafts v JOIN drafts d ON d.id=v.id WHERE d.code=?").get(code) as any : undefined;
       if (owner && draft?.simulated) { await this.studio(blockedCard(draft.ticket, "simulation cannot be sent")); return; }

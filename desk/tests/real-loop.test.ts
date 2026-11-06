@@ -28,7 +28,7 @@ function fixture(deskName?:string,now?:()=>number){
 
 test('isolated real-mode dry run closes Stage 1 and produces a Stage 2 card without live services',async()=>{
  const f=fixture();await f.architecture();expect(f.loop.state.get(f.config.projectId).stage).toBe('architecture');
- expect(f.posts.some(p=>p.room==='studio'&&p.text.includes('Stage 2 of 6: Architecture')&&p.text.includes('Next: @desk status'))).toBe(true);
+ expect(f.posts.some(p=>p.room==='studio'&&p.text.includes('Stage 2 of 6: Architecture')&&p.text.includes('Next: status'))).toBe(true);
  expect(f.posts.every(p=>!p.text.includes('SIMULATION'))).toBe(true);expect(f.posts.filter(p=>p.text.includes('@lead')).every(p=>p.room==='work')).toBe(true);
  const assignment=f.posts.find(p=>p.text.includes('The client approved Brief'))!.text;
  expect(assignment).toContain('container listener (0.0.0.0 inside Docker)');
@@ -44,7 +44,7 @@ test('real stages 2–6 have short command cards, explicit deploy/send gates and
  await f.loop.handle(f.event('builder',`video ${hash} demo.mp4`));await f.loop.handle(f.event('owner','@desk approve video '+f.code('video')));
  out=f.loop.get('outgoing');expect(out.artifact).toEqual({kind:'video',sha256:hash});await f.loop.handle(f.event('owner','@desk send '+out.code));await f.loop.handle(f.event('client','approve'));
  const lesson='SAMPLE reusable lesson: check private access, with evidence from regression tests.';await f.loop.handle(f.event('lead','lesson private-access 1 document '+f.doc(lesson)));
- const proposal=f.loop.get('lesson');expect(f.promoted()).toBe(0);await f.loop.handle(f.event('owner',`@desk promote private-access 1 ${proposal.hash}`));
+ const proposal=f.loop.get('lesson');expect(f.promoted()).toBe(0);await f.loop.handle(f.event('owner',`promote private-access 1 ${f.code('learn')}`));
  expect(f.promoted()).toBe(1);expect(f.loop.state.get(f.config.projectId).completed).toBe(true);
  const control=(f.loop as any).realControl;
  control.prepareFix=async()=>{throw new Error('SAMPLE preparation interrupted');};
@@ -52,7 +52,7 @@ test('real stages 2–6 have short command cards, explicit deploy/send gates and
  expect(f.loop.get('fixAuthorized')).toBeNull();
  control.prepareFix=async()=>({id:'fix-builder',name:'fix-builder'});
  (f.loop as any).identitySource().push({sender:'fix-builder',kind:'agent',agent_id:'fix-builder',users:[]});
- await f.loop.handle(f.event('owner',`@desk fix old-shop ${proposal.hash}`));
+ await f.loop.handle(f.event('owner',`fix old-shop ${proposal.hash.slice(0,12)}`));
  const assignment=[...f.posts].reverse().find(p=>p.room==='work'&&p.text.includes('backward fix'))!.text;
  expect(assignment).toContain('@fix-builder ');
  expect(assignment).toContain('Return exactly fix <branch> <exact-commit-SHA>');
@@ -64,7 +64,7 @@ test('real stages 2–6 have short command cards, explicit deploy/send gates and
 
  const cards=f.posts.filter(p=>p.room==='studio'&&p.text.includes(' of 6:'));
  for(const n of [2,3,4,5,6])expect(cards.some(c=>c.text.includes(`Stage ${n} of 6:`))).toBe(true);
- expect(cards.every(c=>c.text.length<=900&&c.text.includes('@desk '))).toBe(true);
+ expect(cards.every(c=>c.text.length<=900&&c.text.includes('Next: '))).toBe(true);
  expect(f.posts.filter(p=>p.room==='client-room').every(p=>!p.text.includes('INTERNAL')&&!p.text.includes('SIMULATION'))).toBe(true);
 });
 test('real future-stage questions preserve the waiting ticket release code and work approval',async()=>{
@@ -80,7 +80,7 @@ test('real live builder handoff accepts a protocol first line followed by eviden
  await f.loop.handle(f.event('lead','spec document '+f.doc('SAMPLE validation spec')));
  await f.loop.handle(f.event('builder','build-ready build-report.md\n\nValidation only; exact test output in the report. No product edits.'));
  expect(f.loop.get('buildReady')).toBe(true);
- expect(f.posts.at(-1).text).toContain('Next: @desk review');
+ expect(f.posts.at(-1).text).toContain('Next: review');
  expect(f.loop.get('candidate')).toBeNull();
 });
 test('real repeated build tasks use distinct Switch document names',async()=>{
@@ -128,11 +128,11 @@ test('owner build questions preserve candidate, review and pending client releas
 
 test('real dryrun card addresses its separate desk identity and its exact command works',async()=>{
  const f=fixture('desk-dryrun');await f.architecture();
- expect(f.posts.some(p=>p.room==='studio'&&p.text.includes('Next: @desk-dryrun status'))).toBe(true);
+ expect(f.posts.some(p=>p.room==='studio'&&p.text.includes('Next: status'))).toBe(true);
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  const card=f.posts.at(-1).text;
  const command=card.split('Next: ')[1].split('\n')[0];
- expect(command).toBe('@desk-dryrun approve architecture '+f.code('architecture'));
+ expect(command).toBe('approve architecture '+f.code('architecture'));
  await f.loop.handle(f.event('builder',command));
  expect(f.loop.state.get(f.config.projectId).stage).toBe('architecture');
  await f.loop.handle(f.event('owner',command));
@@ -215,4 +215,39 @@ test('watchdog follows builder and fresh reviewer handoffs without repeating on 
  now+=1200000;await f.loop.tick();expect(warnings()).toHaveLength(2);
  await f.loop.handle(f.event('reviewer-1',`review 1 ${SHA} pass`));expect(f.loop.watchdog.current()).toBeNull();
  now+=1200000;await f.loop.tick();expect(warnings()).toHaveLength(2);
+});
+
+test('plain owner commands reach stages 2–6 and compact deploy codes resolve only to the reviewed SHA',async()=>{
+ const f=fixture();await f.architecture();
+ await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
+ await f.loop.handle(f.event('owner','approve architecture '+f.code('architecture')));
+ await f.loop.handle(f.event('lead','spec document '+f.doc('SAMPLE spec')));
+ await f.loop.handle(f.event('builder','build-ready report.md'));
+ await f.loop.handle(f.event('owner','review'));
+ await f.loop.handle(f.event('reviewer-1',`review 1 ${SHA} pass`));
+ const card=f.posts.at(-1).text;expect(card).not.toContain(SHA);expect(card).toContain('Next: deploy '+f.code('build'));
+ await f.loop.handle(f.event('owner','deploy '+f.code('build')));
+ await f.loop.handle(f.event('owner','approve build '+f.code('build')));
+ const outgoing=f.loop.get('outgoing');await f.loop.handle(f.event('owner','send '+outgoing.code));
+ await f.loop.handle(f.event('client','approve'));await f.loop.handle(f.event('owner','video'));
+ expect(f.loop.get('videoRequested')).toBe(true);
+});
+test('later-stage bare agreements preserve artifacts, approvals and release codes',async()=>{
+ const f=fixture();await f.clientReview();const state=f.loop.state.get(f.config.projectId),out=f.loop.get('outgoing'),candidate=f.loop.get('candidate');
+ for(const word of ['ok','okay','yes','yep','send','approve','approved','looks good','lgtm']){
+  const count=f.posts.length;await f.loop.handle(f.event('owner',word.toUpperCase()+'!!!'));
+  expect(f.posts.slice(count)).toHaveLength(1);expect(f.posts.at(-1).text).toContain('send '+out.code);expect(f.posts.at(-1).text.split('\n').length).toBeLessThanOrEqual(3);
+  expect(f.loop.state.get(f.config.projectId)).toEqual(state);expect(f.loop.get('outgoing')).toEqual(out);expect(f.loop.get('candidate')).toBe(candidate);
+ }
+});
+test('status orders conversation and stage decisions by their publication order',async()=>{
+ const f=fixture();await f.architecture();
+ await f.loop.handle(f.event('client','question: SAMPLE when?'));
+ await f.loop.handle(f.event('lead','draft message 2\nKIND: reply\n---CLIENT TEXT---\nFriday.\n---INTERNAL NOTES---\n'));
+ await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
+ await f.loop.handle(f.event('owner','status'));
+ expect(f.posts.at(-1).text).toContain('Waiting on you: Architecture; Question #2');
+ await f.loop.handle(f.event('lead','draft message 2\nKIND: reply\n---CLIENT TEXT---\nSaturday.\n---INTERNAL NOTES---\n'));
+ await f.loop.handle(f.event('owner','status'));
+ expect(f.posts.at(-1).text).toContain('Waiting on you: Question #2; Architecture');
 });
