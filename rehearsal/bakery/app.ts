@@ -64,6 +64,7 @@ export function createApp(options:{database:string;ownerPassword:string;now?:()=
  async function fetchHandler(request:Request):Promise<Response> {
   const u=new URL(request.url),path=u.pathname;
   if(path==="/health")return json({ok:true,version:TWO_SESSIONS?2:1});
+  if(path==="/morrowcrumb-logo.png"&&request.method==="GET")return new Response(Bun.file(new URL("./morrowcrumb-logo.png",import.meta.url)),{headers:{"content-type":"image/png","x-content-type-options":"nosniff"}});
   if(["/","/owner"].includes(path)&&request.method==="GET")return new Response(path==="/owner"?ownerPage:page,{headers:{"content-type":"text/html; charset=utf-8","content-security-policy":"default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'","x-content-type-options":"nosniff"}});
   try {
    if(path==="/api/catalog"&&request.method==="GET")return json({products,sessions,timezone:"Asia/Kolkata",cutoff:"20:00 on the evening before pickup",available:availability()});

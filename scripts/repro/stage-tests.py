@@ -11,5 +11,6 @@ for name in roots:
   dirs[:]=[d for d in dirs if d not in excluded and not (Path(base)/d).is_symlink()]
   for filename in files:
    path=Path(base)/filename;rel=path.relative_to(root)
-   if path.is_symlink() or path.suffix not in {'.ts','.js','.json','.yaml','.sh','.py','.md'}:continue
+   if path.is_symlink():continue
+   if path.suffix not in {'.ts','.js','.json','.yaml','.sh','.py','.md'} and path.relative_to(source).as_posix() != 'rehearsal/bakery/morrowcrumb-logo.png':continue
    target=dest/name/rel;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
