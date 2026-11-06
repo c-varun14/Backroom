@@ -76,6 +76,19 @@ export class StageMachine {
       return state;
     })();
   }
+  /** Trusted deterministic small-change adapter, after eligibility and deployment checks.
+   * This records automation honestly instead of impersonating an owner approval. */
+  shipSmallChange(project:string,sha:string):Workflow {
+    return this.store.db.transaction(()=>{
+      const config=this.store.project(project),state=this.get(project);
+      const review=this.store.db.query('SELECT verdict FROM reviews WHERE project=? AND sha=? ORDER BY seq DESC LIMIT 1').get(project,sha) as any;
+      if(config.clientSurface!=='forum'||state.stage!=='build'||review?.verdict!=='pass'||!this.store.db.query('SELECT sha FROM deployments WHERE project=? AND sha=?').get(project,sha))throw new Error('Reviewed deployed forum change required');
+      this.validateArtifact('build',{kind:'commit',sha});
+      state.stages.build={version:state.stages.build.version+1,artifact:{kind:'commit',sha},approvals:['automatic']};
+      state.stages.client_review={version:state.stages.client_review.version+1,artifact:{kind:'commit',sha},approvals:[]};
+      state.stage='client_review';state.completed=false;this.save(project,state);return state;
+    })();
+  }
   /** Skip the optional video stage for a forum project that has video disabled. */
   skipOptionalVideo(project:string):Workflow {
     return this.store.db.transaction(()=>{

@@ -114,6 +114,16 @@ export class Door {
         for(const row of rows){
           if(this.db.query('SELECT id FROM applied_outbox WHERE project=? AND id=?').get(project.projectId,row.id))continue;
           const payload=JSON.parse(row.payload);
+          // Studio screenshots never use a destination supplied by an agent or outbox row.
+          if(row.kind==='studio-screenshot'){
+            if(!project.studioDiscordThread||!project.studioThread||!this.validStudioScreenshot(source,payload))continue;
+            const bytes=Buffer.from(payload.png,'base64');
+            const form=new FormData();
+            form.set('payload_json',JSON.stringify({content:'Checked product screenshot',allowed_mentions:{parse:[]},attachments:[{id:0,filename:'owner-verification.png'}],enforce_nonce:true,nonce:sha256(project.projectId+':'+row.id).slice(0,24)}));
+            form.set('files[0]',new Blob([bytes],{type:'image/png'}),'owner-verification.png');
+            await this.io.request('POST',`/channels/${project.studioDiscordThread}/messages`,form);
+            this.db.query('INSERT OR IGNORE INTO applied_outbox VALUES (?,?)').run(project.projectId,row.id);continue;
+          }
           // Outbox is local desk data; only the owning project's post is eligible.
           const post=source.query('SELECT discord_thread,tag FROM posts WHERE discord_thread=?').get(payload.discordThread) as any;
           if(!post){this.io.log('door outbox refused: unknown project post');continue;}
@@ -131,27 +141,45 @@ export class Door {
       }catch{this.io.log('door outbox deferred; details withheld');}finally{source.close();}
     }
   }
+  private validStudioScreenshot(source:Database,payload:any){
+    if(!/^[a-f0-9]{12}$/.test(payload.code)||!/^[a-f0-9]{64}$/.test(payload.hash)||typeof payload.png!=='string'||payload.png.length>14*1024*1024)return false;
+    const artifact=source.query("SELECT code FROM stage_artifacts WHERE code=? AND stage='build' AND status IN ('active','approved')").get(payload.code);
+    const verification=source.query("SELECT value FROM stage_kv WHERE key='buildVerification'").get() as any;
+    if(!artifact||!verification||JSON.parse(verification.value)?.hash!==payload.hash)return false;
+    const bytes=Buffer.from(payload.png,'base64');
+    return bytes.length>=8&&bytes.length<=10*1024*1024&&bytes.subarray(0,8).toString('hex')==='89504e470d0a1a0a'&&sha256(bytes)===payload.hash;
+  }
   async pollBoard(){
     const columns=['New','Ready for Dev','In progress','Waiting on client','Done','Paused'];
-    const groups=new Map<string,{project:DoorProject;items:{project:DoorProject;column:string}[]}>();
+    const groups=new Map<string,{project:DoorProject;items:{project:DoorProject;column:string;activity:string}[]}>();
     for(const project of this.projects){
       if(!project.studioForumId||!project.studioDiscordThread||!project.studioTagIds)continue;
       let source:Database;try{source=new Database(project.databasePath,{readonly:true});}catch{continue;}
-      let column='New';
+      let column='New',activity='';
       try{
         const row=source.query('SELECT state FROM workflows WHERE project=?').get(project.projectId) as any;
         const ticket=source.query("SELECT status FROM tickets WHERE status!='queued' ORDER BY n DESC LIMIT 1").get() as any;
         const state=row?JSON.parse(row.state):null;
         column=state?.completed?'Done':ticket?.status==='blocked'?'Paused':ticket?.status==='awaiting-client'||['client_review','video'].includes(state?.stage)?'Waiting on client':state?.stage==='build'?'In progress':state?.stage==='architecture'?'Ready for Dev':'New';
+        const tables=source.query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('stage_kv','delivery_audit')").all() as {name:string}[];
+        if(tables.some(t=>t.name==='stage_kv')){
+          const kv=(key:string)=>{const row=source.query('SELECT value FROM stage_kv WHERE key=?').get(key) as any;return row?JSON.parse(row.value):null;};
+          if(kv('reviewPaused')||kv('buildStopped'))column='Paused';
+          else if(state?.stage==='build')activity=kv('reviewVerdict')==='pass'?'Review passed':kv('reviewer')&&kv('buildReady')?'Independent review':'Building';
+        }
+        if(tables.some(t=>t.name==='delivery_audit')){
+          const audit=source.query('SELECT action,line FROM delivery_audit WHERE project=? ORDER BY seq DESC LIMIT 1').get(project.projectId) as any;
+          if(audit){activity=audit.line;if(audit.action!=='sent')column='Paused';}
+        }
       }catch{this.io.log('studio board state unavailable; details withheld');}finally{source.close();}
       const priority=project.studioPriority??'Medium';const tags=[project.studioTagIds[column],project.studioTagIds[priority]].filter(Boolean);
       const id='studio-tags:'+project.projectId,value=JSON.stringify(tags),previous=this.db.query('SELECT value FROM board_state WHERE id=?').get(id) as any;
       if(previous?.value!==value){await this.io.request('PATCH',`/channels/${project.studioDiscordThread}`,{applied_tags:tags});this.db.query('INSERT OR REPLACE INTO board_state VALUES (?,?)').run(id,value);}
-      const group=groups.get(project.studioForumId)??{project,items:[]};group.items.push({project,column});groups.set(project.studioForumId,group);
+      const group=groups.get(project.studioForumId)??{project,items:[]};group.items.push({project,column,activity});groups.set(project.studioForumId,group);
     }
     for(const [forum,{project,items}] of groups){
       if(!project.studioBoardThread||!project.studioBoardMessage)continue;
-      const embeds=columns.map(name=>({title:name,description:items.filter(i=>i.column===name).map(i=>`[${i.project.projectId}](https://discord.com/channels/${i.project.discordGuildId}/${i.project.studioDiscordThread})`).join('\n')||'—'}));
+      const embeds=columns.map(name=>({title:name,description:items.filter(i=>i.column===name).map(i=>`[${i.project.projectId}](https://discord.com/channels/${i.project.discordGuildId}/${i.project.studioDiscordThread})${i.activity?` — ${i.activity}`:''}`).join('\n')||'—'}));
       const payload={content:'Studio project board',embeds,allowed_mentions:{parse:[]}},value=JSON.stringify(payload),id='board:'+forum;
       const previous=this.db.query('SELECT value FROM board_state WHERE id=?').get(id) as any;
       if(previous?.value!==value){await this.io.request('PATCH',`/channels/${project.studioBoardThread}/messages/${project.studioBoardMessage}`,payload);this.db.query('INSERT OR REPLACE INTO board_state VALUES (?,?)').run(id,value);}
@@ -243,7 +271,7 @@ export async function runDoor(){
   if(!token)throw new Error('Discord token is not configured');
   const io:DiscordIO={now:Date.now,sleep:ms=>new Promise(r=>setTimeout(r,ms)),log:message=>console.log(message),
     async request(method,path,body,webhook=false){
-      let response:Response;try{response=await fetch('https://discord.com/api/v10'+path,{method,headers:{...(webhook?{}:{Authorization:'Bot '+token}),'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(15000)});}catch{throw new Error('Discord request failed; details withheld');}
+      let response:Response;try{response=await fetch('https://discord.com/api/v10'+path,{method,headers:{...(webhook?{}:{Authorization:'Bot '+token}),...(body instanceof FormData?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:body instanceof FormData?body:JSON.stringify(body)}),signal:AbortSignal.timeout(15000)});}catch{throw new Error('Discord request failed; details withheld');}
       if(!response.ok)throw new Error('Discord request refused; details withheld');
       return response.status===204?{}:response.json();
     }};

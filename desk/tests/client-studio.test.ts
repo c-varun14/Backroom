@@ -193,7 +193,7 @@ test('final product press really records the client approval and moves the stage
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
-test('Phase brief is sent in its post without owner approval; only current client press closes it',async()=>{
+test('Phase brief waits for owner release; only current client press closes it',async()=>{
  const dir=mkdtempSync('/tmp/backroom-phase-key-');writeFileSync(join(dir,'key'),key);
  try{
  const f=realFixture(undefined,undefined,{clientSurface:'forum',doorKeyFile:join(dir,'key'),discordClientIds:['client'],frontId:'front'});
@@ -204,7 +204,10 @@ test('Phase brief is sent in its post without owner approval; only current clien
  await f.loop.handle(f.event('lead','draft 1 rev 1\nKIND: reply\n---CLIENT TEXT---\nWhich pickup option should we use?\n---INTERNAL NOTES---\nPrivate'));
  expect(f.posts.some(p=>p.room==='client-room'&&p.text==='Which pickup option should we use?')).toBe(true);
  await f.loop.handle(f.event('lead','draft 1 rev 1\nKIND: brief\n---CLIENT TEXT---\nPickup orders on Friday, with a price of ₹50 as requested.\n---INTERNAL NOTES---\nPrivate'));
- expect(f.posts.some(p=>p.room==='client-room'&&p.text.includes('₹50'))).toBe(true);expect(f.loop.latestDraft()).toBeNull();
+ expect(f.posts.some(p=>p.room==='client-room'&&p.text.includes('₹50'))).toBe(false);
+ expect(f.store.db.query('SELECT ref FROM client_buttons').get()).toBeNull();
+ await f.loop.handle(f.event('owner','@desk send '+f.loop.latestDraft().code));
+ expect(f.posts.some(p=>p.room==='client-room'&&p.text.includes('₹50'))).toBe(true);
  const button=f.store.db.query('SELECT * FROM client_buttons').get() as any;
  expect(button).not.toBeNull();await f.loop.handle(postEvent('client','looks good'));expect(f.loop.state.get(f.config.projectId).stage).toBe('brief');
  const press=(userId:string,ref=button.ref)=>signDoor(envelope({project:f.config.projectId,type:'press',action:'approve',userId,ref,discordThread:'discord-post'} as any),key);
@@ -284,6 +287,11 @@ test('studio board mirrors statuses with one embed per column, edits in place an
  const project:DoorProject={projectId:'sample',discordForumId:'forum',discordGuildId:'guild',discordClientRoleId:'role',discordBotId:'bot',doorWebhookId:'hook',doorWebhookFile:'unused',doorKeyFile:'unused',databasePath:join(dir,'project.db'),tagIds:{},studioForumId:'studio',studioDiscordThread:'project-post',studioThread:'switch-T',studioTagIds:{'Waiting on client':'waiting',High:'high'},studioPriority:'High',studioBoardThread:'board',studioBoardMessage:'board-message'};
  const door=new Door(db,[project],{now:Date.now,sleep:async()=>{},log(){},async request(method,path,body){calls.push({method,path,body});return {};}});
  await door.pollBoard();await door.pollBoard();expect(calls).toHaveLength(2);expect(calls[0].body.applied_tags).toEqual(['waiting','high']);expect(calls[1].path).toBe('/channels/board/messages/board-message');expect(calls[1].body.embeds).toHaveLength(6);expect(calls[1].body.embeds.find((e:any)=>e.title==='Waiting on client').description).toContain('/guild/project-post');
+ source.exec('CREATE TABLE delivery_audit(seq INTEGER PRIMARY KEY,project TEXT,action TEXT,line TEXT)');
+ source.query('INSERT INTO delivery_audit VALUES (1,?,?,?)').run('sample','sent','Automatically shipped a checked small change.');
+ await door.pollBoard();expect(calls.at(-1).body.embeds.find((e:any)=>e.title==='Waiting on client').description).toContain('Automatically shipped a checked small change.');
+ source.query('INSERT INTO delivery_audit VALUES (2,?,?,?)').run('sample','rolled-back','Automatic change failed checks; rolled back.');
+ await door.pollBoard();expect(calls.at(-1).body.embeds.find((e:any)=>e.title==='Paused').description).toContain('rolled back');
  }finally{source.close();db.close();rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -313,5 +321,23 @@ test('door button ids stay within Discord limit even for long slugs',async()=>{
  const project:DoorProject={projectId:'sample-'+'a'.repeat(50),discordForumId:'forum',discordGuildId:'guild',discordClientRoleId:'role',discordBotId:'bot',doorWebhookId:'hook',doorWebhookFile:'unused',doorKeyFile:'unused',databasePath:join(dir,'project.db'),tagIds:{}};
  const door=new Door(db,[project],{now:Date.now,sleep:async()=>{},log(){},async request(method,path,body){calls.push(body);return {};}});await door.pollOutbox();
  for(const button of calls[0].components[0].components)expect(button.custom_id.length).toBeLessThanOrEqual(100);
+ }finally{source.close();db.close();rmSync(dir,{recursive:true,force:true});}
+});
+
+test('frozen review screenshot outbox uploads only to the configured studio post and checks hashes',async()=>{
+ const dir=mkdtempSync('/tmp/backroom-studio-image-'),source=new Database(join(dir,'project.db')),db=new Database(':memory:'),calls:any[]=[];
+ try{
+ source.exec('CREATE TABLE door_outbox(id INTEGER PRIMARY KEY,kind TEXT,payload TEXT);CREATE TABLE stage_artifacts(code TEXT,stage TEXT,status TEXT);CREATE TABLE stage_kv(key TEXT,value TEXT)');
+ const bytes=Buffer.from('89504e470d0a1a0a00000000','hex'),hash=sha256(bytes),code='a'.repeat(12);
+ source.query("INSERT INTO stage_artifacts VALUES (?,'build','active')").run(code);source.query("INSERT INTO stage_kv VALUES ('buildVerification',?)").run(JSON.stringify({hash}));
+ const row={code,hash,png:bytes.toString('base64'),discordThread:'client-post'};
+ source.query("INSERT INTO door_outbox VALUES (1,'studio-screenshot',?)").run(JSON.stringify(row));
+ source.query("INSERT INTO door_outbox VALUES (2,'studio-screenshot',?)").run(JSON.stringify({...row,hash:'b'.repeat(64)}));
+ source.query("INSERT INTO door_outbox VALUES (3,'studio-screenshot',?)").run(JSON.stringify({...row,code:'b'.repeat(12)}));
+ const project:DoorProject={projectId:'sample',discordForumId:'forum',discordGuildId:'guild',discordClientRoleId:'role',discordBotId:'bot',doorWebhookId:'hook',doorWebhookFile:'unused',doorKeyFile:'unused',databasePath:join(dir,'project.db'),tagIds:{},studioDiscordThread:'studio-post',studioThread:'studio-switch'};
+ const door=new Door(db,[project],{now:Date.now,sleep:async()=>{},log(){},async request(method,path,body){calls.push({method,path,body});return {};}});
+ await door.pollOutbox();await door.pollOutbox();expect(calls).toHaveLength(1);expect(calls[0].path).toBe('/channels/studio-post/messages');expect(calls[0].body instanceof FormData).toBe(true);
+ expect(Buffer.from(await calls[0].body.get('files[0]').arrayBuffer())).toEqual(bytes);
+ expect(JSON.parse(calls[0].body.get('payload_json')).allowed_mentions).toEqual({parse:[]});
  }finally{source.close();db.close();rmSync(dir,{recursive:true,force:true});}
 });

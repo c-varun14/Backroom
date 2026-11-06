@@ -19,6 +19,7 @@ export interface SwitchEvent { room_id: string; payload: { sender: string; sende
 export class VisibleLoop {
   readonly ownerCards:OwnerCards;
   readonly talk?:TalkLane;
+  onForumMessage?:(ticket:any,event:SwitchEvent)=>Promise<boolean>;
   onForumActivate?:(ticket:any)=>Promise<boolean>;
   onForumPress?:(payload:import('./door-protocol').DoorPayload&{type:'press'},event:SwitchEvent)=>Promise<void>;
   readonly gate: Desk;
@@ -83,7 +84,7 @@ export class VisibleLoop {
       onFeature:async(post,choice)=>{
         if(choice==='later')return;
         this.store.db.query('UPDATE posts SET tag=? WHERE switch_thread=?').run(choice==='small'?'Bug/Change':'Phase',post.switch_thread);
-        await this.forumPost(this.talk!.post(post.switch_thread)!,{room_id:config.clientRoomId,payload:{sender:'door',body:post.text,message_id:'feature:'+post.switch_thread+':'+post.rev,thread_id:post.switch_thread}},true);
+        await this.forumPost(this.talk!.post(post.switch_thread)!,{room_id:config.clientRoomId,payload:{sender:'door',body:post.text,message_id:'feature:'+post.switch_thread+':'+post.rev,thread_id:post.switch_thread}},true,choice==='small'?'change':'phase');
       },
       onPost:(post,event,isNew)=>this.forumPost(post,event,isNew),
       onPress:async(payload,event)=>{if(await this.forumPress(payload,event))return;await this.onForumPress?.(payload,event);},
@@ -149,16 +150,17 @@ export class VisibleLoop {
     const next=this.store.db.query("SELECT * FROM tickets WHERE status='queued' ORDER BY n LIMIT 1").get() as any;
     if(next)await this.ownerCards.offer('Next request',`Request #${next.n} is waiting. Start it when ready.`,[{label:'Start next',command:'@desk start '+next.n}]);
   }
-  private async forumPost(post:Post,event:SwitchEvent,isNew:boolean){
+  private async forumPost(post:Post,event:SwitchEvent,isNew:boolean,ticketKind?:string){
     if(['Question','Chat','Feature'].includes(post.tag))return false;
     let ticket=this.store.db.query('SELECT * FROM tickets WHERE post=?').get(post.switch_thread) as any;
     if(!ticket){
       const active=this.store.db.query("SELECT n FROM tickets WHERE post IS NOT NULL AND status NOT IN ('closed','queued') LIMIT 1").get();
       this.store.db.query('INSERT INTO tickets(event_id,simulated,status,post,kind,client_text) VALUES (?,0,?,?,?,?)')
-        .run(event.payload.message_id,active?'queued':'received',post.switch_thread,post.tag==='Bug/Change'?'bug':'phase',post.text);
+        .run(event.payload.message_id,active?'queued':'received',post.switch_thread,ticketKind??(post.tag==='Bug/Change'?'bug':'phase'),post.text);
       ticket=this.store.db.query('SELECT * FROM tickets WHERE post=?').get(post.switch_thread);this.ticketStatus(ticket,'Received');
     }
     if(ticket.status==='queued'||ticket.status==='closed')return true;
+    if(!isNew&&await this.onForumMessage?.(ticket,event))return true;
     if(!isNew&&(this.workflow.get(this.config.projectId).stage!=='brief'||/^(?:looks good|looks right|approve|approved)[.! ]*$/i.test(event.payload.body.trim())))return false;
     if(isNew)await this.activateForumTicket(ticket,event);
     else await this.intakeMessage(event.payload.message_id,event.payload.body,event.payload.attachments??[],false,[],true,post);
@@ -202,6 +204,7 @@ export class VisibleLoop {
   }
   private async thread(ticket: any, body: string, targetLead = false) {
     ticket = await this.ensureThread(ticket);
+    if(targetLead&&this.config.clientSurface==='forum'&&!body.trimEnd().endsWith(DELIVERY_RULE))body=body.trimEnd()+' '+DELIVERY_RULE;
     return this.api.thread(body, ticket.thread_id, this.cursor(this.machineRoom()).connection_id, targetLead ? [this.config.leadName ?? "lead"] : undefined);
   }
   private supersede() { this.store.db.query("UPDATE drafts SET status='superseded' WHERE project=? AND thread='default' AND status='active'").run(this.config.projectId); }
@@ -280,15 +283,15 @@ export class VisibleLoop {
     const artifact=published.result.document_id;
     this.snapshots.remember(artifact,parsed.clientText);
     const workflow=this.workflow.suggest(this.config.projectId,'brief',{kind:'document',id:artifact});
-    // This lane intentionally applies leak checks only: a brief restates client dates and requirements.
-    const sent=await this.gate.sendBrief({project:this.config.projectId,clientThread:post.switch_thread,text:parsed.clientText,eventId:'brief:'+artifact});
-    if(sent.status!=='sent')return;
-    const hash=this.snapshots.get(artifact).hash,version=workflow.stages.brief.version;
-    this.store.db.query("UPDATE tickets SET status='awaiting-client' WHERE n=?").run(ticket.n);
-    this.store.db.query('INSERT OR REPLACE INTO forum_briefs VALUES (?,?,?,?,?,?)').run(post.switch_thread,ticket.n,artifact,version,hash,ticket.generation);
-    this.ticketStatus(ticket,'Ready for you');
-    this.clientButtons(post,{stage:'brief',version,hash,artifact});
+    const draft=this.gate.createDraft({project:this.config.projectId,destinationRoomId:this.config.clientRoomId,clientThread:post.switch_thread,text:parsed.clientText,attachments:[]});
+    this.store.db.query('INSERT INTO visible_drafts(id,ticket,version,artifact,simulated,kind,generation) VALUES (?,?,?,?,0,?,?)').run(draft.id,ticket.n,workflow.stages.brief.version,artifact,'brief',ticket.generation);
+    this.store.db.query("UPDATE tickets SET status='awaiting-owner' WHERE n=?").run(ticket.n);
+    this.store.db.query('DELETE FROM client_buttons WHERE post=?').run(post.switch_thread);
+    this.rememberDecision(draft.code);
+    await this.api.publishApprovalText(this.config.studioRoomId,ticket.n,parsed.clientText,'brief');
+    await this.ownerCards.offer('Final brief',`Review the final document above before releasing it to the client.\n\n${parsed.clientText.slice(0,3000)}`,[{label:'Release to client',command:'@desk send '+draft.code},{label:'Change',command:'__change'}]);
   }
+
   clientButtons(post:Post,binding:{stage:string;version:number;hash:string;artifact:unknown}){
     const ref=sha256(JSON.stringify({post:post.switch_thread,...binding}));
     this.store.db.query('INSERT OR REPLACE INTO client_buttons VALUES (?,?,?)').run(ref,post.switch_thread,JSON.stringify(binding));
@@ -391,7 +394,14 @@ export class VisibleLoop {
       if(p.kind==="brief"){
         const brief=state.stages.brief;
         if(brief.version!==p.version||brief.artifact?.kind!=="document"||brief.artifact.id!==p.artifact)return;
-        this.workflow.approve(this.config.projectId,"brief",p.version,{kind:"document",id:p.artifact},{senderId:this.config.ownerId,senderKind:"human",roomId:this.config.studioRoomId});
+        if(this.config.clientSurface==='forum'){
+          const fullTicket=this.store.db.query('SELECT * FROM tickets WHERE n=?').get(p.ticket) as any;
+          const post=this.store.db.query('SELECT * FROM posts WHERE switch_thread=?').get(fullTicket.post) as Post|null;if(!post)return;
+          const hash=this.snapshots.get(p.artifact).hash;
+          this.store.db.query('INSERT OR REPLACE INTO forum_briefs VALUES (?,?,?,?,?,?)').run(post.switch_thread,p.ticket,p.artifact,p.version,hash,p.generation);
+          this.clientButtons(post,{stage:'brief',version:p.version,hash,artifact:p.artifact});
+          this.ticketStatus(fullTicket,'Ready for you');
+        }else this.workflow.approve(this.config.projectId,"brief",p.version,{kind:"document",id:p.artifact},{senderId:this.config.ownerId,senderKind:"human",roomId:this.config.studioRoomId});
       }
       this.store.db.query("UPDATE tickets SET status=? WHERE n=?").run(p.kind==="brief"?"awaiting-client":"awaiting-client-reply",p.ticket);
     });
@@ -466,7 +476,7 @@ export class VisibleLoop {
       }
       await this.intakeMessage(id, p.body, p.attachments ?? [], false); return;
     }
-    if(identity.agent_id===this.config.leadId&&event.room_id===this.config.workRoomId&&await this.ownerCards.question(p.body))return;
+    if(this.config.clientSurface!=='forum'&&identity.agent_id===this.config.leadId&&event.room_id===this.config.workRoomId&&await this.ownerCards.question(p.body))return;
     if (identity.agent_id === this.config.leadId && !/^@desk\s+(send|deploy)\b/.test(p.body) && p.body !== "yes") {
       // Switch emits this lifecycle notice using the agent identity before the
       // model has produced a reply. It must not consume the one draft retry.
@@ -506,7 +516,7 @@ export class VisibleLoop {
       const result = await this.gate.handleMessage({ senderId: owner ? this.config.ownerId : p.sender, senderKind: identity.kind, roomId: event.room_id, body: p.body, eventId: id });
       if (result.status === "sent" && draft) {
         this.recoverDeliveries();
-        await this.studio(lineCard(draft.ticket, "sent to client · waiting for their reply", "🟢"));
+        if(this.config.clientSurface!=='forum')await this.studio(lineCard(draft.ticket, "sent to client · waiting for their reply", "🟢"));
       } else await this.studio(blockedCard(draft?.ticket ?? this.latestTicket()?.n ?? 0, `release ${result.status}: ${result.reason ?? result.status}`));
       return;
     }

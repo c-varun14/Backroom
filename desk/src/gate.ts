@@ -131,16 +131,6 @@ export class Desk {
     }
   }
 
-  /** Final forum brief only: the brief adapter freezes a document snapshot and applies leak checks. */
-  async sendBrief(input:{project:string;clientThread:string;text:string;eventId:string}):Promise<Result>{
-    const project=this.store.project(input.project);
-    if(project.clientSurface!=='forum'||!input.clientThread||!input.text.trim()||leakWord(input.text))return {status:'rejected',reason:'invalid forum brief'};
-    if(this.store.db.query('SELECT id FROM intents WHERE event_id=?').get(input.eventId))return {status:'duplicate'};
-    const id=this.intent(input.project,'brief',input.eventId,input.eventId)!;
-    try{await this.transport.send({deliveryId:id,project:input.project,destinationRoomId:project.clientRoomId,clientThread:input.clientThread,text:input.text,attachments:[]});this.confirm(id);return {status:'sent'};}
-    catch{this.uncertain(id,'brief outcome uncertain',input.eventId,input.project);return {status:'uncertain'};}
-  }
-
   /** Internal checked conversation lane. Never creates release drafts or approval codes. */
   async sendTalk(input:{project:string;clientThread:string;text:string;eventId:string;sources?:string}):Promise<Result> {
     const project=this.store.project(input.project);

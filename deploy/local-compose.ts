@@ -173,6 +173,10 @@ export class LocalComposeDeployer implements Deployer {
     }
   }
 
+  async checkHealth(project:string){
+    const current=await this.current(project);if(!current)throw new Error('No current deployment');
+    await this.health(current,this.config(project));
+  }
   async stop(project:string) {
     const c=this.config(project);await mkdir(this.root,{recursive:true,mode:0o700});
     const lock=await acquireProjectLock(join(this.root,`${project}.lock`));
