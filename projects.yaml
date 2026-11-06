@@ -3,6 +3,7 @@ schema_version: 1
 projects:
   - id: old-shop
     sample: true
+    company: Lantern Crate
     name: Lantern Crate Sample Shop
     repo: ./sample-projects/old-shop
     repo_state: local-directory-not-yet-a-separate-git-repository
@@ -20,3 +21,15 @@ projects:
       - server-owned-prices
     backward_fix_status: awaiting-owner-authorisation
     deployment: none
+  - id: morrowcrumb
+    company: Morrowcrumb
+    name: Morrowcrumb Bakery SAMPLE
+    sample: true
+    repo: ./sample-client
+    packages: [approved-studio-memory]
+  - id: fernline
+    company: Fernline Books
+    name: Fernline Books SAMPLE
+    sample: true
+    repo: ./sample-client/fernline
+    packages: [approved-studio-memory]

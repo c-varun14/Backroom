@@ -13,7 +13,7 @@ import type { Identity } from "./switch-identities";
 import { LocalComposeDeployer } from "../../deploy/local-compose";
 
 export interface RehearsalConfig { mode?:"real";deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
-export type Control = { freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void|{id:string;name:string}> };
+export type Control = { now?:()=>number; freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void|{id:string;name:string}> };
 const COMMIT=/^[a-f0-9]{40}$/;
 const HASH=/^[a-f0-9]{64}$/;
 
@@ -78,7 +78,7 @@ export class StagesLoop {
     const architecture=this.state.get(this.config.projectId).stages.architecture;
     const head=Bun.spawnSync(['git','-C',this.config.workspace,'rev-parse','HEAD'],{stdout:'pipe',stderr:'pipe'});
     const starting=head.exitCode?'unavailable':new TextDecoder().decode(head.stdout).trim();
-    const task=await this.document('build-task-rehearsal',`SIMULATION bounded task: ${reason}. Starting exact commit ${starting}. Architecture v${architecture.version} document ${(architecture.artifact as any)?.id}. Approved brief document ${(this.state.get(this.config.projectId).stages.brief.artifact as any)?.id}. Existing product ${this.config.workspace}; preserve its work and initial morning-only scope. No recopy from revised reference. Make only requested correction; initial task is finishing the interrupted validation change. gpt-6.1-sol only. Bun SQLite persistent /data, runtime settings supplied by current deploy adapter, port3210. Tests: bun test. Report build-report.md, exact starting/candidate commit. Local commits authorized after status excludes secrets. No deploy/client sends/remotes.`);
+    const task=await this.document('build-task-rehearsal',`SIMULATION bounded task: ${reason}. Starting exact commit ${starting}. Architecture v${architecture.version} document ${(architecture.artifact as any)?.id}. Approved brief document ${(this.state.get(this.config.projectId).stages.brief.artifact as any)?.id}. Existing product ${this.config.workspace}; preserve its work and initial morning-only scope. No recopy from revised reference. Make only requested correction; initial task is finishing the interrupted validation change. Bun SQLite persistent /data, runtime settings supplied by current deploy adapter, port3210. Tests: bun test. Report build-report.md, exact starting/candidate commit. Local commits authorized after status excludes secrets. No deploy/client sends/remotes.`);
     await this.mention(this.config.leadName,`SIMULATION build task document ${task}; create filled spec document, return spec document <id> to desk-rehearsal. One short handoff.`);
   }
   async candidate(sha:string){
@@ -97,7 +97,7 @@ export class StagesLoop {
     const reviewer=await this.control.freshReviewer(round);this.config.reviewerId=reviewer.id;this.config.reviewerName=reviewer.name;this.config.reviewerIds.push(reviewer.id);
     this.set('reviewer',{...reviewer,round,sha});
     const w=this.state.get(this.config.projectId);
-    const assignment=await this.document('review-task-'+round,`SIMULATION independent review round ${round}. BOUNDED REVIEW: review3 F1 correction only, no feature expansion. Confirm mandatory OWNER_PASSWORD_FILE, rejection with only OWNER_PASSWORD set, missing/empty/unreadable file failures without credential disclosure. Run bun test. Current approved architecture supersedes older test-env exception. Checklist room document ${this.config.reviewChecklistDocument??'not attached'}. Exact SHA ${sha}, root ${this.config.workspace}. Sources ONLY approved brief ${(w.stages.brief.artifact as any)?.id}, architecture ${(w.stages.architecture.artifact as any)?.id}, filled spec ${this.get('specDocument')}, explicit SIMULATION owner decisions ${(this.config.ownerDecisionDocuments??[]).join(',')||'none'}, independent source/tests at SHA, checklist ${this.root}/studio-kit/review-checklist.md. Do not read builder conversation or builder reports as evidence. Verify HEAD, run bun test, inspect security/persistence/runtime contract. No edits except review-${round}.md with commands and actual output. gpt-6.1-sol only; no deploy/client sends. Return review ${round} ${sha} pass|fail to desk-rehearsal. Short result; report holds evidence.`);
+    const assignment=await this.document('review-task-'+round,`SIMULATION independent review round ${round}. BOUNDED REVIEW: review3 F1 correction only, no feature expansion. Confirm mandatory OWNER_PASSWORD_FILE, rejection with only OWNER_PASSWORD set, missing/empty/unreadable file failures without credential disclosure. Run bun test. Current approved architecture supersedes older test-env exception. Checklist room document ${this.config.reviewChecklistDocument??'not attached'}. Exact SHA ${sha}, root ${this.config.workspace}. Sources ONLY approved brief ${(w.stages.brief.artifact as any)?.id}, architecture ${(w.stages.architecture.artifact as any)?.id}, filled spec ${this.get('specDocument')}, explicit SIMULATION owner decisions ${(this.config.ownerDecisionDocuments??[]).join(',')||'none'}, independent source/tests at SHA, checklist ${this.root}/studio-kit/review-checklist.md. Do not read builder conversation or builder reports as evidence. Verify HEAD, run bun test, inspect security/persistence/runtime contract. No edits except review-${round}.md with commands and actual output. no deploy/client sends. Return review ${round} ${sha} pass|fail to desk-rehearsal. Short result; report holds evidence.`);
     await this.mention(reviewer.name,`SIMULATION fresh review ${round} · assignment document ${assignment} · exact SHA ${sha}. One short result.`);
   }
   async handle(event:SwitchEvent){
@@ -234,7 +234,7 @@ export class StagesLoop {
       }
       if(row.stage==='video'){
         const video=this.get('video');if(artifact.kind!=='video'||video.hash!==artifact.sha256)throw new Error('Stale video');
-        await this.outgoing(`Please review this exact product video. SHA-256 ${video.hash}. Reply approve ${video.hash} or request a change.`,'video',artifact,[{name:'morrowcrumb-demo.mp4',bytes:new Uint8Array(readFileSync(video.path))}]);
+        await this.outgoing(`Please review this exact product video. SHA-256 ${video.hash}. Reply approve ${video.hash} or request a change.`,'video',artifact,[{name:this.config.projectId+'-demo.mp4',bytes:new Uint8Array(readFileSync(video.path))}]);
       }
       return;
     }

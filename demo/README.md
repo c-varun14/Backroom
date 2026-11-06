@@ -14,8 +14,8 @@ temporary workspace; the source checkout is never committed or modified by the
 runner. Each run first removes this project's previous stack/volume and generates
 new credentials; exported receipts in `demo/out/` are overwritten.
 
-The two rooms come from `switch/backroom.template.yaml`. A separate private work
-room supports the existing `RealStagesLoop`. Desk belongs to the SAMPLE owner;
+Each client gets three rooms from `switch/backroom.template.yaml`, including a
+private work room. `demo/clients.json` supplies independent workspace/database paths. Desk belongs to the SAMPLE owner;
 lead, builder and fresh review identities belong to another non-admin account.
 Native owner/client messages are scripted, never presented as human decisions.
 Authoritative sender mappings come from this disposable Switch database, as in
@@ -56,3 +56,9 @@ This shares one disposable runner user across fixture commands and desk. It is
 not a hostile-command sandbox. Separate Switch ownership and real HTTP403 are
 tested, but local fixture code is trusted. The optional AI/Discord live workflow
 still needs the documented plan logins in `docs/LIVE-SETUP.md`.
+
+Runtime roles are selected in `backroom.yaml`; its demo section uses the command harness for every role. Change one role entry to swap a harness. Managed setup reads the same validated file (override path with BACKROOM_HARNESS_CONFIG). Custom commands use argv arrays via harness/command-agent.ts; room text is JSON on stdin.
+
+Build-ready owner cards include the app URL and an attached PNG. This scripted demo uses a visibly labelled synthetic image, never evidence of browser verification. Real builders must open the running app, try the changed flow, attach a PNG and write build-verification.json. Real setup requires that manifest. Desk confines paths to the product workspace and caches the exact image bytes.
+
+The plain-code watchdog persists assignments and verified role progress, defaults to 20 minutes (client config watchdogMs), and emits at most one warning per assignment, including across restarts. The demo labels its fake-clock stall injection. A failed warning send is marked attempted and is not retried automatically.

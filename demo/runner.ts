@@ -7,9 +7,11 @@ import {SwitchAPI,SwitchTransport} from '../desk/src/switch-transport';
 import {RealStagesLoop,type RealConfig} from '../desk/src/real-loop';
 import type {Identity} from '../desk/src/switch-identities';
 import type {LocalComposeDeployer} from '../deploy/local-compose';
+import {loadRole} from '../harness/config';
 import {commandAgent} from '../harness/command-agent';
 process.umask(0o077);
 const base='http://switch:8000',env=Object.fromEntries(readFileSync('/state/stack.env','utf8').trim().split('\n').map(l=>l.split('=')));
+const clients=JSON.parse(readFileSync('/repo/demo/clients.json','utf8'));
 const started=Date.now(),checks:{step:string;pass:boolean;detail:string;seconds:number}[]=[];
 const receipt={sample:true,scriptedHumans:true,scriptedAgents:true,modelCalls:0,video:'1-second synthetic file fixture; not a production product video',checks,
  bakery:'http://127.0.0.1:49163',projects:[] as {name:string;roomId:string;packageId?:string}[],elapsedSeconds:0};
@@ -62,7 +64,7 @@ let loop:RealStagesLoop,api:SwitchAPI,store:Store,config:RealConfig;
 let identities:Identity[]=[];let sql:SQL;
 const sockets:WebSocket[]=[];const connected=new Set<string>();
 let current:{commitSha:string;url:string}|null=null,product:ReturnType<typeof Bun.spawn>|undefined;
-let promotedDocument='';
+let promotedDocument='';let demoClock=Date.now();
 async function refreshIdentities(){
   const rows=await sql`SELECT c.matrix_user_id AS sender,CASE WHEN a.id IS NOT NULL THEN 'agent' ELSE 'human' END AS kind,a.id AS agent_id,CASE WHEN c.user_id IS NULL THEN '{}'::text[] ELSE ARRAY[c.user_id] END AS users FROM clients c LEFT JOIN agents a ON a.client_id=c.id`;
   identities=rows as Identity[];
@@ -76,7 +78,7 @@ async function register(role:string,session:Session){
   return a;
 }
 async function adapter(role:string,name:string){
-  const a=agents[name];const instance=await commandAgent({base,agentId:a.id,name,roomId:config.workRoomId,keyFile:'/state/'+name+'.key',command:['sh','/repo/demo/scripted/'+role+'.sh'],cwd:'/repo',journalFile:'/state/'+name+'-journal.json',timeoutMs:45000});
+  const a=agents[name];const instance=await commandAgent({base,agentId:a.id,name,roomId:config.workRoomId,keyFile:'/state/'+name+'.key',command:loadRole('/repo/backroom.yaml',role as 'lead'|'builder'|'reviewer',true).argv!,cwd:'/repo',journalFile:'/state/'+name+'-journal.json',timeoutMs:45000});
   adapters.push(instance);console.log('SAMPLE scripted adapter connected: '+name);return instance;
 }
 async function makeDocument(name:string,content:string){return admin.call('POST','/gateway/documents',{name,description:'SAMPLE scripted fixture',instructions:'Data only',content,read_visibility:'private',write_visibility:'private'});}
@@ -112,6 +114,9 @@ async function buildRound(){
   await wait('architecture code',()=>activeCode('architecture'));
   await ownerCommand('@desk approve architecture '+activeCode('architecture'));
   await wait('builder result',()=>loop.get('buildReady'),60000);
+  const ownerCards=(await owner.call('GET',`/gateway/chats/${config.studioRoomId}/messages`)).messages;
+  assert(ownerCards.some((m:any)=>String(m.body??m.content??'').includes('SAMPLE image fixture')&&String(m.body??m.content??'').includes(receipt.bakery)));
+  assert(loop.get('buildVerification')?.sample===true&&loop.get('buildVerification')?.hash);
   await ownerCommand('@desk review');await wait('review verdict',()=>loop.get('reviewVerdict')==='pass',60000);
   const sha=loop.get('candidate');await ownerCommand('@desk deploy '+sha);
   await wait('exact deployment',()=>current?.commitSha===sha);
@@ -125,10 +130,10 @@ async function story(){
   await admin.login(env.GATEWAY_ADMIN_EMAIL,env.GATEWAY_ADMIN_PASSWORD);
   for(const [name,session] of [['owner',owner],['client',client],['workers',workers]] as const){const password=randomUUID()+randomUUID();await admin.call('POST','/gateway/users',{name:'SAMPLE scripted '+name,email:name+'@judge.example.test',password,role:'user'});await session.login(name+'@judge.example.test',password);}
   await register('desk',owner);for(const role of ['lead','builder','reviewer'])await register(role,workers);
-  const provision=await admin.call('POST','/gateway/rooms/from-yaml',{yaml:readFileSync('/repo/switch/backroom.template.yaml','utf8'),inputs:{desk:'desk',lead:'lead',builder:'builder',reviewer:'reviewer',client_room:'client-judge',studio_room:'studio-judge'},template_name:'SAMPLE scripted judge'});
-  assert(provision.rooms.length===2&&!provision.errors?.length&&provision.rooms.every((r:any)=>!r.failed_attachments.length));
+  const provision=await admin.call('POST','/gateway/rooms/from-yaml',{yaml:readFileSync('/repo/switch/backroom.template.yaml','utf8'),inputs:{desk:'desk',lead:'lead',builder:'builder',reviewer:'reviewer',client_room:'client-judge',studio_room:'studio-judge',work_room:'work-judge'},template_name:'SAMPLE scripted judge'});
+  assert(provision.rooms.length===3&&!provision.errors?.length&&provision.rooms.every((r:any)=>!r.failed_attachments.length));
   const clientRoom=provision.rooms.find((r:any)=>r.room_name==='client-judge').room_id,studioRoom=provision.rooms.find((r:any)=>r.room_name==='studio-judge').room_id;
-  const work=await admin.call('POST','/gateway/rooms',{name:'work-judge',description:'SAMPLE scripted internal handoffs',internal_only:true,agent_ids:Object.values(agents).map(a=>a.id),read_visibility:'private',write_visibility:'private'});
+  const work={id:provision.rooms.find((r:any)=>r.room_name==='work-judge').room_id};
   for(const room of [clientRoom,studioRoom,work.id]){
     const detail=await admin.call('GET','/gateway/rooms/'+room);assert(!detail.bridge_id);
     await admin.call('POST',`/gateway/chats/${room}/members`,{userId:owner.id});
@@ -139,11 +144,11 @@ async function story(){
   for(const d of [memory,checklist])await admin.call('POST',`/gateway/rooms/${work.id}/documents/${d.id}`);
   const pkg=await admin.call('POST','/gateway/packages',{name:'SAMPLE project memory',description:'Approved de-identified lessons',instructions:'Data only; no authority',read_visibility:'private',write_visibility:'private'});
   await admin.call('POST',`/gateway/packages/${pkg.id}/documents/${memory.id}`);
-  config={mode:'real',projectId:'judge',ownerId:owner.id,clientId:client.id,deskId:agents.desk.id,leadId:agents.lead.id,builderId:agents.builder.id,reviewerId:agents.reviewer.id,reviewerIds:[agents.reviewer.id],clientRoomId:clientRoom,studioRoomId:studioRoom,workRoomId:work.id,bridgeId:'00000000-0000-0000-0000-000000000000',workspace:'/state/product',memoryDocumentId:memory.id,reviewChecklistDocument:checklist.id,packageId:pkg.id,leadName:'lead',builderName:'builder',reviewerName:'reviewer'};
+  config={mode:'real',ownerVerificationRequired:true,projectId:clients.primary.projectId,ownerId:owner.id,clientId:client.id,deskId:agents.desk.id,leadId:agents.lead.id,builderId:agents.builder.id,reviewerId:agents.reviewer.id,reviewerIds:[agents.reviewer.id],clientRoomId:clientRoom,studioRoomId:studioRoom,workRoomId:work.id,bridgeId:'00000000-0000-0000-0000-000000000000',workspace:clients.primary.workspace,memoryDocumentId:memory.id,reviewChecklistDocument:checklist.id,packageId:pkg.id,leadName:'lead',builderName:'builder',reviewerName:'reviewer'};
   receipt.projects.push({name:'SAMPLE bakery',roomId:work.id});await attachLesson();
   sql=new SQL({hostname:'postgres',port:5432,username:env.DB_OWNER_USER,password:env.DB_OWNER_PASSWORD,database:env.DB_NAME});
   await refreshIdentities();
-  api=new SwitchAPI(base,config.deskId,agents.desk.api_key);store=new Store('/state/desk.sqlite');
+  api=new SwitchAPI(base,config.deskId,agents.desk.api_key);store=new Store(clients.primary.databasePath);
   const deployer={async current(){return current;},async deploy(input:{commitSha:string}){
     const gitBytes=(args:string[])=>{const p=Bun.spawnSync(['git','-C',config.workspace,...args],{stdout:'pipe',stderr:'ignore'});assert(p.exitCode===0);return p.stdout;};
     const git=(args:string[])=>new TextDecoder().decode(gitBytes(args)).trim();
@@ -159,6 +164,7 @@ async function story(){
     current={commitSha:input.commitSha,url:receipt.bakery};
   }};
   loop=new RealStagesLoop(store,api,new SwitchTransport(api,'/state/files'),config,deployer as unknown as LocalComposeDeployer,()=>identities,{
+    now:()=>demoClock,
     async freshReviewer(round){const name='reviewer-'+round,a=await register(name,workers);await admin.call('POST',`/gateway/rooms/${work.id}/agents`,{agent_ids:[a.id]});await refreshIdentities();await adapter('reviewer',name);return {id:a.id,name};},
     async promotePackage(path){const text=readFileSync(path,'utf8');assert(text.includes('Owner decision event:')&&text.includes('Proposal SHA-256:'));const d=await makeDocument('SAMPLE approved private-order-lists',text);await admin.call('POST',`/gateway/packages/${pkg.id}/documents/${d.id}`);await attachLesson();promotedDocument=d.id;}
   },'/state/project-root');
@@ -174,13 +180,17 @@ async function story(){
   connect(clientRoom);connect(studioRoom);
   await adapter('lead','lead');await adapter('builder','builder');await wait('desk sockets',()=>connected.size===2);
   await wait('work socket',async()=>{try{await api.operation('load_internal_documents',{ids:[memory.id]},loop.cursor(work.id).connection_id);return true;}catch{return false;}});
-  record('Provision template',true,'Two template rooms plus private work room; workers owned by a separate non-admin SAMPLE account.');
+  record('Provision template',true,'Three template rooms including private work room; workers owned by a separate non-admin SAMPLE account.');
   await human('client','Hii');await wait('greeting routed',()=>store.db.query('SELECT n FROM client_messages LIMIT 1').get());
   assert(!loop.latestTicket());record('Greeting',true,'SAMPLE scripted client says Hii: no ticket.');
   await human('client','request: SAMPLE bakery needs morning pickup pre-orders, 40 units, saved data, private owner list, server prices and no payments.');
   await wait('first brief',()=>loop.latestDraft()?.status==='active');
   assert((await messages()).some((m:any)=>String(m.body??m.content??'').includes('Ticket #1: assigned to Varun')));
   record('Request intake',true,'Real fixed assignment line, ticket #1 and versioned brief created through Switch.');
+  loop.watchdog.assign(loop.ticket(),'lead');demoClock+=20*60*1000;await loop.tick();await loop.tick();
+  const warningCards=(await owner.call('GET',`/gateway/chats/${config.studioRoomId}/messages`)).messages.filter((m:any)=>String(m.body??m.content??'').includes('has made no progress'));
+  assert(warningCards.length===1);loop.watchdog.clear();
+  record('Watchdog sample clock',true,'SAMPLE injected stalled assignment and fake 20-minute clock produce one warning card; second tick does not repeat it.');
   const old=loop.latestDraft().code,before=(await messages()).length;
   try{await adapters[0].api.post(clientRoom,'SAMPLE unauthorized agent post');throw new Error('Unexpected authorized post');}catch(e){assert(e instanceof Error&&e.message==='Switch HTTP 403; response withheld');record('Room wall',true,safe(e));}
   await adapters[0].api.post(work.id,'@desk send '+old);
@@ -197,6 +207,7 @@ async function story(){
   const slot=initial.available[0];assert(slot);
   const order=await fetch('http://127.0.0.1:3210/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'SAMPLE Rowan',email:'rowan@example.test',date:slot.date,session:'morning',items:[{productId:'seed-loaf',quantity:1}],idempotencyKey:'sample-judge-order'})});assert(order.status===201);const saved=await order.json();
   assert((await fetch('http://127.0.0.1:3210/api/owner/orders')).status===401);
+  record('Owner verification card',true,'Owner card includes the app URL and an attached, visibly labelled SAMPLE PNG fixture; no browser capture is claimed.');
   record('Build review deploy',true,'Scripted builder and fresh reviewer ran bakery tests; real exact-commit gate deployed morning-only app. Saved one fictional order; private route HTTP 401.');
   await human('client','request: SAMPLE add evening pickup: morning 24 units, evening 16 units. Preserve the saved order.');
   await workflowStage('brief');assert(loop.state.get(config.projectId).stages.build.approvals.length===0&&!loop.get('candidate')&&!loop.get('reviewVerdict'));
@@ -214,7 +225,44 @@ async function story(){
   await ownerCommand(`@desk promote ${lesson.slug} ${lesson.version} ${lesson.hash}`);await wait('promotion',()=>loop.get('promoted'));
   const attached=await admin.call('GET',`/gateway/packages/${pkg.id}/documents`);assert(attached.some((d:any)=>d.id===promotedDocument));
   const loaded=await api.operation('load_internal_documents',{ids:[promotedDocument]},loop.cursor(work.id).connection_id);assert(loaded.result[0].content.includes('private-order-lists'));
-  record('Lesson promotion',true,'Exact proposal hash approved by verified SAMPLE owner; real Switch package updated and attached across client-project list (one SAMPLE project).');
+  record('Lesson promotion',true,'Exact proposal hash approved by verified SAMPLE owner; real Switch package updated following owner approval.');
+  // Independent fictional client, separate owner account for its agent identities.
+  const fernWorkers=new Session(),fernClient=new Session();
+  for(const [name,session] of [['fern-workers',fernWorkers],['fern-client',fernClient]] as const){const password=randomUUID()+randomUUID();await admin.call('POST','/gateway/users',{name:'SAMPLE '+name,email:name+'@judge.example.test',password,role:'user'});await session.login(name+'@judge.example.test',password);}
+  const fernAgents=[];
+  for(const role of ['desk','lead','builder','reviewer'])fernAgents.push(await register('fern-'+role,fernWorkers));
+  const fern=await admin.call('POST','/gateway/rooms/from-yaml',{yaml:readFileSync('/repo/switch/backroom.template.yaml','utf8'),inputs:{desk:'fern-desk',lead:'fern-lead',builder:'fern-builder',reviewer:'fern-reviewer',client_room:'client-fernline',studio_room:'studio-fernline',work_room:'work-fernline'},template_name:'SAMPLE Fernline Books'});
+  assert(fern.rooms.length===3&&!fern.errors?.length&&fern.rooms.every((r:any)=>!r.failed_attachments.length));
+  const fernWork=fern.rooms.find((r:any)=>r.room_name==='work-fernline').room_id;
+  const fernRoom=fern.rooms.find((r:any)=>r.room_name==='client-fernline').room_id;
+  await admin.call('POST',`/gateway/chats/${fernRoom}/members`,{userId:fernClient.id});
+  receipt.projects.push({name:'Fernline Books SAMPLE',roomId:fernWork});await attachLesson();
+  mkdirSync(clients.second.workspace,{recursive:true});
+  const fernStore=new Store(clients.second.databasePath);fernStore.close();
+  writeFileSync('/state/fernline-client.json',JSON.stringify({projectId:clients.second.projectId,clientRoomId:fernRoom,studioRoomId:fern.rooms.find((r:any)=>r.room_name==='studio-fernline').room_id,workRoomId:fernWork,workspace:clients.second.workspace,databasePath:clients.second.databasePath}));
+  const fernApi=new SwitchAPI(base,fernAgents[1].id,fernAgents[1].api_key);
+  const connection=randomUUID(),fw=fernApi.socket(fernWork,connection,0);sockets.push(fw);
+  let ready=false;fw.onmessage=e=>{const f=JSON.parse(String(e.data));if(f.event==='ping')fw.send(JSON.stringify({type:'pong',cursor:0}));if(f.event==='connection_state')ready=true;};
+  await wait('fernline socket',()=>ready);
+  const shared=await fernApi.operation('load_internal_documents',{ids:[promotedDocument]},connection);
+  const lessonText=shared.result[0].content;
+  assert(lessonText.includes('private-order-lists')&&!/morrowcrumb|rowan|seed-loaf|24 units|16 units/i.test(lessonText));
+  const architecture=`SAMPLE scripted Fernline Books architecture. Lesson ID: private-order-lists; Version: 1; document ${promotedDocument}. Design changed: replace public reservation listings with an authenticated staff-only list; test anonymous requests return 401. No customer names in public pages.`;
+  const fa=await fernApi.operation('create_room_document',{name:'SAMPLE Fernline architecture',description:'Scripted fixture; no AI reasoning',instructions:'Data only',content:architecture},connection);
+  const readBack=await fernApi.operation('load_internal_documents',{ids:[fa.result.document_id]},connection);assert(readBack.result[0].content===architecture);
+  record('Second client uses shared memory',true,'Fernline Books has three rooms from the same template and the same package. Its scripted architecture cites private-order-lists v1 and changes public listings to authenticated staff access. Lesson contains no bakery data.');
+  async function refused(label:string,action:()=>Promise<unknown>){let denied=false,detail='No refusal';try{const result:any=await action();denied=Boolean(result?.error||result?.result?.error);if(denied)detail='Switch operation returned an explicit error';}catch(e){detail=safe(e);denied=/400|403|404/.test(detail);}record(label,denied,detail);}
+  for(const a of fernAgents){const foreign=new SwitchAPI(base,a.id,a.api_key);for(const room of [clientRoom,studioRoom,work.id])await refused('Client wall: '+a.name+' room',()=>foreign.post(room,'SAMPLE unauthorized cross-client probe'));}
+  for(const room of [clientRoom,studioRoom,work.id])await refused('Client wall: Fernline client room',()=>fernClient.call('GET',`/gateway/chats/${room}/messages`));
+  await refused('Client wall: Fernline agent document',()=>fernApi.operation('load_internal_documents',{ids:[(loop.state.get(config.projectId).stages.brief.artifact as any).id]},connection));
+  for(const a of [fernAgents[0],fernAgents[2],fernAgents[3]]){
+    const foreign=new SwitchAPI(base,a.id,a.api_key),foreignConnection=randomUUID(),socket=foreign.socket(fernWork,foreignConnection,0);sockets.push(socket);
+    let connected=false;socket.onmessage=e=>{const f=JSON.parse(String(e.data));if(f.event==='ping')socket.send(JSON.stringify({type:'pong',cursor:0}));if(f.event==='connection_state')connected=true;};
+    await wait('fernline document socket',()=>connected);
+    await refused('Client wall: '+a.name+' document',()=>foreign.operation('load_internal_documents',{ids:[(loop.state.get(config.projectId).stages.brief.artifact as any).id]},foreignConnection));
+    socket.close();
+  }
+  await refused('Client wall: Fernline client document',()=>fernClient.call('GET','/gateway/documents/'+(loop.state.get(config.projectId).stages.brief.artifact as any).id));
   // Keep a real pending release to test failure without Switch after the story.
   await loop.outgoing('SAMPLE pending dependency-check reply.','learn',lesson.artifact);offlineCode=loop.get('outgoing').code;beforeOff=(await messages()).length;
   writeFileSync('/state/story.done','ok');
