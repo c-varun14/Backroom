@@ -282,3 +282,123 @@ codex secondary remaining_percent= 13 reset_IST= 2026-11-08T08:41:20+05:30
 ```
 
 The12% weekly stop threshold was not reached. Work stops here with the disposable import completed and removed.
+
+## README GIF and bakery logo follow-up
+
+Requested by Varun after job5. No commits, real Switch/Discord services, Docker operations or existing app changes. Quota before work and after the GIF: secondary13% remaining; primary91% then90%; reset remains Nov8,08:41:20 IST for weekly allowance.
+
+### README GIF
+
+Added [docs/media/backroom-demo.gif](../docs/media/backroom-demo.gif) above the fold in README, with honest alt text and a simulated-rehearsal caption. Four captured states: public receipt brief, receipt review/commit, fresh fictional bakery menu, saved sample pre-order. This is an explicitly labelled montage of receipt evidence and a separate fresh app run, not a live Switch handoff or a claim that the new demo process deployed the native rehearsal commit.
+
+Local harness `.switch-runtime/submission-media/capture.ts` spawns exactly `bun --no-env-file rehearsal/bakery/demo.ts`. That app creates its own isolated sample database/credential, uses the real clock and binds loopback. Browser network interception allows only that origin and the local receipt file. Only fictional Sample Casey/example.test data is submitted. The harness closes Chromium and terminates/awaits its own app child in `finally`; it never restarts an existing app/service.
+
+Command:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH="$PWD/studio-kit/video/.cache/ms-playwright" bun --no-env-file .switch-runtime/submission-media/capture.ts
+```
+
+Real output:
+
+```text
+Captured 4 fictional frames; POST /api/orders=201; external requests=0
+Stopped only the fresh demo child process
+```
+
+GIF encoding command:
+
+```sh
+ffmpeg -hide_banner -loglevel error -framerate 2/5 -start_number 1 -i .switch-runtime/submission-media/frame-%d.png -filter_complex '[0:v]split[a][b];[a]palettegen=max_colors=96:stats_mode=full[p];[b][p]paletteuse=dither=bayer:bayer_scale=4' -loop 0 -y docs/media/backroom-demo.gif
+```
+
+Exit0, no output. `ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 docs/media/backroom-demo.gif`:
+
+```text
+duration=10.000000
+size=166185
+```
+
+1056×720, four frames, 2.5seconds each. Under12seconds and under3MB. All four source frames were opened and visually checked; simulation labels, review text, bakery menu and saved order are readable. No address bar, private receipt capability URL, credentials, account names or raw room messages appear.
+
+`python3 scripts/security/publication_review.py --output .switch-runtime/submission-media/gif-publication.json`:
+
+```text
+Publication files: 236 embedded files: 0
+authorization-value: 6
+binary-or-generated-file: 1
+capability-url: 2
+private-agency-reference: 4
+Value-free findings: .switch-runtime/submission-media/gif-publication.json
+```
+
+Filtered GIF/README finding:
+
+```json
+[{"file":"docs/media/backroom-demo.gif","line":0,"kind":"binary-or-generated-file","view":"worktree"}]
+```
+
+This scanner flags binary media for review, rather than examining rendered pixels. The four fictional browser frames received manual visual review. Repository-wide findings remain; no global clean-scan claim.
+
+### Morrowcrumb Bakery logo
+
+Chosen image: [studio-kit/brand/morrowcrumb-logo.png](../studio-kit/brand/morrowcrumb-logo.png). Created with Codex's built-in image generation through the imagegen skill; no API key, CLI fallback, SVG or hand-drawn replacement. Copied the selected generated PNG into the requested workspace path, preserving its original. One generation, no app changes.
+
+Exact final generation prompt:
+
+> Use case: logo-brand. Create one final production PNG logo for the fictional Morrowcrumb Bakery. Simple distinctive bread-loaf mark plus the exact wordmark 'Morrowcrumb' with 'BAKERY' below. Spell Morrowcrumb exactly M-o-r-r-o-w-c-r-u-m-b. Horizontal lockup, tightly composed with modest clear space, suitable for an app masthead at 280–340px wide. Warm cream background #fff7e9, deep cocoa brown #39271f lettering and mark, optional restrained toasted brown #943b0c accent. Confident readable warm serif wordmark, simple bold mark with a sunrise/bread scoring cue; few shapes and no thin details. Flat solid colors, no gradients, shadows, texture, mockup, watermark, extra text or tagline. Readable at small size. Output one logo only, not a sheet of concepts.
+
+`file studio-kit/brand/morrowcrumb-logo.png`:
+
+```text
+studio-kit/brand/morrowcrumb-logo.png: PNG image data, 2172 x 724, 8-bit/color RGB, non-interlaced
+```
+
+Opened the actual PNG and a browser-rendered 320px preview. Spelling and legibility checked: Morrowcrumb / BAKERY, cream background, brown loaf and sunrise mark. The generated background has a slight cream tonal variation; no regeneration was needed for this app use.
+
+`PLAYWRIGHT_BROWSERS_PATH="$PWD/studio-kit/video/.cache/ms-playwright" bun --no-env-file .switch-runtime/submission-media/logo-preview.ts`:
+
+```text
+Logo preview: 320px wide; source 2172x724 PNG; app unchanged
+```
+
+Recommended placement, not implemented: `rehearsal/bakery/page.ts`, in the masthead at the current Morrowcrumb Bakery heading. Display around300–320px wide with proportional height (~100–107px), `max-width:100%`, and alt text “Morrowcrumb Bakery”. Preserve an accessible page heading and keep the fictional-sample/no-payment notice. Serve a local copy through the app's own asset route when integration is separately authorized; do not point a deployed app at the studio-kit filesystem or an external generator URL.
+
+`python3 scripts/security/publication_review.py --output .switch-runtime/submission-media/final-publication.json`:
+
+```text
+Publication files: 237 embedded files: 0
+authorization-value: 6
+binary-or-generated-file: 2
+capability-url: 2
+large-generated-artifact-review: 1
+private-agency-reference: 4
+Value-free findings: .switch-runtime/submission-media/final-publication.json
+```
+
+Media-specific findings were selected without printing matched content:
+
+```python
+import json
+f=json.load(open('.switch-runtime/submission-media/final-publication.json'))['findings']
+selected=[x for x in f if x['file'] in ['docs/media/backroom-demo.gif','studio-kit/brand/morrowcrumb-logo.png']]
+print('Media findings:');print(json.dumps(selected))
+```
+
+Real output (formatted):
+
+```text
+Media findings:
+[{"file": "docs/media/backroom-demo.gif", "line": 0, "kind": "binary-or-generated-file", "view": "worktree"}, {"file": "studio-kit/brand/morrowcrumb-logo.png", "line": 0, "kind": "binary-or-generated-file", "view": "worktree"}, {"file": "studio-kit/brand/morrowcrumb-logo.png", "line": 0, "kind": "large-generated-artifact-review", "view": "worktree"}]
+```
+
+Both media files were visually reviewed as described above. The binary/size flags are expected review findings, not an automated clean bill for image contents. Existing repository-wide findings were not changed. No real services, accounts or app source were touched. No commit. The local fresh app child was stopped.
+
+After logo generation, `python3 spikes/desk/codex_usage.py` returned:
+
+```text
+codex primary remaining_percent= 89 reset_IST= 2026-11-06T14:02:54+05:30
+codex secondary remaining_percent= 13 reset_IST= 2026-11-08T08:41:20+05:30
+```
+
+Both requested jobs completed above the12% weekly stop threshold. No further work planned in this task.

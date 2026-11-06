@@ -2,6 +2,10 @@
 
 **A client revision becomes a reviewed local bakery app, with exact-version release gates in Switch.** The six-stage workflow has been exercised using clearly labelled simulation accounts; the core checks run without an AI login. [Rehearsal evidence](reports/block-2.md) · [no-account/clean-copy results](reports/lane-repro.md) · [sample receipt](receipt/sample.html) · [fresh bakery demo](rehearsal/bakery/README.md).
 
+![Simulated rehearsal montage: brief and review evidence from the public receipt, then a separate fresh fictional bakery app saving a sample pre-order.](docs/media/backroom-demo.gif)
+
+*Simulated rehearsal montage. Receipt evidence and a separate fresh local app run; no live client handoff is shown.*
+
 A solo agency owner is tired of carrying conflicting client documents between people and AI tools. Backroom gives a fictional bakery one point of contact: plain-code `desk` forwards its request into a private Switch studio, agents turn it into a brief and product, and the owner decides what may leave. A later pickup-session change reopens the affected approvals instead of reusing yesterday's OK. The aim is an owner who decides rather than copies; the evidence distinguishes simulated decisions from real client use.
 
 ## Verify after cloning
