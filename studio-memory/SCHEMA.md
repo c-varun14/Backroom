@@ -13,6 +13,7 @@ Every lesson is Markdown and starts with a SAMPLE marker. Use lowercase, hyphena
 | Date | ISO date of the sample record; date documentation was checked separately if relevant |
 | Status | `pending`, `approved` or `rejected`; all fixture statuses are SAMPLE, not live approvals |
 | When it applies | Trigger, boundaries and cases where it does not apply |
+| Stack scope | `web-svelte`, `mobile-react-native`, `backend-worker` or `all`. Use `all` only when the rule does not depend on the framework |
 | Review | Reviewer, decision evidence, approval date and exact version; pending means no approval |
 
 Follow review before promotion: evidence and project references come first. Prefer observations from more than one project; a serious failure in one project can justify explicit review. One-off client details stay with the project. Do not record secrets, real customer data or unverified assumptions as facts. This follows the permitted read of the agency wiki's `SCHEMA.md`; no other wiki or client files are needed.
