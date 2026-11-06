@@ -1632,7 +1632,7 @@ if added:raise SystemExit(1)
 **COMPLETE: parts 1–4 and all Done-means checks.** Existing publication findings remain for separate review; this change adds zero. No further required work remains for this spec.
 
 
-## Claude follow-up, 2026-11-06 about 16:00 IST
+## Claude follow-up, 2026-11-06 about 15:40 IST
 
 - OpenCode proof now passes through Switch with `builder: {harness: opencode, model: opencode/deepseek-v4.1-flash-free}`. The earlier failure had two causes: permission `'*': 'deny'` hangs OpenCode, and the adapter died on Switch's `No incarnation drawn` socket error.
 - `harness/command-agent.ts` retries only until the connection is confirmed. Five back-to-back `bash demo.sh` runs passed; the Switch error appeared in at least two of them.
