@@ -62,6 +62,16 @@ test("a sent reply followed by client approve never records brief acceptance", a
   expect(f.loop.latestTicket().status).toBe("awaiting-client-reply");
 });
 
+test("Switch session startup notice leaves the pending draft and retry budget unchanged", async () => {
+  const f=fixture(),c=f.config;
+  await f.loop.handle(f.event(c.clientRoomId,"verified-client","request: SAMPLE order form"));
+  const before=f.loop.latestTicket(),count=f.sent.length;
+  await f.loop.handle(f.event(c.studioRoomId,"verified-lead","Starting a session to handle this — one moment."));
+  expect(f.loop.latestTicket()).toEqual(before);
+  expect(f.loop.latestDraft()).toBeNull();
+  expect(f.sent.length).toBe(count);
+});
+
 test("malformed protocol creates no code and asks lead to retry at most once", async () => {
   const f = fixture(), c = f.config;
   await f.loop.handle(f.event(c.clientRoomId, "verified-client", "request: SAMPLE"));

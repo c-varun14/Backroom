@@ -4,10 +4,10 @@ import { Store } from "./store";
 import { StageMachine } from "./workflow";
 import { SwitchAPI, SwitchTransport } from "./switch-transport";
 import { switchIdentities, verifiedSender, type Identity } from "./switch-identities";
-import { approvalCard, blockedCard, leakWord, lineCard, neutralise, parseLeadDraft, projectName,stageLabel } from "./cards";
+import { approvalCard, blockedCard, leakWord, lineCard, neutralise, parseLeadDraft, projectName,stageLabel,deskAddress,canonicalDeskBody } from "./cards";
 import {ClientIntake,classifyClient} from "./client-intake";
 
-export interface LoopConfig { mode?:"real";projectId: string; ownerId: string; bridgeId: string; deskId: string; leadId: string; probeId: string; clientRoomId: string; studioRoomId: string; workRoomId?: string; leadName?: string }
+export interface LoopConfig { mode?:"real";deskName?:string;projectId: string; ownerId: string; bridgeId: string; deskId: string; leadId: string; probeId: string; clientRoomId: string; studioRoomId: string; workRoomId?: string; leadName?: string }
 export interface SwitchEvent { room_id: string; payload: { sender: string; sender_kind?: string | null; message_id: string; body: string; thread_id?: string | null; attachments?: { filename: string; mxc: string }[] } }
 
 export class VisibleLoop {
@@ -79,7 +79,7 @@ export class VisibleLoop {
       const suffix=`\n${stageLabel(this.workflow.get(this.config.projectId).stage)}\nNext: @desk status`;
       text=text.slice(0,900-suffix.length)+suffix;
     }
-    return this.api.post(this.config.studioRoomId, text);
+    return this.api.post(this.config.studioRoomId, deskAddress(text,this.config.deskName));
   }
   private machineRoom() { return this.config.workRoomId ?? this.config.studioRoomId; }
   latestTicket() { return this.store.db.query("SELECT * FROM tickets ORDER BY n DESC LIMIT 1").get() as any; }
@@ -226,7 +226,10 @@ export class VisibleLoop {
     const waiting = active ? "Varun" : ticket?.status === "with-lead" ? "lead" : ticket?.status === "awaiting-client" || ticket?.status === "awaiting-client-reply" ? "client" : ticket?.status === "blocked" ? "Varun personally / rewording" : "client / new safe draft";
     await this.studio([`Project: ${projectName(this.config.projectId)}`, stageLabel(stage), `Open tickets: ${counts.tickets.join(', ')||'none'}`, `Unanswered questions: ${counts.questions.join(', ')||'none'}; messages: ${counts.messages.join(', ')||'none'}`, `Waiting on: ${waiting}`, `Next command: ${active ? "@desk send " + draft.code : "@desk status"}`, "Changes: type what to change here. Long outgoing text: attachment and numbered studio messages."].join("\n"));
   }
-  handle(event: SwitchEvent) { return this.serial(() => this.handleEvent(event)); }
+  handle(event: SwitchEvent) {
+    if(typeof event.payload?.body==='string')event={...event,payload:{...event.payload,body:canonicalDeskBody(event.payload.body,this.config.deskName)}};
+    return this.serial(() => this.handleEvent(event));
+  }
   private async handleEvent(event: SwitchEvent) {
     const p = event.payload;
     if (!p?.message_id || ![this.config.clientRoomId, this.config.studioRoomId, this.config.workRoomId].includes(event.room_id)) return;
@@ -249,6 +252,9 @@ export class VisibleLoop {
       await this.intakeMessage(id, p.body, p.attachments ?? [], false); return;
     }
     if (identity.agent_id === this.config.leadId && !/^@desk\s+(send|deploy)\b/.test(p.body) && p.body !== "yes") {
+      // Switch emits this lifecycle notice using the agent identity before the
+      // model has produced a reply. It must not consume the one draft retry.
+      if (p.body === "Starting a session to handle this — one moment.") return;
       if(/^draft message /.test(p.body)){await this.conversationDraft(p.body);return;}
       const ticket = this.latestTicket();
       if(ticket&&p.thread_id&&ticket.thread_id&&p.thread_id!==ticket.thread_id){await this.studio(blockedCard(ticket.n,'reply belongs to a different conversation; work code preserved'));return;}

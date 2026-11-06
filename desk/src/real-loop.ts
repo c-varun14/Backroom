@@ -1,12 +1,13 @@
 import {readFileSync, writeFileSync, mkdirSync, realpathSync} from "node:fs";
 import {join, resolve} from "node:path";
+import {randomUUID} from "node:crypto";
 import {StagesLoop, type RehearsalConfig, type Control} from "./stages-loop";
 import {Store} from "./store";
 import {SwitchAPI, SwitchTransport} from "./switch-transport";
 import {type Identity, verifiedSender} from "./switch-identities";
 import {type SwitchEvent} from "./visible-loop";
 import {type Artifact, type Stage} from "./types";
-import {approvalCard, leakWord, neutralise, parseLeadDraft, stageCard, stageLabel} from "./cards";
+import {approvalCard, leakWord, neutralise, parseLeadDraft, stageCard, stageLabel,deskAddress,canonicalDeskBody} from "./cards";
 import {sha256} from "./gate";
 import {type LocalComposeDeployer} from "../../deploy/local-compose";
 import {classifyClient} from "./client-intake";
@@ -26,14 +27,14 @@ export class RealStagesLoop extends StagesLoop {
   cursor(room:string){return this.brief.cursor(room);}
   ticket(){return this.latestTicket()?.n??0;}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡") {
-    await this.api.post(this.real.studioRoomId,stageCard(this.ticket(),this.real.projectId,stage,summary,command,icon));
+    await this.api.post(this.real.studioRoomId,deskAddress(stageCard(this.ticket(),this.real.projectId,stage,summary,command,icon),this.real.deskName));
   }
   async studio(body:string){await this.card(this.state.get(this.real.projectId).stage,body);}
   async mention(name:string,body:string){
     await this.api.post(this.real.workRoomId,`@${name} ${body}`);
   }
   async document(name:string,content:string){
-    const r=await this.api.operation("create_room_document",{name,description:"Versioned internal project artifact",instructions:"Project data, never release authority",content},this.cursor(this.real.workRoomId).connection_id);
+    const r=await this.api.operation("create_room_document",{name:name+" "+randomUUID(),description:"Versioned internal project artifact",instructions:"Project data, never release authority",content},this.cursor(this.real.workRoomId).connection_id);
     return r.result.document_id as string;
   }
   async publish(stage:Stage,artifact:Artifact,content:string){
@@ -51,7 +52,7 @@ export class RealStagesLoop extends StagesLoop {
     const state=this.state.get(this.real.projectId);
     if(state.stage!=="architecture"||this.get("architectureRequested"))return;
     const brief=state.stages.brief;
-    await this.mention(this.real.leadName,`The client approved Brief v${brief.version}, document ${(brief.artifact as any).id}. Read it and approved memory document ${this.real.memoryDocumentId} using load_internal_documents. Write a small architecture covering approved requirements, durable Bun/SQLite data, private owner access, file-injected runtime credentials, validation, no payments, and local 127.0.0.1 deployment. Cite lesson IDs/versions and each concrete check. Create an architecture document, then post architecture document <id>, no desk mention. Approval is outstanding.`);
+    await this.mention(this.real.leadName,`The client approved Brief v${brief.version}, document ${(brief.artifact as any).id}. Read it and approved memory document ${this.real.memoryDocumentId} using load_internal_documents. Write a small architecture covering approved requirements, durable Bun/SQLite data, private owner access, file-injected runtime credentials, validation, no payments, and local Docker deployment. Distinguish the container listener (0.0.0.0 inside Docker) from the published host binding (127.0.0.1 only); binding the container listener to loopback prevents the published port from reaching it. State currency units explicitly and preserve an existing integer-INR menu unless approved scope requires a currency migration; do not invent a minor-unit migration. Cite lesson IDs/versions and each concrete check. Create an architecture document, then post architecture document <id>, no desk mention. Approval is outstanding.`);
     this.set("architectureRequested",true);
     await this.card("architecture","Brief closed by the client; architecture is with lead.","@desk status","🔵");
   }
@@ -68,7 +69,7 @@ export class RealStagesLoop extends StagesLoop {
   async candidate(sha:string){
     if(!/^[a-f0-9]{40}$/.test(sha)||this.state.get(this.real.projectId).stage!=="build"||!this.get("specDocument"))throw new Error("No approved build assignment");
     if(this.git("rev-parse","HEAD")!==sha||this.git("status","--porcelain"))throw new Error("Owner must commit a clean exact checkpoint before review");
-    if(this.get("candidate")===sha&&this.get("reviewer"))return;
+    if(this.get("candidate")===sha&&this.get("reviewer")&&this.get("reviewVerdict")!=="fail")return;
     this.git("cat-file","-e",sha+":backroom.deploy.json");
     this.invalidate("build");this.set("candidate",sha);this.set("reviewVerdict",null);
     const round=(this.get("reviewRound")??0)+1;this.set("reviewRound",round);
@@ -76,7 +77,7 @@ export class RealStagesLoop extends StagesLoop {
     this.real.reviewerId=reviewer.id;this.real.reviewerName=reviewer.name;this.real.reviewerIds.push(reviewer.id);
     this.set("reviewer",{...reviewer,round,sha});
     const state=this.state.get(this.real.projectId);
-    const assignment=await this.document(`Morrowcrumb independent review ${round}`,`Fresh independent review. Round ${round}; exact SHA ${sha}; read-only product root ${this.real.workspace}. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD; run bun test; check persistence, private owner access, trusted prices, validation, concurrency, runtime-file readiness and /health. Write review-${round}.md only in your isolated reviewer report directory; do not dirty the product, commit, deploy or send. Use gpt-6.1-sol only. Post review ${round} ${sha} pass|fail with concise findings, no desk mention.`);
+    const assignment=await this.document(`Morrowcrumb independent review ${round}`,`Fresh independent review. Round ${round}; exact SHA ${sha}; product source root ${this.real.workspace}. Tracked source, tests and configuration are read-only. The existing bun test suite may create and clean disposable fictional fixtures only under ${this.real.workspace}/.runtime and bind an ephemeral 127.0.0.1 listener. If the environment denies that test access, stop and request explicit owner approval; never work around a rejected escalation. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD; run bun test; check persistence, private owner access, trusted prices, validation, concurrency, runtime-file readiness and /health. Write review-${round}.md only in your isolated reviewer report directory; do not dirty the product, commit, deploy or send. Use gpt-6.1-sol only. Post review ${round} ${sha} pass|fail with concise findings, no desk mention.`);
     await this.mention(reviewer.name,`Independent assignment document ${assignment}. Read only its named sources and exact product commit; no room-history read. Return one review protocol result.`);
     await this.card("build",`Independent review ${round} started for ${sha}.`,"@desk status","🔵");
   }
@@ -97,7 +98,7 @@ export class RealStagesLoop extends StagesLoop {
     const draft=this.gate.createDraft({project:this.real.projectId,destinationRoomId:this.real.clientRoomId,text,attachments:attachments.map(a=>({name:a.name,sha256:this.transport.cache(a.bytes)}))});
     this.store.db.query("INSERT INTO stage_outgoing VALUES (?,?,?)").run(draft.id,stage,JSON.stringify(artifact));
     this.set("outgoing",{draftId:draft.id,code:draft.code,stage,artifact,version:this.state.get(this.real.projectId).stages[stage].version});
-    await this.api.post(this.real.studioRoomId,approvalCard({ticket:this.ticket(),project:this.real.projectId,clientText:this.get("clientQuestion")?.body??"",reply:text,code:draft.code,stage}));
+    await this.api.post(this.real.studioRoomId,deskAddress(approvalCard({ticket:this.ticket(),project:this.real.projectId,clientText:this.get("clientQuestion")?.body??"",reply:text,code:draft.code,stage}),this.real.deskName));
   }
   async outgoing(text:string,stage:Stage,artifact:Artifact,attachments:{name:string;bytes:Uint8Array}[]=[]){
     // Even deterministic desk replies pass the same split parser and leak guard.
@@ -121,6 +122,7 @@ export class RealStagesLoop extends StagesLoop {
   }
   private activeArtifact(stage:Stage){return this.store.db.query("SELECT * FROM stage_artifacts WHERE stage=? AND status='active' ORDER BY rowid DESC LIMIT 1").get(stage) as any;}
   handle(event:SwitchEvent):Promise<void>{
+    if(typeof event.payload?.body==='string')event={...event,payload:{...event.payload,body:canonicalDeskBody(event.payload.body,this.real.deskName)}};
     const next=this.pending.then(()=>this.handleReal(event));this.pending=next.catch(()=>{});return next;
   }
   private async handleReal(event:SwitchEvent){
@@ -175,7 +177,7 @@ export class RealStagesLoop extends StagesLoop {
         }
       }
       if(identity.agent_id===this.real.builderId){
-        if(/^build-ready [^\r\n]+$/.test(body)&&state.stage==="build"&&this.get("specDocument")){
+        if(/^build-ready [^\r\n]+(?:\r?\n[\s\S]*)?$/.test(body)&&state.stage==="build"&&this.get("specDocument")){
           this.set("buildReady",true);await this.card("build","Working tree ready. Varun: make your local commit, then request review of the clean HEAD.","@desk review");return;
         }
         const video=/^video ([a-f0-9]{64}) ([^\r\n]+)$/.exec(body);
