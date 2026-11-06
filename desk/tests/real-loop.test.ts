@@ -8,9 +8,9 @@ import {Store} from '../src/store';
 import {SwitchAPI,SwitchTransport} from '../src/switch-transport';
 import {sha256} from '../src/gate';
 const SHA='a'.repeat(40),cleanup:(()=>void)[]=[];afterEach(()=>cleanup.splice(0).forEach(fn=>fn()));
-export function realFixture(deskName?:string,now?:()=>number){
+export function realFixture(deskName?:string,now?:()=>number,overrides:Partial<RealConfig>={}){
  const root=mkdtempSync(join(tmpdir(),'backroom-real-test-')),store=new Store();cleanup.push(()=>{store.close();rmSync(root,{recursive:true,force:true});});
- const config:RealConfig={deskName,mode:'real',projectId:'sample-real',ownerId:'owner',clientId:'client',deskId:'desk',leadId:'lead',builderId:'builder',reviewerId:'reviewer',reviewerIds:['reviewer'],studioRoomId:'studio',clientRoomId:'client-room',workRoomId:'work',bridgeId:'bridge',workspace:root,memoryDocumentId:'memory',packageId:'package',leadName:'lead',builderName:'builder-real',reviewerName:'reviewer-real'};
+ const config:RealConfig={deskName,mode:'real',projectId:'sample-real',ownerId:'owner',clientId:'client',deskId:'desk',leadId:'lead',builderId:'builder',reviewerId:'reviewer',reviewerIds:['reviewer'],studioRoomId:'studio',clientRoomId:'client-room',workRoomId:'work',bridgeId:'bridge',workspace:root,memoryDocumentId:'memory',packageId:'package',leadName:'lead',builderName:'builder-real',reviewerName:'reviewer-real',...overrides};
  const identities:any[]=[{sender:'owner',kind:'human',users:['owner'],agent_id:null},{sender:'client',kind:'human',users:['client'],agent_id:null},{sender:'stranger',kind:'human',users:[],agent_id:null},...['lead','builder','reviewer'].map(id=>({sender:id,kind:'agent',agent_id:id,users:[]}))];
  const posts:any[]=[],documents=new Map<string,string>();let count=0,current:any=null,reviewers=0,promoted=0;
  const openedCards=new Set<string>();

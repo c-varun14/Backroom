@@ -1,4 +1,5 @@
 # Runtime role selection. Codex work must use this model and stop on low limits.
+front: {harness: claude, model: sonnet}
 lead: {harness: claude, model: sonnet}
 builder: {harness: codex, model: gpt-6.1-sol}
 reviewer: {harness: codex, model: gpt-6.1-sol}

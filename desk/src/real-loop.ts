@@ -1,3 +1,4 @@
+import {CLIENT_LINES,DELIVERY_RULE} from './talk';
 import {Watchdog,type WorkingRole} from './watchdog';
 import {buildVerification} from './build-verification';
 import {readFileSync, writeFileSync, mkdirSync, realpathSync} from "node:fs";
@@ -15,7 +16,7 @@ import {type LocalComposeDeployer} from "../../deploy/local-compose";
 import {EventJournal} from "./event-journal";
 import {classifyClient,parseClientApproval} from "./client-intake";
 
-export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:string;bridgeId:string;watchdogMs?:number;ownerVerificationRequired?:boolean}
+export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:string;bridgeId:string;watchdogMs?:number;ownerVerificationRequired?:boolean;leadNudgeMs?:number}
 /** Real-room transport/presentation around the rehearsal's durable stage model.
  * Rehearsal entry points retain their existing defaults and services. */
 export class RealStagesLoop extends StagesLoop {
@@ -31,9 +32,44 @@ export class RealStagesLoop extends StagesLoop {
     this.brief.ownerCards.run=event=>this.handle(event);
     const briefBinding=this.brief.ownerCards.binding;
     this.brief.ownerCards.binding=command=>{
-      if(/^@desk (send|ticket|intro|status)\b/.test(command)||command==='__change')return briefBinding(command);
+      if(/^@desk (send|feature|release-talk|start|ticket|intro|status)\b/.test(command)||command==='__change')return briefBinding(command);
       const state=this.state.get(real.projectId);
       return JSON.stringify({command,state,candidate:this.get('candidate'),review:this.get('reviewVerdict'),ready:this.get('buildReady'),promoted:this.get('promoted'),video:this.get('videoRequested')});
+    };
+    this.brief.onForumPress=async(payload,event)=>{
+      const post=this.store.db.query('SELECT * FROM posts WHERE discord_thread=?').get(payload.discordThread) as any;
+      if(!post||!real.discordClientIds?.includes(payload.userId)||event.payload.thread_id!==post.switch_thread)return;
+      const row=this.store.db.query('SELECT * FROM client_buttons WHERE ref=? AND post=?').get(payload.ref,post.switch_thread) as any;
+      if(!row)return;const binding=JSON.parse(row.binding),state=this.state.get(real.projectId),delivered=this.get('delivered');
+      if(!delivered||delivered.stage!==binding.stage||state.stage!==binding.stage||delivered.version!==binding.version||state.stages[state.stage].version!==binding.version||JSON.stringify(delivered.artifact)!==JSON.stringify(binding.artifact))return;
+      const artifact=delivered.artifact,hash=artifact.kind==='commit'?artifact.sha:artifact.kind==='video'?artifact.sha256:'';
+      if(hash!==binding.hash)return;
+      if(artifact.kind==='commit'&&(await this.deployer.current(real.projectId))?.commitSha!==hash)return;
+      if(payload.action==='change'){await this.brief.talk!.say(post,CLIENT_LINES.change,event.payload.message_id);return;}
+      if(payload.action!=='approve')return;
+      const id='press:'+event.payload.message_id;
+      this.store.db.transaction(()=>{
+        this.state.approve(real.projectId,state.stage,delivered.version,artifact,{senderId:'verified-client-channel-human',senderKind:'human',roomId:real.clientRoomId});
+        this.set('delivered',null);this.set('outgoing',null);this.store.db.query('DELETE FROM client_buttons WHERE post=?').run(post.switch_thread);
+        this.store.db.query('INSERT INTO stage_followups(event,stage,version,artifact) VALUES (?,?,?,?)').run(id,state.stage==='client_review'?'client-review-accepted':'video-accepted',this.state.get(real.projectId).stages[state.stage==='client_review'?'video':'learn'].version,JSON.stringify(artifact));
+      })();await this.runFollowup(id);
+    };
+    this.brief.onForumActivate=async ticket=>{
+      const state=this.state.get(real.projectId);
+      if(ticket.kind==='bug'&&state.stages.architecture.approvals.includes('owner')){
+        const artifact=state.stages.build.artifact??{kind:'commit' as const,sha:'0'.repeat(40)};
+        if(['build','client_review','video','learn'].includes(state.stage)){
+          this.state.suggest(real.projectId,'build',artifact,{scopeChanging:true});this.invalidate(state.stage);
+          for(const key of ['candidate','reviewer','reviewVerdict','specDocument','video','videoRequested','buildReady'])this.set(key,null);
+          await this.brief.talk!.say(this.brief.talk!.post(ticket.post)!,CLIENT_LINES.bug,'bug-start:'+ticket.n);
+          await this.buildTask(ticket.client_text);return true;
+        }
+      }
+      if(state.stage!=='brief'){
+        this.state.suggest(real.projectId,'brief',state.stages.brief.artifact!,{scopeChanging:true});this.invalidate(state.stage);
+        for(const key of ['architectureRequested','candidate','reviewer','reviewVerdict','specDocument','video','videoRequested','buildReady','ownerQuestion'])this.set(key,null);
+      }
+      return false;
     };
     store.db.exec(`CREATE TABLE IF NOT EXISTS stage_followups(event TEXT PRIMARY KEY,code TEXT,stage TEXT,version INTEGER,artifact TEXT,reason TEXT,completed INTEGER NOT NULL DEFAULT 0);`);
   }
@@ -52,6 +88,8 @@ export class RealStagesLoop extends StagesLoop {
       const state=this.state.get(this.real.projectId),active=this.get("outgoing");
       if(!state.completed&&state.stage===out.stage&&state.stages[out.stage].version===out.version&&active?.draftId===out.draftId){
         this.set("delivered",out);this.set("outgoing",null);
+        const ticket=this.latestTicket(),post=ticket?.post?this.brief.talk?.post(ticket.post):null;
+        if(post){const a=out.artifact;this.brief.clientButtons(post,{stage:out.stage,version:out.version,hash:a.kind==='commit'?a.sha:a.sha256,artifact:a});this.brief.ticketStatus(ticket,'Ready for you');}
       }
     });
   }
@@ -60,7 +98,17 @@ export class RealStagesLoop extends StagesLoop {
   latestDraft(){return this.brief.latestDraft();}
   cursor(room:string){return this.brief.cursor(room);}
   ticket(){return this.latestTicket()?.n??0;}
-  async tick(){await this.brief.ownerCards.poll();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
+  /** One reminder per quiet lead turn. Builders and reviewers legitimately work for a long time. */
+  private async nudgeLead(){
+    if(this.real.clientSurface!=='forum')return;
+    const row=this.watchdog.current(),now=this.realControl.now??Date.now;
+    if(row?.role!=='lead'||now()-row.progress<(this.real.leadNudgeMs??180000))return;
+    const key=`leadNudged:${row.ticket}:${row.progress}`;if(this.get(key))return;this.set(key,true);
+    const ticket=this.latestTicket(),text=`Your last result did not arrive. ${DELIVERY_RULE}`;
+    if(this.state.get(this.real.projectId).stage==='brief'&&ticket?.status==='with-lead')await this.brief.remindLead(ticket,text);
+    else await this.api.post(this.real.workRoomId,`@${this.real.leadName} ${text}`);
+  }
+  async tick(){await this.brief.ownerCards.poll();await this.brief.talk?.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡",files:{name:string;bytes:Uint8Array}[]=[]) {
     if(files.length)await this.api.post(this.real.studioRoomId,'Files for your review',files);
     const detail=deskAddress(stageCard(this.ticket(),this.real.projectId,stage,summary,this.displayCommand(command),icon),this.real.deskName);
@@ -115,6 +163,7 @@ export class RealStagesLoop extends StagesLoop {
     await this.card("architecture","Brief closed by the client; architecture is with lead.","@desk status","🔵");
   }
   async buildTask(reason="initial build",jobId?:string){
+    if(this.real.clientSurface==='forum')await this.realControl.prepareBuild?.();
     const state=this.state.get(this.real.projectId);
     const sources=await this.buildSources(false);
     if(!jobId)this.store.db.query("UPDATE stage_followups SET completed=1 WHERE stage='architecture' AND completed=0").run();
@@ -200,10 +249,12 @@ export class RealStagesLoop extends StagesLoop {
     if(!parsed.clientText){await this.card(stage,"Needs Varun personally.","@desk status","⚠️");return;}
     const blocked=leakWord(parsed.clientText);
     if(blocked||/\bSIMULATION\b/i.test(parsed.clientText)){await this.card(stage,`Client draft blocked: ${blocked??"test-only label"}. Ask for different wording.`,"@desk status","⚠️");return;}
-    const text=`Update from Varun:\n\n${parsed.clientText}`;
+    const post=this.real.clientSurface==='forum'?this.latestTicket()?.post:undefined;
+    if(post&&attachments.length){await this.brief.ownerCards.offer('File needs manual delivery','Cached Switch media docs expose no thread parameter. Share the approved file in the client post manually; no room-root upload was made.',[]);return;}
+    const text=post?parsed.clientText:`Update from Varun:\n\n${parsed.clientText}`;
     if(needsApprovalText({ticket:this.ticket(),project:this.real.projectId,clientText:this.get("clientQuestion")?.body??"",reply:text,code:"",stage}))await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),text);
     if(attachments.length)await this.api.post(this.real.studioRoomId,"Exact files for your review",attachments);
-    const draft=this.gate.createDraft({project:this.real.projectId,destinationRoomId:this.real.clientRoomId,text,attachments:attachments.map(a=>({name:a.name,sha256:this.transport.cache(a.bytes)}))});
+    const draft=this.gate.createDraft({project:this.real.projectId,destinationRoomId:this.real.clientRoomId,clientThread:post,text,attachments:attachments.map(a=>({name:a.name,sha256:this.transport.cache(a.bytes)}))});
     this.brief.rememberDecision(draft.code);
     this.store.db.query("INSERT INTO stage_outgoing VALUES (?,?,?)").run(draft.id,stage,JSON.stringify(artifact));
     this.set("outgoing",{draftId:draft.id,code:draft.code,stage,artifact,version:this.state.get(this.real.projectId).stages[stage].version});
@@ -253,6 +304,7 @@ export class RealStagesLoop extends StagesLoop {
   }
   private activeArtifact(stage:Stage){return this.store.db.query("SELECT * FROM stage_artifacts WHERE stage=? AND status='active' ORDER BY rowid DESC LIMIT 1").get(stage) as any;}
   handle(event:SwitchEvent):Promise<void>{
+    if(this.real.studioThread&&event.room_id===this.real.studioRoomId&&event.payload?.thread_id!==this.real.studioThread)return Promise.resolve();
     if(typeof event.payload?.body==='string'){
       const identity=this.brief.ownerCards.identity(event)??verifiedSender(event.payload.sender,this.identitySource(),event.payload.sender_kind);
       const owner=event.room_id===this.real.studioRoomId && identity?.kind==="human" && identity.users.includes(this.real.ownerId);
@@ -261,13 +313,14 @@ export class RealStagesLoop extends StagesLoop {
     if(!event.payload?.message_id)return Promise.resolve();
     const retry=!/^@desk (send|deploy|approve|promote|fix|review|video)\b/.test(event.payload.body)&&!parseClientApproval(event.payload.body);
     const next=this.pending.then(()=>this.journal.run(event.payload.message_id,event,async()=>{
-      this.recoverDeliveries();await this.handleReal(event);await this.afterBrief();await this.brief.ownerCards.closeStale();
+      this.recoverDeliveries();await this.handleReal(event);if(this.real.clientSurface==='forum'&&this.state.get(this.real.projectId).completed)await this.brief.closeForumTicket();await this.afterBrief();await this.brief.ownerCards.closeStale();
     },retry));this.pending=next.catch(()=>{});return next;
   }
   private async handleReal(event:SwitchEvent){
     const p=event.payload;
     if(!p?.message_id||typeof p.body!=="string")return;
     const identity=this.brief.ownerCards.identity(event)??verifiedSender(p.sender,this.identitySource(),p.sender_kind);
+    if(this.brief.talk&&await this.brief.talk.handle(event,identity)){await this.afterBrief();return;}
     if(!identity||identity.agent_id===this.real.deskId)return;
     if(event.room_id===this.real.workRoomId&&identity.kind==="agent"){
       const role:WorkingRole|undefined=identity.agent_id===this.real.leadId?"lead":identity.agent_id===this.real.builderId?"builder":identity.agent_id===this.get("reviewer")?.id||identity.agent_id===this.real.reviewerId?"reviewer":undefined;
@@ -277,6 +330,9 @@ export class RealStagesLoop extends StagesLoop {
     const owner=event.room_id===this.real.studioRoomId&&identity.kind==="human"&&identity.users.includes(this.real.ownerId);
     const client=event.room_id===this.real.clientRoomId&&identity.kind==="human"&&!identity.users.includes(this.real.ownerId);
     if(!machine&&!owner&&!client)return;
+    if(await this.brief.forumCommand(event,owner))return;
+    if(owner&&await this.brief.talk?.release(p.body))return;
+    if(owner&&/^@desk send /.test(p.body)&&this.store.db.query("SELECT id FROM drafts WHERE code=? AND thread LIKE 'talk:%'").get(p.body.split(' ')[2])){await this.brief.handle(event);return;}
     if(machine&&identity.agent_id===this.real.leadId&&await this.brief.ownerCards.question(p.body))return;
     const id=`switch:local:${p.message_id}`;
     // Recovery has already projected confirmed sends. Replaying a consumed gate
@@ -365,6 +421,7 @@ export class RealStagesLoop extends StagesLoop {
     if(owner)await this.ownerEvent(event,body);
   }
   private async clientEvent(event:SwitchEvent){
+    if(this.real.clientSurface==='forum')return;
     const body=event.payload.body.trim(),state=this.state.get(this.real.projectId),stage=state.stage;
     // Labelled work is intake at every stage, including after completion.
     if(['request','bug'].includes(classifyClient(event.payload.body).kind)){

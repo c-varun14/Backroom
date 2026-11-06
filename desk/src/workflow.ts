@@ -59,14 +59,15 @@ export class StageMachine {
       const role = this.role(config, actor);
       if (!role || !closers[stage].includes(role)) throw new Error("wrong stage approver");
       if (record.approvals.includes(role)) return state;
-      const expected = closers[stage][record.approvals.length];
+      const required=this.closers(config,stage);
+      const expected = required[record.approvals.length];
       if (role !== expected) throw new Error("owner approval required first");
       if (artifact.kind === "commit" && !this.store.db.query("SELECT sha FROM deployments WHERE project=? AND sha=?").get(project, artifact.sha)) {
         throw new Error("app acceptance requires the deployed commit");
       }
       record.approvals.push(role);
       // Preserved approvals still close unaffected later stages after a revision.
-      while (state.stages[state.stage].artifact && closers[state.stage].every(closer => state.stages[state.stage].approvals.includes(closer))) {
+      while (state.stages[state.stage].artifact && this.closers(config,state.stage).every(closer => state.stages[state.stage].approvals.includes(closer))) {
         const nextIndex = STAGES.indexOf(state.stage) + 1;
         if (nextIndex === STAGES.length) { state.completed = true; break; }
         state.stage = STAGES[nextIndex];
@@ -75,6 +76,7 @@ export class StageMachine {
       return state;
     })();
   }
+  private closers(config:Project,stage:Stage){return config.clientSurface==='forum'&&stage==='brief'?['client'] as const:closers[stage];}
   private role(config: Project, actor: StageActor): "owner" | "client" | undefined {
     if (actor.senderId === config.ownerId && actor.roomId === config.studioRoomId) return "owner";
     if (config.clientIds.includes(actor.senderId) && actor.roomId === config.clientRoomId) return "client";

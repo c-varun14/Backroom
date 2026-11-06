@@ -13,7 +13,7 @@ process.umask(0o077);
 const runtime = join(root,".switch-runtime");
 const secretRoot = join(root,".secrets");
 mkdirSync(secretRoot,{recursive:true,mode:0o700});
-const configPath = resolve(process.env.BACKROOM_CLIENT_CONFIG ?? join(runtime,"block1.json"));
+const configPath = resolve(process.argv[2] ?? process.env.BACKROOM_CLIENT_CONFIG ?? join(runtime,"block1.json"));
 const config: LoopConfig & Partial<RealConfig> & {credentialsFile?:string;databasePath?:string;filesPath?:string;ownerPasswordFile?:string;healthFile?:string;simulateRequest?:string;switchBase?:string} = JSON.parse(readFileSync(configPath,"utf8"));
 // Read only the needed credential field. Never echo this object or errors.
 if(configPath !== join(runtime,"block1.json") && ![config.credentialsFile,config.databasePath,config.filesPath,config.workspace,config.healthFile,config.simulateRequest,config.ownerPasswordFile].every(Boolean))throw new Error("Per-client config requires isolated runtime paths");
@@ -28,13 +28,14 @@ async function helper(args:string[]) {
 }
 function identities(){
   const c=JSON.parse(readFileSync(configPath,"utf8"));
-  return switchIdentities({...c,probeId:c.probeId,agentIds:[c.builderId,...(c.reviewerIds??[])].filter(Boolean)});
+  return switchIdentities({...c,probeId:c.probeId,agentIds:[c.frontId,c.builderId,...(c.reviewerIds??[])].filter(Boolean)});
 }
 const deployer=new LocalComposeDeployer({[config.projectId]:{repoPath:config.workspace??join(root,"workspaces",config.projectId+"-real"),containerPort:3210,healthPath:"/health",persistData:true,ownerPasswordFile:config.ownerPasswordFile ?? join(secretRoot,config.projectId+"-product-owner")}},join(runtime,"real-deploy"));
 const deploy=deployer.deploy.bind(deployer);
 deployer.deploy=async input=>{const old=process.umask(0o022);try{await deploy(input);}finally{process.umask(old);}};
 const loop = config.mode==="real"
   ? new RealStagesLoop(store,api,transport,config as RealConfig,deployer,identities,{
+      async prepareBuild(){await helper(["start-builder"]);},
       async freshReviewer(round){return JSON.parse(await helper(["reviewer",String(round)]));},
       async promotePackage(path){await helper(["promote",path]);}
     },root)
@@ -46,7 +47,7 @@ const healthy = new Set<string>();
 let errors = 0;
 function health() { const workflow=loop.workflow.get(config.projectId);writeFileSync(config.healthFile ?? join(runtime,"desk-health.json"),JSON.stringify({pid:process.pid,mode:config.mode??'stage1',updatedAt:new Date().toISOString(),connectedRooms:healthy.size,errors,ticket:loop.latestTicket()?.n ?? null,ticketStatus:loop.latestTicket()?.status ?? null,draftCode:loop.latestDraft()?.code ?? null,briefVersion:workflow.stages.brief.version,workflowStage:workflow.stage})); }
 function enqueue(task:()=>Promise<void>) {
-  queue = queue.then(task).catch(()=>{errors++; console.log("desk: operation failed; sensitive details suppressed; inspect status and studio.");}).finally(health);
+  queue = queue.then(task).catch((error)=>{errors++; console.log("desk: operation failed; sensitive details suppressed; inspect status and studio."+(process.env.BACKROOM_DEBUG?` [${error?.name}: ${String(error?.message).slice(0,160)} @ ${String(error?.stack).split("\n").slice(1,4).map(l=>l.trim().split("/").pop()).join(" < ")}]`:""));}).finally(health);
 }
 function connect(room:string) {
   const state = loop.cursor(room);

@@ -21,6 +21,17 @@ class DiscordStatusTests(unittest.TestCase):
         roles[0]['permissions'] = '8'
         self.assertTrue(module.can_read_channel(channel, member, roles, 'guild'))
 
+    def test_privacy_reports_a_client_who_can_see_the_studio(self):
+        roles = [{'id': 'guild', 'name': '@everyone', 'permissions': str(1024)}, {'id': 'lead', 'name': 'Lead', 'permissions': '0'}]
+        members = [{'user': {'id': 'owner', 'username': 'owner'}, 'roles': []},
+                   {'user': {'id': 'bot', 'username': 'bot', 'bot': True}, 'roles': []},
+                   {'user': {'id': 'staff', 'username': 'staff'}, 'roles': ['lead']},
+                   {'user': {'id': 'client', 'username': 'client'}, 'roles': []}]
+        studio = {'id': 'studio', 'name': 'studio', 'permission_overwrites': [{'id': 'guild', 'type': 0, 'allow': '1024', 'deny': '0'}]}
+        self.assertEqual(module.privacy_problems([studio], members, roles, 'guild', 'owner', {'studio'}), ['client can see #studio'])
+        studio['permission_overwrites'] = [{'id': 'guild', 'type': 0, 'allow': '0', 'deny': '1024'}]
+        self.assertEqual(module.privacy_problems([studio], members, roles, 'guild', 'owner', {'studio'}), [])
+
     def check_visibility(self, denied=False, owner=True):
         paths = []
         class Response:
@@ -32,7 +43,9 @@ class DiscordStatusTests(unittest.TestCase):
             if path == '/users/@me': return Response({'id': 'bot'})
             if path.endswith('/members/bot'): return Response({'user': {'id': 'bot'}, 'roles': []})
             if path.endswith('/roles'): return Response([{'id': 'guild', 'permissions': str(1024 | 65536)}])
-            if path == '/channels/studio': return Response({'permission_overwrites': []})
+            if path == '/channels/studio': return Response({'id': 'studio', 'name': 'studio', 'permission_overwrites': []})
+            if path.endswith('/members?limit=1000'): return Response([])
+            if path == '/guilds/guild': return Response({'owner_id': 'owner'})
             if path == '/channels/client': return Response({'id': 'client', 'permission_overwrites': []}, not denied)
             if path == '/channels/studio/messages?limit=100': return Response([{'id': 'sample', 'author': {'id': 'owner' if owner else 'client', 'bot': False}}])
             if path == '/channels/client/messages?limit=100': return Response([])

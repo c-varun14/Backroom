@@ -12,7 +12,7 @@ type Row={request:string;payload:string;buttons:string;binding:string;status:str
 export class OwnerCards {
   readonly session:string;
   private polling=Promise.resolve();
-  constructor(private store:Store,private api:SwitchAPI,private config:{projectId:string;ownerId:string;studioRoomId:string;workRoomId?:string;leadName?:string},private identities:()=>Identity[],
+  constructor(private store:Store,private api:SwitchAPI,private config:{projectId:string;ownerId:string;studioRoomId:string;studioThread?:string;workRoomId?:string;leadName?:string},private identities:()=>Identity[],
     public binding:(command:string)=>string|null,public run:(event:SwitchEvent)=>Promise<void>){
     this.session='backroom-'+sha256(config.projectId).slice(0,20);
     store.db.exec(`CREATE TABLE IF NOT EXISTS owner_cards(project TEXT,request TEXT PRIMARY KEY,payload TEXT NOT NULL,buttons TEXT NOT NULL,binding TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open'); CREATE TABLE IF NOT EXISTS owner_card_replacements(original TEXT PRIMARY KEY,replacement TEXT NOT NULL);`);
@@ -21,6 +21,8 @@ export class OwnerCards {
   private path(request:string){return `/agent-sessions/${this.session}/approvals/${request}`;}
   async offer(title:string,detail:string,buttons:Button[],identity?:string,force=false,questions:any[]=[],requestId?:string){
     if(title.length>500||detail.length>4000||buttons.length>9)throw new Error('Owner card exceeds Switch limits');
+    // Switch refuses an approval with no options, so an information card still gets one.
+    if(!buttons.length&&!questions.length)buttons=[{label:'Got it',command:'__ack'}];
     const binding=identity??JSON.stringify(buttons.map(b=>[b.command,this.binding(b.command)]));
     const signature=JSON.stringify({title,detail,buttons,questions,binding});
     if(!force){
@@ -33,7 +35,7 @@ export class OwnerCards {
     const mapped=buttons.map(b=>({...b,id:randomUUID()}));
     const payload={request_id:request,turn_id:request,kind:questions.length?'questions':'approval',title,detail,
       options:mapped.map(b=>({id:b.id,label:b.label,decision:b.command==='__change'?'decline':'accept'})),questions,
-      room_id:this.config.studioRoomId,thread_id:null,expires_at:null,_signature:signature};
+      room_id:this.config.studioRoomId,thread_id:this.config.studioThread??null,expires_at:null,_signature:signature};
     this.store.db.query('INSERT INTO owner_cards(project,request,payload,buttons,binding) VALUES (?,?,?,?,?)').run(this.config.projectId,request,JSON.stringify(payload),JSON.stringify(mapped),binding);
     await this.open({request,payload:JSON.stringify(payload)} as Row);return request;
   }
@@ -41,7 +43,7 @@ export class OwnerCards {
   private valid(row:Row){
     const payload=JSON.parse(row.payload);
     if(payload.kind==='questions')return true;
-    return JSON.parse(row.binding).every(([command,binding]:[string,string|null])=>command==='__change'||(binding!==null&&this.binding(command)===binding));
+    return JSON.parse(row.binding).every(([command,binding]:[string,string|null])=>command==='__change'||command==='__ack'||(binding!==null&&this.binding(command)===binding));
   }
   async closeStale(){
     for(const row of this.store.db.query("SELECT * FROM owner_cards WHERE project=? AND status='open'").all(this.config.projectId) as Row[]){
@@ -61,7 +63,15 @@ export class OwnerCards {
   poll(){const next=this.polling.then(()=>this.consume());this.polling=next.catch(()=>{});return next;}
   private async consume(){
     await this.closeStale();
-    for(const row of this.store.db.query("SELECT * FROM owner_cards WHERE project=? AND status='open'").all(this.config.projectId) as Row[])await this.open(row);
+    // One unusable card must never stop the owner's other buttons from working.
+    for(const row of this.store.db.query("SELECT * FROM owner_cards WHERE project=? AND status='open'").all(this.config.projectId) as Row[]){
+      try{await this.open(row);}
+      catch(error){
+        if(!/HTTP 4(?:00|22)/.test(String((error as Error)?.message)))throw error;
+        this.store.log('owner card refused by Switch and closed',undefined,this.config.projectId);
+        this.store.db.query("UPDATE owner_cards SET status='closed' WHERE request=?").run(row.request);
+      }
+    }
     const result=await this.api.json('/agent-sessions/approvals/outcomes');
     const outcomes=Array.isArray(result)?result:result.outcomes;
     if(!Array.isArray(outcomes))throw new Error('Invalid approval outcomes');
@@ -89,8 +99,9 @@ export class OwnerCards {
           const text=this.answerText(payload,outcome.answers);
           if(text!==null)await this.api.post(this.config.workRoomId!,`@${this.config.leadName??'lead'} answer ${row.binding.slice(9)}: ${text.replace(/@/g,'＠')}`);
           else this.store.log('invalid team question answer; ignored');
-        }else if(button.command==='__change')await this.api.post(this.config.studioRoomId,'Type what to change.');
-        else await this.run({[verifiedCard]:this,room_id:this.config.studioRoomId,payload:{sender:identity?.sender??'user:'+this.config.ownerId,sender_kind:'human',message_id:'owner-card:'+request,body:button.command,attachments:[]}} as SwitchEvent);
+        }else if(button.command==='__ack'){/* Information only. */}
+        else if(button.command==='__change')await this.api.post(this.config.studioRoomId,'Type what to change.');
+        else await this.run({[verifiedCard]:this,room_id:this.config.studioRoomId,payload:{sender:identity?.sender??'user:'+this.config.ownerId,sender_kind:'human',message_id:'owner-card:'+request,thread_id:this.config.studioThread??null,body:button.command,attachments:[]}} as SwitchEvent);
       }
       this.store.db.query("UPDATE owner_cards SET status='handled' WHERE request=?").run(request);
       await acknowledge();

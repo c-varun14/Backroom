@@ -1,4 +1,4 @@
-export interface Identity { sender: string; kind: "human" | "agent"; agent_id: string | null; users: string[] }
+export interface Identity { sender: string; kind: "human" | "agent"; agent_id: string | null; users: string[]; external_ids?:string[] }
 export interface IdentityConfig { ownerId: string; bridgeId: string; deskId: string; leadId: string; probeId: string; agentIds?:string[] }
 
 /** Switch 0.31 WS sender_kind is null for humans AND agents. Resolve its exact
@@ -13,6 +13,7 @@ export function switchIdentities(config: IdentityConfig): Identity[] {
     SELECT c.matrix_user_id AS sender,
       CASE WHEN a.id IS NOT NULL THEN 'agent' ELSE 'human' END AS kind,
       a.id AS agent_id,
+      COALESCE(array_agg(DISTINCT COALESCE(to_jsonb(e)->>'external_user_id',to_jsonb(e)->>'external_id')) FILTER (WHERE e.id IS NOT NULL),'{}'::text[]) AS external_ids,
       COALESCE(array_agg(DISTINCT claim.user_id) FILTER (WHERE claim.user_id IS NOT NULL),'{}'::text[])
       || CASE WHEN c.user_id IS NOT NULL THEN ARRAY[c.user_id] ELSE '{}'::text[] END AS users
     FROM clients c LEFT JOIN agents a ON a.client_id=c.id

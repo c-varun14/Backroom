@@ -1,14 +1,19 @@
 """Read-only Discord channel visibility checks; never expose credentials or bodies."""
 
 
-def can_read_channel(channel, member, roles, guild_id):
+VIEW_CHANNEL = 1024
+READ_HISTORY = 65536
+
+
+def channel_permissions(channel, member, roles, guild_id):
+    """Discord's documented order: base, @everyone, roles, then the member."""
     role_ids = set(member.get('roles', [])) | {guild_id}
     permissions = 0
     for role in roles:
         if role['id'] in role_ids:
             permissions |= int(role['permissions'])
     if permissions & 8:  # Administrator bypasses channel overwrites.
-        return True
+        return VIEW_CHANNEL | READ_HISTORY | permissions
     overwrites = channel.get('permission_overwrites', [])
     everyone = next((o for o in overwrites if o['id'] == guild_id), {})
     permissions = (permissions & ~int(everyone.get('deny', 0))) | int(everyone.get('allow', 0))
@@ -19,9 +24,29 @@ def can_read_channel(channel, member, roles, guild_id):
             allow |= int(overwrite.get('allow', 0))
     permissions = (permissions & ~deny) | allow
     personal = next((o for o in overwrites if o['id'] == member['user']['id'] and int(o['type']) == 1), {})
-    permissions = (permissions & ~int(personal.get('deny', 0))) | int(personal.get('allow', 0))
-    required = 1024 | 65536  # View Channel and Read Message History.
-    return permissions & required == required
+    return (permissions & ~int(personal.get('deny', 0))) | int(personal.get('allow', 0))
+
+
+def can_read_channel(channel, member, roles, guild_id):
+    required = VIEW_CHANNEL | READ_HISTORY
+    return channel_permissions(channel, member, roles, guild_id) & required == required
+
+
+def privacy_problems(channels, members, roles, guild_id, owner_id, studio_ids, studio_roles=('Lead', 'Team')):
+    """Names of people who can see a studio channel but should not. Bots are
+    checked too, except the bridge bot itself, which must read these rooms."""
+    allowed = {r['id'] for r in roles if r.get('name') in studio_roles}
+    problems = []
+    for channel in channels:
+        if channel['id'] not in studio_ids:
+            continue
+        for member in members:
+            user = member['user']
+            if user['id'] == owner_id or user.get('bot') or allowed & set(member.get('roles', [])):
+                continue
+            if channel_permissions(channel, member, roles, guild_id) & VIEW_CHANNEL:
+                problems.append(f"{user['username']} can see #{channel['name']}")
+    return problems
 
 
 def discord_visibility(config, token, guild, owner_ids, get=None):
@@ -54,4 +79,10 @@ def discord_visibility(config, token, guild, owner_ids, get=None):
                 page = read(f'/channels/{channel_id}/messages?limit=100&before={page[-1]["id"]}')
                 if not isinstance(page, list):
                     break
+    if roles:
+        members = read(f'/guilds/{guild}/members?limit=1000') or []
+        info = read(f'/guilds/{guild}') or {}
+        studio = read('/channels/' + config['studioChannelId'])
+        problems = privacy_problems([studio] if studio else [], members, roles, guild, info.get('owner_id'), {config['studioChannelId']})
+        results.append('Studio privacy: ' + ('OK, clients cannot see it' if not problems else 'PROBLEM: ' + '; '.join(problems)))
     return results, owner_seen

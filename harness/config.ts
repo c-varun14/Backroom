@@ -1,5 +1,5 @@
 import {readFileSync} from 'node:fs';
-export type Role='lead'|'builder'|'reviewer';
+export type Role='front'|'lead'|'builder'|'reviewer';
 export interface RoleConfig {harness:'claude'|'codex'|'opencode'|'command';model?:string;argv?:string[]}
 export function loadRole(path:string,role:Role,demo=false):RoleConfig {
   const all=Bun.YAML.parse(readFileSync(path,'utf8')) as any;

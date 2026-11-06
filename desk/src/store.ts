@@ -40,6 +40,10 @@ export class Store {
         SELECT event_id,project,'restart recovered uncertain intent' FROM intents WHERE status='pending';
       UPDATE intents SET status='uncertain' WHERE status='pending';
     `);
+    if (!(this.db.query("PRAGMA table_info(drafts)").all() as {name:string}[]).some(c=>c.name==='client_thread'))
+      this.db.exec('ALTER TABLE drafts ADD COLUMN client_thread TEXT');
+    this.db.exec(`CREATE TRIGGER IF NOT EXISTS immutable_client_thread BEFORE UPDATE OF client_thread ON drafts
+      BEGIN SELECT RAISE(ABORT, 'immutable client thread'); END;`);
   }
   register(project: Project) {
     if (!project.id || !project.ownerId || !project.studioRoomId || !project.clientRoomId ||

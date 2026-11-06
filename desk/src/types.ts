@@ -1,4 +1,5 @@
 export interface Project {
+  clientSurface?: "forum";
   id: string;
   ownerId: string;
   studioRoomId: string;
@@ -12,6 +13,7 @@ export interface DraftInput {
   /** Omit for the project's default conversation thread. */
   threadId?: string;
   destinationRoomId: string;
+  clientThread?: string;
   text: string;
   attachments: Attachment[];
 }
@@ -29,6 +31,7 @@ export interface Delivery extends PreparedContent {
   deliveryId: string;
   project: string;
   destinationRoomId: string;
+  clientThread?: string;
   draftId?: string;
 }
 export interface Transport {

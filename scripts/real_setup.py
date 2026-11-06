@@ -19,6 +19,8 @@ def save(c):
 
 def real_instructions(role, c):
     base = (ROOT / 'studio-kit/agents' / (role + '.md')).read_text()
+    if role == 'front':
+        return base + f'\nWork only in room {c["workRoomId"]}. No native tools, credential reads, client posts or release commands. Wait for desk conversation data. Deliver every reply by calling post_message in the same thread; plain text is never delivered.'
     if role == 'lead':
         # Stage 1's split remains authoritative, followed by the explicitly
         # authorized later-stage playbook instead of the old Stage-1-only cap.
@@ -42,6 +44,12 @@ def create_role(c, role, name, directory, desired='running'):
     definition = {**harness_definition(role), 'instructions':real_instructions(role,c),
                   'directory':str(directory), 'isolation':'shared', 'auto_mode':True, 'auto_approve':False,
                   'advanced_config':{'effort':'high' if role=='reviewer' else 'medium', 'verbosity':'low', 'webSearch':'false'}}
+    if definition['provider']=='claude':
+        # Switch validates settings per provider; these two are Codex-only.
+        for setting in ('verbosity','webSearch'):
+            definition['advanced_config'].pop(setting,None)
+    if role in ('front', 'lead'):
+        definition['advanced_config'].update({'maxTurns':8, 'disallowedTools':['Bash','Read','Write','Edit','Glob','Grep','Agent','WebSearch','WebFetch']})
     existing = next((a for a in call(s,'GET','/gateway/management/agents') if a['name']==name),None)
     body = {'controller_id':c['buildControllerId'], 'desired_state':desired, 'definition':definition}
     if existing:
@@ -49,7 +57,7 @@ def create_role(c, role, name, directory, desired='running'):
             raise SetupError('Role name belongs to another controller; refusing to modify it')
         agent = call(s,'PATCH','/gateway/management/agents/'+existing['agent_id'],body)
     else:
-        agent = call(s,'POST','/gateway/management/agents',{'name':name,'description':'Real Morrowcrumb '+role,**body})
+        agent = call(s,'POST','/gateway/management/agents',{'name':name,'description':'Real '+c.get('projectName', c.get('projectId', 'Morrowcrumb'))+' '+role,**body})
     call(s,'PUT','/gateway/agents/'+agent['agent_id']+'/addressing-policy',{'policy':None})
     call(admin,'POST','/gateway/rooms/'+c['workRoomId']+'/agents',{'agent_ids':[agent['agent_id']]})
     return {'id':agent['agent_id'],'name':name}
@@ -106,7 +114,7 @@ def fresh_reviewer(round):
     for agent in call(s,'GET','/gateway/management/agents'):
         if agent['agent_id'] in c.get('reviewerIds',[]) and agent.get('controller_id')==c['buildControllerId']:
             call(s,'PATCH','/gateway/management/agents/'+agent['agent_id'],{'desired_state':'stopped'})
-    name=f'reviewer-morrowcrumb-{round}-{uuid.uuid4().hex[:8]}'
+    name=f'reviewer-{c.get("projectId", "morrowcrumb")}-{round}-{uuid.uuid4().hex[:8]}'
     result=create_role(c,'reviewer',name,ROOT/'workspaces'/name)
     c.update(reviewerId=result['id'],reviewerName=result['name']);c.setdefault('reviewerIds',[]).append(result['id']);save(c)
     print(json.dumps(result))
@@ -126,6 +134,9 @@ if __name__=='__main__':
     try:
         action=sys.argv[1] if len(sys.argv)>1 else 'setup'
         if action=='setup':setup()
+        elif action=='start-builder':
+            c=json.loads(PUBLIC.read_text());s=lead_session()
+            call(s,'PATCH','/gateway/management/agents/'+c['builderId'],{'desired_state':'running'})
         elif action=='reviewer':fresh_reviewer(int(sys.argv[2]))
         elif action=='promote':promote(sys.argv[2])
         else:raise SetupError('Unknown real setup action')

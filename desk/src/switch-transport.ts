@@ -61,7 +61,8 @@ export class SwitchAPI {
 }
 
 export class SwitchTransport implements Transport {
-  constructor(private api: SwitchAPI, private filesDirectory: string) { mkdirSync(filesDirectory, { recursive: true, mode: 0o700 }); }
+  constructor(private api: SwitchAPI, private filesDirectory: string, private connection?: (room:string)=>string) { mkdirSync(filesDirectory, { recursive: true, mode: 0o700 }); }
+  bindConnections(connection:(room:string)=>string){this.connection=connection;}
   cache(bytes: Uint8Array): string {
     const hash = sha256(bytes);
     writeFileSync(join(this.filesDirectory, hash), bytes, { mode: 0o600 });
@@ -75,6 +76,10 @@ export class SwitchTransport implements Transport {
   }
   async send(delivery: Delivery) {
     // Exactly the verified snapshot. No text prefixing, re-fetching, or retry.
-    await this.api.post(delivery.destinationRoomId, delivery.text, delivery.attachments);
+    if(delivery.clientThread){
+      if(delivery.attachments.length)throw new Error('Forum media thread parameter unavailable; owner action required');
+      if(!this.connection)throw new Error('Client thread connection unavailable');
+      await this.api.thread(delivery.text,delivery.clientThread,this.connection(delivery.destinationRoomId));
+    } else await this.api.post(delivery.destinationRoomId, delivery.text, delivery.attachments);
   }
 }

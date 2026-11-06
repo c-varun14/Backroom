@@ -2,7 +2,7 @@
 
 **A one-person agency that never makes the same mistake twice.**
 
-Clients talk to one person in one chat. Behind that chat, AI teammates on [Switch](https://github.com/sandbox-quantum/switch) write the brief, build, review and deploy. The owner releases every step, and each approved lesson carries into the next project.
+Clients start a project, talk naturally and get answers in seconds. Behind that conversation, AI teammates on [Switch](https://github.com/sandbox-quantum/switch) write the brief, build, review and deploy. The owner releases everything binding, and each approved lesson carries into the next project.
 
 ```sh
 bash demo.sh
@@ -26,7 +26,7 @@ That one command needs only Docker. It starts a real Switch server and runs two 
 | Is it a fresh idea for a real problem? | A small agency owner spends the day carrying messages between clients and AI tools. Backroom removes the carrying but keeps the owner's decision, and lessons learned on one project improve the next | [Six stages](#six-stages) |
 | How is Switch used? | Rooms are the wall, handoffs run through mentions and documents, verified sender identity is the release gate, and packages carry memory | [Feature table](docs/SWITCH.md) |
 
-A solo agency owner is tired of carrying conflicting client documents between people and AI tools. The client talks only to plain-code `desk`, which forwards work into a private Switch studio. `lead` writes the plan, `builder` builds it, a fresh `reviewer` checks it, and nothing reaches the client until the owner releases that exact version.
+A solo agency owner is tired of carrying conflicting client documents between people and AI tools. The client talks only to plain-code `desk`, which forwards work into a private Switch studio. `lead` writes the plan, `builder` builds it, and a fresh `reviewer` checks it. Conversation reaches the client only after plain-code checks, and no price, date, promise, deploy or final delivery leaves until the owner releases that exact version.
 
 ## Verify after cloning
 
@@ -110,3 +110,11 @@ Git holds source, [studio playbooks](studio-kit/agents/), [sample lessons](studi
 ## Public proof without an account
 
 Open [receipt/public.html](receipt/public.html) directly. [docs/index.html](docs/index.html) embeds the same self-contained page so GitHub Pages can publish from the `/docs` folder, with no build or backend. Pages hosting has not been enabled by this task. All evidence uses fictional data and labels simulated approvals; source-run notes keep the native rehearsal, gate probe and hand rehearsal separate.
+
+### Optional client studio (forum mode)
+
+Projects configured with `clientSurface: "forum"` have a checked conversation lane: greetings are fixed code, ordinary replies come from a work-room-only `front` role, and commitments go to the owner. Money, dates, promises and internal words are conservatively blocked. Direct AI questions go to Varun. A blocked reply creates an owner review card; only an explicit owner action can prepare its separate release draft, and Send still requires the existing gate.
+
+One work post becomes one ticket; new work waits in a queue until the owner starts it. Clients approve identified briefs and deliveries using project-bound buttons. Typed agreement never approves forum work. Architecture, deploys and final release decisions remain with the owner. The legacy text-channel path keeps its original approval flow.
+
+The plain-code door anchors Discord posts through Switch, signs control messages, applies status tags, and maintains a private studio board. This path was run on real Discord and Switch with a labelled sample webhook playing the client; a client button press from a real account and the later build stages in forum mode were not yet proven live. The cached Switch media documentation exposes no upload thread parameter, so forum attachments require manual delivery rather than a room-root upload. See [client studio setup](docs/LIVE-SETUP.md#optional-client-studio) and the [implementation report](reports/client-studio.md).
