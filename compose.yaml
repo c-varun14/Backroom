@@ -1,0 +1,49 @@
+name: backroom-judge-demo
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_OWNER_USER}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U $$POSTGRES_USER']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  init-db:
+    image: postgres:16-alpine
+    env_file: .secrets/judge-demo/stack.env
+    volumes: ['./demo/init-db.sh:/init-db.sh:ro']
+    entrypoint: [sh, /init-db.sh]
+    depends_on:
+      postgres: {condition: service_healthy}
+  switch:
+    image: ghcr.io/sandbox-quantum/switch-core:0.31.0
+    env_file: .secrets/judge-demo/stack.env
+    ports: ['127.0.0.1:49161:8000']
+    depends_on:
+      init-db: {condition: service_completed_successfully}
+  gateway:
+    image: ghcr.io/sandbox-quantum/gateway:0.31.0
+    ports: ['127.0.0.1:49162:3000']
+    depends_on: [switch]
+  runner:
+    image: backroom-judge-demo-runner:1.3.14
+    user: '${DEMO_UID:-1000}:${DEMO_GID:-1000}'
+    build:
+      context: ./demo
+      dockerfile: Dockerfile
+    environment:
+      HOME: /state/home
+    volumes:
+      - './:/repo:ro'
+      - './.secrets/judge-demo:/state'
+      - './demo/out:/out'
+    working_dir: /repo
+    command: [bun, --no-env-file, demo/runner.ts]
+    ports: ['127.0.0.1:49163:3210']
+    depends_on: [switch]
+volumes:
+  pgdata:

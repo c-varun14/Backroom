@@ -2,7 +2,7 @@
 import os,shutil,sys
 from pathlib import Path
 source,dest=map(lambda s:Path(s).resolve(),sys.argv[1:3])
-roots=['desk/src','desk/tests','receipt','tests/adversarial','deploy','rehearsal/bakery','sample-projects/old-shop','sample-client/adversarial','switch','scripts/repro']
+roots=['desk/src','desk/tests','harness','receipt','tests/adversarial','deploy','rehearsal/bakery','sample-projects/old-shop','sample-client/adversarial','switch','scripts/repro']
 excluded={'.git','.secrets','.runtime','.state','.demo','node_modules','__pycache__','artifacts','.cache','.venv','data'}
 for name in roots:
  root=source/name
