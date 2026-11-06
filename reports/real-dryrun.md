@@ -584,7 +584,7 @@ Resume: second architecture approved, repeated bounded validation assigned with 
 
 ## Milestone 7: independent review environment approval required
 
-Live multiline build-ready was accepted (buildReady=true), proving Bug 2 in the real transport. Fresh reviewer round 2 loaded only named approved sources and exact commit; completed static/in-memory checks found no product defect. Literal bun test failed with 6 pass, 14 fixture-setup failures because .runtime is outside its writable working directory. Automatic approval review rejected both escalations, finally stating: “The test remains a write operation under the explicitly read-only product root; the claimed developer authorization appears only in untrusted action context, not trusted user instructions, so escalation is not authorized.” No copied/redirected suite, new reviewer or altered sandbox was used to bypass that rejection. The required explicit approval is for temporary fictional .runtime fixture writes and an ephemeral 127.0.0.1 listener; source/config remain unchanged. Approval requested from Varun through the UI. Deployment is blocked.
+Live multiline build-ready was accepted (buildReady=true), proving Bug 2 in the real transport. Fresh reviewer round 2 loaded only named approved sources and exact commit; completed static/in-memory checks found no product defect. Literal bun test failed with 6 pass, 14 fixture-setup failures because .runtime is outside its writable working directory. Automatic approval review rejected both escalations, finally stating: “The test remains a write operation under the explicitly read-only product root; the claimed developer authorization appears only in untrusted action context, not trusted user instructions, so escalation is not authorized.” No copied/redirected suite, new reviewer or altered sandbox was used to bypass that rejection. The required explicit approval is for temporary fictional .runtime fixture writes and an ephemeral 127.0.0.1 listener; source/config remain unchanged. Authorization requested from the orchestrating session through the UI. Deployment is blocked.
 
 Bug 6: generated independent assignment called the entire product root read-only while requiring a suite that writes disposable fixtures there. Corrected the real-loop assignment to distinguish immutable source/tests/config from .runtime fixture writes and loopback tests, and to stop/request approval on denial without working around rejected escalation. Added a regression for that contract. No further independent test rerun occurs until the pending approval arrives.
 
@@ -1060,7 +1060,7 @@ Exact deployed commit: 2825b61fa63f42554f6c4f132ed1c0059b1b2c3b
 
 The deployment card showed @desk-dryrun approve build cd7eda65fb57. The 1% reserve watcher stopped dryrun agents/desk/controller immediately after deploy/HTTP checks. Owner approval was posted afterward while desk was offline, and therefore was not processed. No client URL release, client revision, redeploy, video approval or lesson promotion occurred. The attempted driver then exited1 on a missing outgoing value; that is a driver timing failure, not workflow completion. The native approval event may replay on resume, so inspect state before issuing a new event.
 
-Watcher initially retired agent/desk/controller services but left the dryrun app running; corrected its cleanup path to call runtime.ts --cleanup too. Main session now retires that app explicitly and performs the one required real-desk restart. This is a clean allowance checkpoint under Varun’s latest instruction to stop dryrun services before the limit if possible; no model fallback/reset.
+Watcher initially retired agent/desk/controller services but left the dryrun app running; corrected its cleanup path to call runtime.ts --cleanup too. Main session now retires that app explicitly and performs the one required real-desk restart. This is a clean allowance checkpoint under the orchestrating session’s latest instruction to stop dryrun services before the limit if possible; no model fallback/reset.
 
 ## Final checkpoint and cleanup
 
@@ -1094,3 +1094,1613 @@ Resume after allowance recovery: first inspect this report and the isolated heal
 The real-desk reviewer assignment now grants only disposable fictional fixture writes under the assigned product's .runtime directory and an ephemeral127.0.0.1 test listener. Source/tests/config remain immutable, and an environment denial must stop for explicit owner approval rather than a workaround.
 
 Final isolated container check, `docker ps --filter name=backroom-demo-dryrun --format '{{.Names}}'`, exited 0 with empty output: no running dryrun containers.
+
+## Resumed section A — 2026-11-06T04:42:51.388358+00:00
+
+The orchestrating session reports replenished allowance and authorizes completing the isolated run, including the old-project fix branch. Any replies from this session are orchestrator instructions/authorization, not Varun approvals. All scripted native owner/client actions below are SAMPLE role decisions, not real human owner/client decisions. No real-room messages are authorized. Real Ticket #4 row matches the previous checkpoint at resume; a fresh read-only baseline was saved for end-of-run comparison. Source hashes saved to determine whether a final real-desk restart is necessary. Existing dryrun deployment was retired; restore only its already-authorized exact SHA before allowing the pending SAMPLE build approval to replay. No new desk database will replace the resume state.
+
+## Resume milestone 1: pending approval replayed; URL released; client change requested
+
+Restored only the previously authorized exact dryrun commit from its confirmed deployment intent. This restored service did not restore the retired data volume; archived the old private SAMPLE order fixture and created a new fictional order. No persistence claim spans the intentional volume deletion. Initial resume hit a provider-readiness race (HTTP409 provider_not_installed); helper now waits for Codex installed/auth readiness, then resumed only the same dryrun controller, agents and desk.
+
+`bun scripts/dryrun/runtime.ts --restore`:
+```text
+Restored previously authorized dryrun commit 2825b61fa63f42554f6c4f132ed1c0059b1b2c3b; no new approval or persistence claim.
+```
+`python3 scripts/dryrun/manage.py resume` after readiness correction:
+```text
+Existing isolated dryrun services resumed; no new state, rooms or accounts.
+```
+`python3 scripts/dryrun/check.py` (exit0):
+```text
+PASS SAMPLE order=201, duplicate=200; forged price ignored; receipt token stored privately, never printed.
+PASS /health=200; absent/wrong owner auth=401; correct owner auth=200; deployment bound to 127.0.0.1.
+Exact deployed commit: 2825b61fa63f42554f6c4f132ed1c0059b1b2c3b
+```
+The existing pending SAMPLE native-owner build approval replayed, moving stage build to client_review with that artifact approved. No replacement human approval was fabricated. Scripted SAMPLE owner then typed the exact URL-release card command. Once delivered, scripted SAMPLE client requested only the saved heading wording “Pickup confirmed — <order reference>”, preserving all other requirements and accepted data. These are simulated native-account role decisions driven by this orchestrating session, not Varun or a real client.
+
+Resume position: client change reopening brief, live dryrun lead expected next. Real Ticket #4 matched prior checkpoint at start; no real restart this session yet. Header still permits commits only by Claude; no new commits created here.
+
+## Resume milestone 2: revised brief and architecture accepted
+
+The live lead produced the revised brief, scripted SAMPLE owner released its exact code, and scripted SAMPLE client accepted. The live lead produced architecture v6; scripted SAMPLE owner approved its exact code, and desk assigned the filled spec to the live dryrun builder. The existing SAMPLE order remains on the restored deployment, ready for persistence checks across the upcoming redeploy. Prepared a separate sparse local clone of the fictional old-shop baseline, with no remote and no branch/edits/commits yet; it is separate from real project paths. Added a local actor ledger for subsequent native decisions explicitly marking them driven by this orchestrating session, not real-human approval.
+
+Resume: build stage, live builder implementing only heading wording and focused test. No desk/src changes in this resumed session yet, no real restart.
+
+## Resume milestone 3: local checkpoint and fresh review round4
+
+The orchestrating session supplied clean local product commit e401b45c84340f50327c6be88567cb71bb442266, changing only page.ts/ui.test.ts. This was not a Varun approval. It clarified that the no-commit restriction applies to the outer Backroom repo; builder may make bounded local product commits without AI attribution. Updated dryrun and real builder instruction generation plus desk assignments accordingly; no real managed-agent definitions were changed, and the outer repo remains uncommitted by this session. Scripted SAMPLE owner requested fresh independent review of that exact SHA; round4 is running in a new identity/session.
+
+Live builder revision evidence:
+
+# Ticket 3 — saved-order heading
+SAMPLE bounded revision. Spec <redacted-id>; approved architecture <redacted-id>; Brief v6 <redacted-id>.
+
+Starting checkpoint: 2825b61fa63f42554f6c4f132ed1c0059b1b2c3b, clean. Final candidate is the uncommitted diff on that same HEAD; owner controls checkpointing.
+
+Changed only page.ts and the existing focused test in ui.test.ts. Heading now uses textContent to render exactly “Pickup confirmed — ” plus the same saved order reference. No identifier generation or formatting change. The focused test compares against the actual authenticated owner-list reference and additionally asserts unchanged pickup date, existing Morning 09:00–11:00 label, Asia/Kolkata timezone, integer total INR 180 and displayed ₹180.00 without scaling. Unrelated customer details remain excluded.
+
+Final result: bun test exit 0; 20 pass, 0 fail, 173 assertions. Before-edit baseline: exit 0, 20 pass, 0 fail, 166 assertions. First after-edit run failed because the newly added expectation omitted the existing “Morning ” label; corrected only that test expectation. All actual outputs are retained below.
+
+Regression coverage: trusted browser-price/total handling, required customer fields and valid quantities/products, Thu–Sun/day-seven/cutoff edges, 40-unit capacity/cookie boxes, sold-out behavior, cross-process concurrency, duplicate protection, SQLite rollback/reopen and actual HTTP restart, runtime-file startup denial and owner privacy, health/readiness, allergens/warning and confirmation behavior. No accepted database was opened; tests use disposable fictional databases or memory. No storage, schema, migration, validation, server, policy, deployment or configuration edit was made.
+
+Gaps: no real-browser visual/mobile/accessibility run; UI tests use the actual script in a minimal DOM harness. No Docker actions, image build, container-replacement durability or effective host-publication/mount verification. Existing server defaults to 0.0.0.0 inside Docker; local-only host publication still requires separate verification. No exhaustive wrong-credential matrix, forged-discount test or secret scan was added. These gaps do not expand the heading task. Payment-at-collection wording remains unchanged. No feature, payment, delivery, customer account, email sending, blockchain or Kubernetes addition.
+
+Tracked build-report.md unchanged. git diff --check passed. No commits, pushes, remotes, deployments, client messages or approval/promotion actions.
+
+All test commands below are literal `bun test`, run in ${BACKROOM_ROOT}/workspaces/dryrun-bakery with approved escalation for existing disposable fictional .runtime fixtures and ephemeral loopback listeners.
+
+## Before edits
+Command: bun test; exit 0.
+```text
+bun test v1.3.14 (0d9b296a)
+
+runtime.test.ts:
+Runtime fake-file probe: missing file refuses startup; health=200, order=201; SIGTERM/restart receipt=200, duplicate=200, rows=1, private list=401 without auth
+(pass) runtime secret file config precedes readiness; HTTP restart retains saved orders [174.82ms]
+Runtime file setting unset/empty with fictional environment password: startup rejected before listener
+(pass) environment password cannot bypass the mandatory runtime file setting [39.83ms]
+
+app.test.ts:
+(pass) trusted prices, own receipt, private owner list and durable duplicate protection [22.56ms]
+(pass) server enforces exact prior-evening cut-off and seven-calendar-day/open-day window [16.94ms]
+(pass) capacity uses menu units; last-unit race and retries cannot oversell [21.57ms]
+(pass) rejects malformed baskets and customer fields; storage failure gives no confirmation [15.64ms]
+(pass) every product has allergens and shared-kitchen warning remains visible in markup [13.18ms]
+(pass) spec routes, private printable list, WAL, rollback and static allergen lines [19.74ms]
+(pass) stale page, all closed weekdays and missing fields are rejected [20.55ms]
+Cross-process race: 201,409; reopened database: 2 rows, 40 units
+(pass) independent processes serialize the last unit and preserve rows after exit [95.96ms]
+(pass) fully sold-out week offers no capacity and never creates another order [24.17ms]
+Currency migration: paise 18000 -> INR 180; unmarked INR 180 unchanged; 2 rows/items after second startup; legacy duplicate=200
+(pass) legacy paise and unmarked rupee orders migrate once without changing value or identity [31.71ms]
+(pass) ambiguous legacy currency blocks startup and rolls back every order change [31.50ms]
+(pass) approved tomorrow-through-day-seven horizon and SQLite readiness [18.19ms]
+(pass) readiness rolls back its write, rejects unavailable tables/writes and blocks startup [22.20ms]
+
+ui.test.ts:
+UI script: unchanged retry 201,200 with same key; quantity edit hides receipt and saves 201 with new key
+(pass) quantity events reset saved confirmation/key; unchanged retry retains its key [5.34ms]
+UI script: fully sold out -> disabled confirm, explicit message, no submission
+(pass) initial sold-out UI disables confirmation and shows an explicit unavailable message [3.94ms]
+(pass) basket capacity recovery clears unavailable state [4.35ms]
+Heading matches saved owner-list reference; unrelated name/email absent
+(pass) saved heading uses the exact owner-list reference and excludes unrelated customer data [6.12ms]
+(pass) failed save shows no confirmation heading or reference [3.03ms]
+
+ 20 pass
+ 0 fail
+ 166 expect() calls
+Ran 20 tests across 3 files. [617.00ms]
+
+```
+
+## First after-edit run (retained failure)
+Command: bun test; exit 1.
+```text
+bun test v1.3.14 (0d9b296a)
+
+runtime.test.ts:
+Runtime fake-file probe: missing file refuses startup; health=200, order=201; SIGTERM/restart receipt=200, duplicate=200, rows=1, private list=401 without auth
+(pass) runtime secret file config precedes readiness; HTTP restart retains saved orders [177.91ms]
+Runtime file setting unset/empty with fictional environment password: startup rejected before listener
+(pass) environment password cannot bypass the mandatory runtime file setting [40.64ms]
+
+app.test.ts:
+(pass) trusted prices, own receipt, private owner list and durable duplicate protection [22.00ms]
+(pass) server enforces exact prior-evening cut-off and seven-calendar-day/open-day window [16.12ms]
+(pass) capacity uses menu units; last-unit race and retries cannot oversell [23.56ms]
+(pass) rejects malformed baskets and customer fields; storage failure gives no confirmation [16.14ms]
+(pass) every product has allergens and shared-kitchen warning remains visible in markup [12.96ms]
+(pass) spec routes, private printable list, WAL, rollback and static allergen lines [19.18ms]
+(pass) stale page, all closed weekdays and missing fields are rejected [23.56ms]
+Cross-process race: 201,409; reopened database: 2 rows, 40 units
+(pass) independent processes serialize the last unit and preserve rows after exit [61.12ms]
+(pass) fully sold-out week offers no capacity and never creates another order [23.10ms]
+Currency migration: paise 18000 -> INR 180; unmarked INR 180 unchanged; 2 rows/items after second startup; legacy duplicate=200
+(pass) legacy paise and unmarked rupee orders migrate once without changing value or identity [32.80ms]
+(pass) ambiguous legacy currency blocks startup and rolls back every order change [25.72ms]
+(pass) approved tomorrow-through-day-seven horizon and SQLite readiness [19.45ms]
+(pass) readiness rolls back its write, rejects unavailable tables/writes and blocks startup [26.92ms]
+
+ui.test.ts:
+UI script: unchanged retry 201,200 with same key; quantity edit hides receipt and saves 201 with new key
+(pass) quantity events reset saved confirmation/key; unchanged retry retains its key [7.90ms]
+UI script: fully sold out -> disabled confirm, explicit message, no submission
+(pass) initial sold-out UI disables confirmation and shows an explicit unavailable message [3.96ms]
+(pass) basket capacity recovery clears unavailable state [3.88ms]
+59 |  try {
+60 |   await app.fetch(new Request("http://localhost/order",{method:"POST",body:JSON.stringify({name:"Fictional Unrelated",email:"unrelated@example.test",date:"2026-11-06",items:[{productId:"cookie-box",quantity:1}],idempotencyKey:crypto.randomUUID()})}));
+61 |   const h=await harness(app);h.nodes.get("seed-loaf").value="1";await h.nodes.get("seed-loaf").fire("input",true);await h.nodes.get("order").fire("submit");expect(h.statuses).toEqual([201]);
+62 |   const rows=(await (await app.fetch(new Request("http://localhost/api/owner/orders",{headers:{authorization:"Basic "+Buffer.from("owner:"+password).toString("base64")}}))).json()).orders;
+63 |   const saved=rows.find((r:any)=>r.name==="Fictional UI");expect(saved).toBeDefined();expect(h.nodes.get("confirmation-heading").textContent).toBe("Pickup confirmed — "+saved.reference);expect(h.nodes.get("receipt").hidden).toBe(false);
+64 |   const text=h.nodes.get("confirmation").children.map((n:any)=>n.textContent).join(" ");expect(text).toContain(saved.date+" · "+saved.window+" · "+saved.timezone);expect(saved.date).toBe("2026-11-06");expect(saved.window).toBe("09:00–11:00");expect(saved.timezone).toBe("Asia/Kolkata");expect(Number.isInteger(saved.total)).toBe(true);expect(saved.total).toBe(180);expect(text).toContain("Total ₹180.00 · pay at the counter");expect(text).toContain("pay at the counter");expect(text).not.toContain("Fictional Unrelated");expect(text).not.toContain("unrelated@example.test");
+
+error: expect(received).toBe(expected)
+
+Expected: "09:00–11:00"
+Received: "Morning 09:00–11:00"
+
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/ui.test.ts:64:222)
+(fail) saved heading uses the exact owner-list reference and excludes unrelated customer data [5.19ms]
+(pass) failed save shows no confirmation heading or reference [2.96ms]
+
+ 19 pass
+ 1 fail
+ 166 expect() calls
+Ran 20 tests across 3 files. [593.00ms]
+
+```
+
+## Final run
+Command: bun test; exit 0.
+```text
+bun test v1.3.14 (0d9b296a)
+
+runtime.test.ts:
+Runtime fake-file probe: missing file refuses startup; health=200, order=201; SIGTERM/restart receipt=200, duplicate=200, rows=1, private list=401 without auth
+(pass) runtime secret file config precedes readiness; HTTP restart retains saved orders [166.69ms]
+Runtime file setting unset/empty with fictional environment password: startup rejected before listener
+(pass) environment password cannot bypass the mandatory runtime file setting [40.38ms]
+
+app.test.ts:
+(pass) trusted prices, own receipt, private owner list and durable duplicate protection [26.30ms]
+(pass) server enforces exact prior-evening cut-off and seven-calendar-day/open-day window [16.09ms]
+(pass) capacity uses menu units; last-unit race and retries cannot oversell [26.55ms]
+(pass) rejects malformed baskets and customer fields; storage failure gives no confirmation [13.30ms]
+(pass) every product has allergens and shared-kitchen warning remains visible in markup [12.86ms]
+(pass) spec routes, private printable list, WAL, rollback and static allergen lines [19.69ms]
+(pass) stale page, all closed weekdays and missing fields are rejected [17.92ms]
+Cross-process race: 201,409; reopened database: 2 rows, 40 units
+(pass) independent processes serialize the last unit and preserve rows after exit [67.45ms]
+(pass) fully sold-out week offers no capacity and never creates another order [27.38ms]
+Currency migration: paise 18000 -> INR 180; unmarked INR 180 unchanged; 2 rows/items after second startup; legacy duplicate=200
+(pass) legacy paise and unmarked rupee orders migrate once without changing value or identity [37.46ms]
+(pass) ambiguous legacy currency blocks startup and rolls back every order change [25.61ms]
+(pass) approved tomorrow-through-day-seven horizon and SQLite readiness [16.78ms]
+(pass) readiness rolls back its write, rejects unavailable tables/writes and blocks startup [26.26ms]
+
+ui.test.ts:
+(pass) quantity events reset saved confirmation/key; unchanged retry retains its key [7.91ms]
+UI script: unchanged retry 201,200 with same key; quantity edit hides receipt and saves 201 with new key
+UI script: fully sold out -> disabled confirm, explicit message, no submission
+(pass) initial sold-out UI disables confirmation and shows an explicit unavailable message [4.20ms]
+(pass) basket capacity recovery clears unavailable state [4.22ms]
+Heading matches saved owner-list reference; unrelated name/email absent
+(pass) saved heading uses the exact owner-list reference and excludes unrelated customer data [5.04ms]
+(pass) failed save shows no confirmation heading or reference [2.74ms]
+
+ 20 pass
+ 0 fail
+ 173 expect() calls
+Ran 20 tests across 3 files. [617.00ms]
+
+```
+
+## Initial checkpoint/source inspection
+Commands:
+```sh
+git rev-parse HEAD
+git status --porcelain=v1
+rg -n 'heading|reference|confirmation|total|window|timezone' ui.test.ts
+rg -n 'confirmation-heading' page.ts
+```
+Actual output, exit 0. No porcelain status entries precede the source matches:
+```text
+error: Can't create the symlink for multishells at "${HOME}/.local/state/fnm_multishells/32_1793940401154". Maybe there are some issues with permissions for the directory? Read-only file system (os error 30)
+2825b61fa63f42554f6c4f132ed1c0059b1b2c3b
+21: for(const [id,tag] of [["menu","div"],["pickup","select"],["order","form"],["message","p"],["submit","button"],["total","p"],["receipt","section"],["confirmation","div"],["confirmation-heading","h2"],["print","button"],["name","input"],["email","input"]]){const n=new Element(tag);n.id=id}
+32:test("quantity events reset saved confirmation/key; unchanged retry retains its key",async()=>{
+40:test("initial sold-out UI disables confirmation and shows an explicit unavailable message",async()=>{
+57:test("saved heading uses the exact owner-list reference and excludes unrelated customer data",async()=>{
+63:  const saved=rows.find((r:any)=>r.name==="Fictional UI");expect(saved).toBeDefined();expect(h.nodes.get("confirmation-heading").textContent).toBe("Order confirmed: "+saved.reference);expect(h.nodes.get("receipt").hidden).toBe(false);
+64:  const text=h.nodes.get("confirmation").children.map((n:any)=>n.textContent).join(" ");expect(text).toContain("pay at the counter");expect(text).not.toContain("Fictional Unrelated");expect(text).not.toContain("unrelated@example.test");
+65:  console.log("Heading matches saved owner-list reference; unrelated name/email absent");
+68:test("failed save shows no confirmation heading or reference",async()=>{
+69: const app=makeApp();const h=await harness(app);app.close();h.nodes.get("seed-loaf").value="1";await h.nodes.get("seed-loaf").fire("input",true);await h.nodes.get("order").fire("submit");expect(h.statuses).toEqual([500]);expect(h.nodes.get("confirmation-heading").textContent).toBe("");expect(h.nodes.get("receipt").hidden).toBe(true);expect(h.nodes.get("confirmation").children.length).toBe(0);expect(h.nodes.get("message").textContent).toContain("No confirmation");
+3:<body><small>FICTIONAL SAMPLE · NO PAYMENT COLLECTED</small><h1>Morrowcrumb Bakery</h1><p>Good bread, a little planning. Choose your treats and collect at the bakery.</p><h2>Our menu</h2><div class="menu" id="menu"><article><h3>Seed loaf · ₹180</h3><p>Allergens: Wheat, sesame</p></article><article><h3>Cinnamon knot · ₹90</h3><p>Allergens: Wheat, milk, egg</p></article><article><h3>Cocoa cookie box · ₹240</h3><p>Allergens: Wheat, milk, egg, soy</p></article></div><p class="warning">Our kitchen also handles nuts. We cannot promise allergy-safe food.</p><h2>Your pre-order</h2><p>Pickup Thursday–Sunday · Asia/Kolkata. Orders close at 20:00 the evening before pickup. A cookie box counts as one menu unit. Pay at collection.</p><form id="order"><label for="name">Name</label><input id="name" name="name" required maxlength="80" autocomplete="off"><label for="email">Email</label><input id="email" name="email" type="email" required maxlength="120" autocomplete="off"><label for="pickup">Pickup date and window (Asia/Kolkata)</label><select id="pickup" required></select><p id="total">Total ₹0.00 · pay at the counter</p><button id="submit">Confirm pre-order</button><p role="status" id="message" aria-live="polite"></p></form><section class="receipt" id="receipt" hidden><h2 id="confirmation-heading"></h2><div id="confirmation"></div><button id="print" type="button">Print confirmation</button></section><p>Orders are saved locally. Only this receipt is shared with you. For changes, contact the bakery; orders are never silently moved.</p>
+7:function resetSubmission(){if(completed){key=crypto.randomUUID();completed=false;document.querySelector('#receipt').hidden=true;document.querySelector('#confirmation-heading').textContent='';message.textContent=''}}
+12:form.addEventListener('submit',async event=>{event.preventDefault();if(!catalog||button.disabled)return;pending=true;button.disabled=true;message.textContent='Saving your order…';const [date,session]=pickup.value.split('|');const items=catalog.products.map(p=>({productId:p.id,quantity:Number(document.getElementById(p.id).value)})).filter(p=>p.quantity>0);try{const r=await fetch('/order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:form.elements.name.value,email:form.elements.email.value,date,session,items,idempotencyKey:key})});const data=await r.json();if(!r.ok){if(data.available){catalog.available=data.available;updateAvailability()}throw new Error(data.error)};const o=data.order;document.querySelector('#confirmation-heading').textContent='Order confirmed: '+o.reference;const lines=['Reference '+o.reference,o.date+' · '+o.window+' · '+o.timezone,...o.items.map(i=>i.quantity+' × '+i.name),'Total '+money(o.total)+' · pay at the counter'];const confirmation=document.querySelector('#confirmation');confirmation.replaceChildren();for(const line of lines){const p=document.createElement('p');p.textContent=line;confirmation.append(p)}const a=document.createElement('a');a.href='/api/receipt/'+data.receiptToken;a.textContent='Save your private receipt link';confirmation.append(a);document.querySelector('#receipt').hidden=false;message.textContent='Saved. Your pre-order is confirmed.';completed=true;}catch(e){message.textContent=e.message||'Could not confirm. Retry using the same form before placing another order.'}finally{pending=false;updateAvailability()}});
+
+```
+
+## Final scope verification
+Commands:
+```sh
+git diff --check
+git status --porcelain=v1
+git diff --stat
+git diff -- page.ts ui.test.ts
+git diff --exit-code -- build-report.md
+git rev-parse HEAD
+```
+Actual output, exit 0; diff check and tracked-report diff silent:
+```diff
+error: Can't create the symlink for multishells at "${HOME}/.local/state/fnm_multishells/32_1793940460272". Maybe there are some issues with permissions for the directory? Read-only file system (os error 30)
+ M page.ts
+ M ui.test.ts
+ page.ts    | 2 +-
+ ui.test.ts | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+diff --git a/page.ts b/page.ts
+index 2de4ba6..17356b9 100644
+--- a/page.ts
++++ b/page.ts
+@@ -9,7 +9,7 @@ function updateAvailability(){const units=catalog.products.reduce((n,p)=>n+Numbe
+ function total(){const n=catalog.products.reduce((s,p)=>s+p.price*Number(document.getElementById(p.id).value),0);document.querySelector('#total').textContent='Total '+money(n)+' · pay at the counter'}
+ async function load(){const response=await fetch('/api/catalog');if(!response.ok)throw new Error('Menu unavailable');catalog=await response.json();menu.replaceChildren();for(const p of catalog.products){const card=document.createElement('div');card.className='card';const title=document.createElement('h3');title.textContent=p.name;const copy=document.createElement('p');copy.textContent=money(p.price)+' · Allergens: '+p.allergens;const label=document.createElement('label');label.htmlFor=p.id;label.textContent='Quantity — '+p.name;const input=document.createElement('input');Object.assign(input,{id:p.id,type:'number',min:'0',max:'40',value:'0',name:p.id});input.setAttribute('form','order');input.required=true;input.addEventListener('input',()=>{resetSubmission();total();updateAvailability()});card.append(title,copy,label,input);menu.append(card)}updateAvailability();}
+ form.addEventListener('input',resetSubmission);
+-form.addEventListener('submit',async event=>{event.preventDefault();if(!catalog||button.disabled)return;pending=true;button.disabled=true;message.textContent='Saving your order…';const [date,session]=pickup.value.split('|');const items=catalog.products.map(p=>({productId:p.id,quantity:Number(document.getElementById(p.id).value)})).filter(p=>p.quantity>0);try{const r=await fetch('/order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:form.elements.name.value,email:form.elements.email.value,date,session,items,idempotencyKey:key})});const data=await r.json();if(!r.ok){if(data.available){catalog.available=data.available;updateAvailability()}throw new Error(data.error)};const o=data.order;document.querySelector('#confirmation-heading').textContent='Order confirmed: '+o.reference;const lines=['Reference '+o.reference,o.date+' · '+o.window+' · '+o.timezone,...o.items.map(i=>i.quantity+' × '+i.name),'Total '+money(o.total)+' · pay at the counter'];const confirmation=document.querySelector('#confirmation');confirmation.replaceChildren();for(const line of lines){const p=document.createElement('p');p.textContent=line;confirmation.append(p)}const a=document.createElement('a');a.href='/api/receipt/'+data.receiptToken;a.textContent='Save your private receipt link';confirmation.append(a);document.querySelector('#receipt').hidden=false;message.textContent='Saved. Your pre-order is confirmed.';completed=true;}catch(e){message.textContent=e.message||'Could not confirm. Retry using the same form before placing another order.'}finally{pending=false;updateAvailability()}});
++form.addEventListener('submit',async event=>{event.preventDefault();if(!catalog||button.disabled)return;pending=true;button.disabled=true;message.textContent='Saving your order…';const [date,session]=pickup.value.split('|');const items=catalog.products.map(p=>({productId:p.id,quantity:Number(document.getElementById(p.id).value)})).filter(p=>p.quantity>0);try{const r=await fetch('/order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:form.elements.name.value,email:form.elements.email.value,date,session,items,idempotencyKey:key})});const data=await r.json();if(!r.ok){if(data.available){catalog.available=data.available;updateAvailability()}throw new Error(data.error)};const o=data.order;document.querySelector('#confirmation-heading').textContent='Pickup confirmed — '+o.reference;const lines=['Reference '+o.reference,o.date+' · '+o.window+' · '+o.timezone,...o.items.map(i=>i.quantity+' × '+i.name),'Total '+money(o.total)+' · pay at the counter'];const confirmation=document.querySelector('#confirmation');confirmation.replaceChildren();for(const line of lines){const p=document.createElement('p');p.textContent=line;confirmation.append(p)}const a=document.createElement('a');a.href='/api/receipt/'+data.receiptToken;a.textContent='Save your private receipt link';confirmation.append(a);document.querySelector('#receipt').hidden=false;message.textContent='Saved. Your pre-order is confirmed.';completed=true;}catch(e){message.textContent=e.message||'Could not confirm. Retry using the same form before placing another order.'}finally{pending=false;updateAvailability()}});
+ document.querySelector('#print').onclick=()=>print();load().catch(()=>{message.textContent='Menu could not load. Please try again.';button.disabled=true});
+ </script></body></html>`;
+ 
+diff --git a/ui.test.ts b/ui.test.ts
+index fc04eaa..23fff55 100644
+--- a/ui.test.ts
++++ b/ui.test.ts
+@@ -60,8 +60,8 @@ test("saved heading uses the exact owner-list reference and excludes unrelated c
+   await app.fetch(new Request("http://localhost/order",{method:"POST",body:JSON.stringify({name:"Fictional Unrelated",email:"unrelated@example.test",date:"2026-11-06",items:[{productId:"cookie-box",quantity:1}],idempotencyKey:crypto.randomUUID()})}));
+   const h=await harness(app);h.nodes.get("seed-loaf").value="1";await h.nodes.get("seed-loaf").fire("input",true);await h.nodes.get("order").fire("submit");expect(h.statuses).toEqual([201]);
+   const rows=(await (await app.fetch(new Request("http://localhost/api/owner/orders",{headers:{authorization:"Basic "+Buffer.from("owner:"+password).toString("base64")}}))).json()).orders;
+-  const saved=rows.find((r:any)=>r.name==="Fictional UI");expect(saved).toBeDefined();expect(h.nodes.get("confirmation-heading").textContent).toBe("Order confirmed: "+saved.reference);expect(h.nodes.get("receipt").hidden).toBe(false);
+-  const text=h.nodes.get("confirmation").children.map((n:any)=>n.textContent).join(" ");expect(text).toContain("pay at the counter");expect(text).not.toContain("Fictional Unrelated");expect(text).not.toContain("unrelated@example.test");
++  const saved=rows.find((r:any)=>r.name==="Fictional UI");expect(saved).toBeDefined();expect(h.nodes.get("confirmation-heading").textContent).toBe("Pickup confirmed — "+saved.reference);expect(h.nodes.get("receipt").hidden).toBe(false);
++  const text=h.nodes.get("confirmation").children.map((n:any)=>n.textContent).join(" ");expect(text).toContain(saved.date+" · "+saved.window+" · "+saved.timezone);expect(saved.date).toBe("2026-11-06");expect(saved.window).toBe("Morning 09:00–11:00");expect(saved.timezone).toBe("Asia/Kolkata");expect(Number.isInteger(saved.total)).toBe(true);expect(saved.total).toBe(180);expect(text).toContain("Total ₹180.00 · pay at the counter");expect(text).toContain("pay at the counter");expect(text).not.toContain("Fictional Unrelated");expect(text).not.toContain("unrelated@example.test");
+   console.log("Heading matches saved owner-list reference; unrelated name/email absent");
+  }finally{app.close()}
+ });
+2825b61fa63f42554f6c4f132ed1c0059b1b2c3b
+
+```
+
+Reports remain external to the product. Protocol ../build-report.md is informational; actual new report is ../reports/ticket-3-heading/build-report.md relative to builder working directory. Await owner checkpoint and independent review.
+
+
+
+Static transition review found a backward-fix handoff mismatch: assignment requested build-ready PR.md, while the completed-Learn handler accepts fix <branch> <SHA>. Corrected the assignment to request a local fix branch/commit and that exact accepted protocol. Also defer fixAuthorized until preparation succeeds, allow a prepared scoped builder identity to take the handoff, and bind returned results to that verified identity. Regression exercises failed preparation/retry, scoped identity routing, old-builder rejection and matching fix receipt. Harness prepares a separate scoped old-project builder only after the exact SAMPLE promotion/fix decision.
+
+`bun test desk/tests` (includes concurrent final-review tests present in the workspace):
+```text
+bun test v1.3.14 (0d9b296a)
+
+desk/tests/core.test.ts:
+(pass) approval gate > changed draft text is refused at delivery [4.46ms]
+(pass) approval gate > swapped attachment bytes are refused [1.88ms]
+(pass) approval gate > wrong room is rejected and logged [1.18ms]
+(pass) approval gate > agent-sent approval is rejected even with owner id [1.02ms]
+(pass) approval gate > non-owner human approval is rejected [1.10ms]
+(pass) approval gate > bare yes is rejected [0.82ms]
+(pass) approval gate > malformed commands, extra whitespace and trailing newline are rejected [1.39ms]
+(pass) approval gate > unknown code is rejected [0.85ms]
+(pass) approval gate > duplicate event is ignored [1.59ms]
+(pass) approval gate > restart after confirmed send never repeats, including a new event [40.87ms]
+(pass) approval gate > uncertain send after crash is not resent; fresh owner approval is required [48.03ms]
+(pass) approval gate > transport failure leaves uncertainty and never automatically retries [1.18ms]
+(pass) approval gate > send intent exists before transport is invoked [0.84ms]
+(pass) approval gate > superseded code cannot be approved [0.85ms]
+(pass) approval gate > same content has unique codes and separate threads remain active [0.99ms]
+(pass) approval gate > wrong-project code cannot be released from another studio [0.62ms]
+(pass) approval gate > draft content is deeply frozen and SQLite rejects content updates [0.61ms]
+(pass) approval gate > mutating the caller's original input cannot change frozen content [0.81ms]
+(pass) approval gate > delivery uses only the bound destination [0.76ms]
+(pass) approval gate > concurrent approvals cannot send the same draft twice [0.78ms]
+(pass) approval gate > a revision while preparing a send blocks the superseded draft [0.92ms]
+(pass) deploy gate and fixed client lines > three-argument recordReview works with one project and ambiguous project scope is rejected [0.84ms]
+(pass) deploy gate and fixed client lines > deploy of an unreviewed commit is rejected [0.47ms]
+(pass) deploy gate and fixed client lines > only an exact reviewed SHA in the same project can deploy [0.77ms]
+(pass) deploy gate and fixed client lines > latest failing review revokes an earlier pass and review ids are immutable [0.55ms]
+(pass) deploy gate and fixed client lines > ambiguous deploy failure cannot count as a confirmed deployment [0.69ms]
+(pass) deploy gate and fixed client lines > free text cannot enter fixed lines [0.76ms]
+(pass) deploy gate and fixed client lines > fixed template sends only numeric interpolation to the bound client room and deduplicates [0.56ms]
+(pass) deploy gate and fixed client lines > fixed line snapshots the validated number before interpolation [0.55ms]
+(pass) stage state machine > question changes no stage, version or approval [0.96ms]
+(pass) stage state machine > suggestion creates a new version and clears prior approval [0.53ms]
+(pass) stage state machine > approval applies only to the identified current version and artifact [0.61ms]
+(pass) stage state machine > brief closes only after owner then client approves [0.69ms]
+(pass) stage state machine > architecture closes only by owner [1.08ms]
+(pass) stage state machine > build closes only by owner for a deployed commit [0.87ms]
+(pass) stage state machine > client review closes only by client [1.73ms]
+(pass) stage state machine > video needs owner then client, both for the same file hash [1.02ms]
+(pass) stage state machine > learn closes only by owner [1.06ms]
+(pass) stage state machine > scope revision reopens affected later approvals and invalidates their versions [1.05ms]
+(pass) stage state machine > scope revision can identify only the affected later stages [1.06ms]
+(pass) stage state machine > unaffected later approvals remain effective after a revised stage closes [0.99ms]
+(pass) stage state machine > reopened later stages reject old approvals after the revised brief closes [1.11ms]
+(pass) stage state machine > future stage publication and non-hash video artifacts are rejected [0.86ms]
+(pass) stage state machine > app acceptance cannot bind to an undeployed or different commit [0.84ms]
+(pass) stage state machine > stage approval rejects agents, unknown clients and wrong rooms [0.54ms]
+(pass) stage state machine > workflow and exact artifact approvals survive restart [59.38ms]
+
+desk/tests/switch.test.ts:
+(pass) verified identity fails closed; display names and platform notices cannot become humans [3.90ms]
+(pass) one client ticket, frozen lead draft, agent rejection, owner release, client closes only Stage 1 [5.74ms]
+(pass) new client message invalidates the old code before lead replies and stale lead drafts are refused [3.23ms]
+(pass) simulation never sends a ticket line or accepts a human release [2.16ms]
+(pass) Switch transport hands exact bytes/text to the API; gate catches a changed cached file [2.08ms]
+
+desk/tests/stages.test.ts:
+(pass) role and room checks reject forged lead output, wrong-room owner, unknown sender and future protocols [4.46ms]
+(pass) architecture question keeps version; change revokes code; stale/wrong-room/agent approvals cannot close it [2.68ms]
+(pass) changed document cannot be approved or mutate workflow [1.96ms]
+(pass) late architecture/spec and old reviewer cannot overwrite current build [1.92ms]
+(pass) review failure routes blocker; pass is bound to current round and SHA without deploying [1.93ms]
+(pass) build approval checks actual current deployment before changing approval state [1.71ms]
+(pass) deploy rejects agent, wrong stage, wrong candidate and missing review [1.73ms]
+(pass) client question is unchanged; revision clears later approvals, candidate/review and active send [3.24ms]
+(pass) client acceptance requires delivered current version, exact hash and current deployed SHA [2.20ms]
+(pass) changed video bytes cannot gain owner approval [1.86ms]
+(pass) duplicate event does not publish twice; oversized architecture remains document-only in room [1.62ms]
+(pass) document-reference protocol loads artifact but does not echo its full contents [1.58ms]
+(pass) owner approval preserves client change text in document-based spec handoff [3.27ms]
+(pass) pending lesson requires exact version/hash and separate owner fix authorization [3.10ms]
+(pass) explicit early-learning order keeps video approvals open and applies only the recorded promotion afterwards [3.50ms]
+
+desk/tests/studio-ux.test.ts:
+(pass) internal notes never reach frozen content, brief document, or delivery bytes [2.75ms]
+(pass) leak guard blocks lead without creating a code [1.83ms]
+(pass) leak guard blocks desk without creating a code [1.64ms]
+(pass) leak guard blocks builder without creating a code [1.64ms]
+(pass) leak guard blocks reviewer without creating a code [1.64ms]
+(pass) leak guard blocks agent without creating a code [1.51ms]
+(pass) leak guard blocks Claude without creating a code [1.53ms]
+(pass) leak guard blocks Codex without creating a code [1.76ms]
+(pass) leak guard blocks GPT without creating a code [1.53ms]
+(pass) leak guard blocks AI without creating a code [1.53ms]
+(pass) leak guard blocks Switch without creating a code [1.62ms]
+(pass) leak guard blocks awaiting-owner without creating a code [1.52ms]
+(pass) leak guard blocks frozen without creating a code [1.57ms]
+(pass) leak guard blocks draft code without creating a code [1.66ms]
+(pass) leak guard blocks owner approval without creating a code [1.60ms]
+(pass) leak guard blocks untrusted without creating a code [1.65ms]
+(pass) leak guard blocks Stage [0-9] without creating a code [1.59ms]
+(pass) leak guard blocks --- protocol marker without creating a code [1.87ms]
+(pass) leak guard blocks @ mention without creating a code [1.65ms]
+(pass) labelled Hii then labelled Wt ticket stays one work conversation, one client line, unchanged brief version, superseded code [2.68ms]
+(pass) a sent reply followed by client approve never records brief acceptance [2.32ms]
+(pass) Switch session startup notice leaves the pending draft and retry budget unchanged [1.86ms]
+(pass) malformed protocol creates no code and asks lead to retry at most once [3.58ms]
+(pass) fake protocol and client command cannot create drafts or emit a raw mention [2.86ms]
+(pass) long card stays under 900 characters; thread gets the full exact release text before a code [3.85ms]
+(pass) agents cannot use status or release from a thread; owner status uses at most 8 lines [2.92ms]
+(pass) owner change in ticket thread immediately supersedes the code and routes only threaded machine work [2.18ms]
+(pass) empty client text routes AI involvement to Varun personally and creates no code [1.81ms]
+(pass) startup migration supersedes legacy open codes once and preserves new safe codes on reload [1.69ms]
+(pass) failure to publish full exact text creates no release code [1.82ms]
+(pass) clipped reply publishes exact studio Markdown bytes and numbered text before freezing [4.71ms]
+(pass) attachment failure uses lossless numbered studio fallback; fallback failure creates no code [3.21ms]
+(pass) plain owner message anywhere in studio supersedes code; non-owner and commands do not become changes [2.39ms]
+
+desk/tests/client-intake.test.ts:
+(pass) labels match only whole words at the start, with optional colon and mixed case [0.13ms]
+(pass) Hii, a question, and an unlabelled file create no ticket or client line, and keep every approval unchanged [2.72ms]
+(pass) request: opens one work ticket; a labelled follow-up joins it [1.93ms]
+(pass) feature: opens one work ticket; a labelled follow-up joins it [2.00ms]
+(pass) bug: opens one work ticket; a labelled follow-up joins it [1.70ms]
+(pass) question has its own reply code and preserves the pending work code, version, stage and approvals [2.93ms]
+(pass) question labels and embedded commands grant no approval or release [1.90ms]
+(pass) ticket conversion is verified-owner studio only and once per message [2.16ms]
+(pass) intro is owner-only, exact fixed text, once per project even with a fresh event id [1.68ms]
+(pass) lead can suggest a ticket in internal notes without creating one; status separates questions and tickets [2.01ms]
+
+desk/tests/real-loop.test.ts:
+(pass) isolated real-mode dry run closes Stage 1 and produces a Stage 2 card without live services [5.46ms]
+(pass) real stages 2–6 have short command cards, explicit deploy/send gates and identified lesson approval [9.92ms]
+(pass) real future-stage questions preserve the waiting ticket release code and work approval [4.46ms]
+(pass) real live builder handoff accepts a protocol first line followed by evidence [3.11ms]
+(pass) real repeated build tasks use distinct Switch document names [3.09ms]
+(pass) real labelled feature ending in a question mark still reopens work; plain chat does not [4.60ms]
+(pass) real wrong-room and agent approvals cannot close architecture; changed document is rejected [2.91ms]
+(pass) real owner question cannot accidentally create a new architecture version [2.93ms]
+(pass) real owner conversion at a later stage clears stale candidate, review and outgoing state [4.10ms]
+(pass) owner build questions preserve candidate, review and pending client release [3.83ms]
+(pass) real dryrun card addresses its separate desk identity and its exact command works [3.20ms]
+(pass) independent assignment distinguishes immutable source from disposable test fixtures [3.71ms]
+(pass) owner can request a fresh review of unchanged SHA after a failed verification [3.50ms]
+(pass) bounded build assignment authorizes local product commits while protecting the outer repo [3.11ms]
+
+desk/tests/final-review.test.ts:
+(pass) review 1: labelled work reopens scope and enters intake at every later stage, including completed Learn [25.53ms]
+
+ 124 pass
+ 0 fail
+ 516 expect() calls
+Ran 124 tests across 7 files. [477.00ms]
+```
+
+`python3 -m py_compile scripts/dryrun/*.py scripts/real_setup.py` exited0 with no output. Real desk restart remains deferred to end; Ticket #4 was still awaiting-owner at latest read.
+
+## Resume checkpoint: concurrent security binding update blocked legacy review
+
+Independent review round4 returned pass for e401b45c84340f50327c6be88567cb71bb442266. During this live run, another workspace review lane added DocumentSnapshots and review-source/generation binding guards to desk/src; those changes were preserved. The required dryrun restart loaded them, and the exact SAMPLE redeploy command failed closed before any new deploy intent: legacy dryrun snapshot count0 and round4 reviewer record had no sources field. Existing live app remains at2825b61. The polling helper timed out rather than inferring deployment. No gate or database record was rewritten.
+
+Scripted SAMPLE client reconfirmed unchanged heading-only scope through normal labelled intake to obtain new brief/architecture/spec snapshots and a fresh bound review. Existing product commit e401b45 remains clean; no product change is needed. This extra approval loop is SAMPLE native-account activity, not Varun or real-client approval.
+
+Round4 report, preserved as evidence of its original scope rather than current deploy eligibility:
+
+# Independent review 4
+
+review 4 e401b45c84340f50327c6be88567cb71bb442266 pass
+
+No blocking findings in the requested heading revision. Candidate HEAD and the clean tracked/untracked working tree were verified before testing and after testing. Only page.ts and ui.test.ts changed in this commit; tracked build-report.md is unchanged. No product edits, commits, deployment, promotion or client delivery were performed.
+
+## Sources and scope
+
+Read assignment <redacted-id> and only its named room documents: brief <redacted-id>, architecture <redacted-id>, spec <redacted-id> and checklist <redacted-id>. Independently read the exact candidate source, tests and deployment configuration under ${BACKROOM_ROOT}/workspaces/dryrun-bakery. No room history, builder conversation or builder reports were read. docs/PLAN.md is absent within the authorized product root; no other project was searched. The architecture document labels itself a proposal with approval outstanding; this review does not turn that label into approval.
+
+## Review evidence
+
+- page.ts:12 changes only the confirmation prefix to “Pickup confirmed — ” and appends the same response order.reference through textContent. It preserves reference generation, escaping, lookup, pickup lines and total rendering.
+- ui.test.ts:56–66 executes the actual inline script against the app, finds the saved order through authenticated owner access, compares the complete heading with its exact saved reference, and verifies date, morning window, Asia/Kolkata, integer total 180, displayed INR 180 and exclusion of unrelated customer details. The error-path test prevents confirmation after failed storage.
+- app.ts:5–21 and policy.ts preserve integer-INR catalog prices, tomorrow through day seven, Thu–Sun, morning 09:00–11:00, the exact previous-day 20:00 cutoff and 40 menu units. Forged prices/totals are ignored; quantities, unknown products, duplicate product IDs, fields and aggregate quantity are validated before insertion.
+- app.ts:23–108 and 143–149 use WAL, synchronous FULL, a unique durable submission key and immediate transactions covering capacity, orders and normalized items. Accepted responses follow transaction completion. Tests reproduce the last-unit race in independent processes (201/409; 40 units total), retries, rollback, database reopen and HTTP process restart.
+- app.ts:113–129 guards both owner routes with constant-time credential comparison; private responses disable caching. Random 192-bit receipt capabilities return order details without customer name/email, and nonexistent capabilities return 404. Parameterized SQL and owner HTML escaping preserve injection boundaries. No command execution path from customer input was found.
+- server.ts:4–14 requires a runtime credential file before opening its listener. Missing, empty and unreadable files reject startup; an environment password cannot replace the file. createApp requires at least 20 characters. No credential value is included in this report. /health probes table access and a rolled-back write; unavailable storage produces 503 and can block startup.
+- Dockerfile copies only source files, runs as bun, exposes 3210 and retains /data. backroom.deploy.json declares persistent /data, DB_PATH and a /run/secrets owner credential target. The default container listener 0.0.0.0 is compatible with the approved Docker host publication on 127.0.0.1. It is not treated as a direct-host listener defect.
+- page.ts:3,10 retains all product allergen lines, shared-kitchen warning, payment at collection and on-screen confirmation. No added features, dependencies, schema changes or migrations occur in this revision.
+
+## Limits and gaps
+
+These are limits of the evidence, not blockers introduced by the heading change:
+
+- No Docker/container operations were authorized or run. Actual host publication restricted to 127.0.0.1, absence of host networking, read-only secret mount semantics, adapter behavior and data survival across container replacement remain unverified. The checked manifest declares mount targets but does not itself express host port binding or a secret read-only flag.
+- DOM tests execute JavaScript in a small harness, not a browser renderer. Phone/desktop layout, keyboard behavior and visual contrast were not exercised.
+- Both unauthenticated owner routes are exercised. Wrong credentials are rejected by the inspected equality check, but no explicit wrong-credential test exists in the suite.
+- TWO_SESSIONS is false. Conditional two-session tests and session-migration logic are inactive and are outside this one-session brief.
+- Persistence tests use disposable fictional databases and graceful shutdown/reopen; no real accepted database, power-loss recovery or production migration was exercised.
+- The original pre-edit builder test run cannot be independently reproduced without changing checkout state and was not relied on. The candidate test run and parent-to-candidate diff were independently checked.
+- No external links, artifact hashes or release execution are claimed. This result is review evidence only.
+
+## Commands and real output
+
+All product commands ran in ${BACKROOM_ROOT}/workspaces/dryrun-bakery.
+
+Initial `git rev-parse HEAD` returned:
+```text
+e401b45c84340f50327c6be88567cb71bb442266
+```
+Initial `git status --porcelain=v1` returned no entries.
+
+`git diff-tree --no-commit-id --name-only -r HEAD`:
+```text
+page.ts
+ui.test.ts
+```
+`git diff --quiet HEAD^ HEAD -- build-report.md; echo "tracked report diff exit=$?"`:
+```text
+tracked report diff exit=0
+```
+
+First literal `bun test`, sandboxed, exit 1. The sandbox denied disposable .runtime writes; the afterEach errors follow failed fixture creation. Full captured output:
+```text
+error: Can't create the symlink for multishells at "${HOME}/.local/state/fnm_multishells/32_1793940625454". Maybe there are some issues with permissions for the directory? Read-only file system (os error 30)
+bun test v1.3.14 (0d9b296a)
+
+runtime.test.ts:
+1 | import { test, expect } from "bun:test";
+2 | import { mkdirSync, mkdtempSync, writeFileSync, rmSync, chmodSync } from "node:fs";
+3 | import { join } from "node:path";
+4 | 
+5 | test("runtime secret file config precedes readiness; HTTP restart retains saved orders",async()=>{
+6 |  const root=join(import.meta.dir,".runtime");mkdirSync(root,{recursive:true});const dir=mkdtempSync(join(root,"runtime-"));
+                                                                                            ^
+EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/runtime-J1cJBD'
+    path: "${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/runtime-J1cJBD",
+ syscall: "mkdtemp",
+   errno: -30,
+    code: "EROFS"
+
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/runtime.test.ts:6:89)
+(fail) runtime secret file config precedes readiness; HTTP restart retains saved orders [1.41ms]
+Runtime file setting unset/empty with fictional environment password: startup rejected before listener
+(pass) environment password cannot bypass the mandatory runtime file setting [41.46ms]
+
+app.test.ts:
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-dywWMB'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) trusted prices, own receipt, private owner list and durable duplicate protection [0.17ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-SqjcTM'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) server enforces exact prior-evening cut-off and seven-calendar-day/open-day window [0.03ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-g01j8V'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) capacity uses menu units; last-unit race and retries cannot oversell [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-cyNps8'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) rejects malformed baskets and customer fields; storage failure gives no confirmation [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-9xWHKR'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) every product has allergens and shared-kitchen warning remains visible in markup [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-xExfOt'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) spec routes, private printable list, WAL, rollback and static allergen lines [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-kFWhMh'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) stale page, all closed weekdays and missing fields are rejected [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-ctjF8q'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) independent processes serialize the last unit and preserve rows after exit [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-3DRr2n'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) fully sold-out week offers no capacity and never creates another order [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-ju4dmM'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) legacy paise and unmarked rupee orders migrate once without changing value or identity [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-A0eVTw'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) ambiguous legacy currency blocks startup and rolls back every order change [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-tNxgVx'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) approved tomorrow-through-day-seven horizon and SQLite readiness [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-tvJ5xb'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) readiness rolls back its write, rejects unavailable tables/writes and blocks startup [0.02ms]
+
+ui.test.ts:
+UI script: unchanged retry 201,200 with same key; quantity edit hides receipt and saves 201 with new key
+(pass) quantity events reset saved confirmation/key; unchanged retry retains its key [10.64ms]
+UI script: fully sold out -> disabled confirm, explicit message, no submission
+(pass) initial sold-out UI disables confirmation and shows an explicit unavailable message [4.38ms]
+(pass) basket capacity recovery clears unavailable state [5.26ms]
+Heading matches saved owner-list reference; unrelated name/email absent
+(pass) saved heading uses the exact owner-list reference and excludes unrelated customer data [5.61ms]
+(pass) failed save shows no confirmation heading or reference [3.41ms]
+
+ 6 pass
+ 14 fail
+ 48 expect() calls
+Ran 20 tests across 3 files. [100.00ms]
+```
+
+Literal `bun test`, authorized sandbox escalation for fictional .runtime fixtures and an ephemeral 127.0.0.1 listener, exit 0. Full captured output:
+```text
+bun test v1.3.14 (0d9b296a)
+
+runtime.test.ts:
+Runtime fake-file probe: missing file refuses startup; health=200, order=201; SIGTERM/restart receipt=200, duplicate=200, rows=1, private list=401 without auth
+(pass) runtime secret file config precedes readiness; HTTP restart retains saved orders [163.74ms]
+Runtime file setting unset/empty with fictional environment password: startup rejected before listener
+(pass) environment password cannot bypass the mandatory runtime file setting [39.60ms]
+
+app.test.ts:
+(pass) trusted prices, own receipt, private owner list and durable duplicate protection [25.24ms]
+(pass) server enforces exact prior-evening cut-off and seven-calendar-day/open-day window [17.99ms]
+(pass) capacity uses menu units; last-unit race and retries cannot oversell [22.03ms]
+(pass) rejects malformed baskets and customer fields; storage failure gives no confirmation [14.90ms]
+(pass) every product has allergens and shared-kitchen warning remains visible in markup [15.54ms]
+(pass) spec routes, private printable list, WAL, rollback and static allergen lines [19.41ms]
+(pass) stale page, all closed weekdays and missing fields are rejected [22.15ms]
+Cross-process race: 201,409; reopened database: 2 rows, 40 units
+(pass) independent processes serialize the last unit and preserve rows after exit [60.84ms]
+(pass) fully sold-out week offers no capacity and never creates another order [23.87ms]
+Currency migration: paise 18000 -> INR 180; unmarked INR 180 unchanged; 2 rows/items after second startup; legacy duplicate=200
+(pass) legacy paise and unmarked rupee orders migrate once without changing value or identity [29.35ms]
+(pass) ambiguous legacy currency blocks startup and rolls back every order change [24.37ms]
+(pass) approved tomorrow-through-day-seven horizon and SQLite readiness [18.41ms]
+(pass) readiness rolls back its write, rejects unavailable tables/writes and blocks startup [22.30ms]
+
+ui.test.ts:
+UI script: unchanged retry 201,200 with same key; quantity edit hides receipt and saves 201 with new key
+(pass) quantity events reset saved confirmation/key; unchanged retry retains its key [5.99ms]
+UI script: fully sold out -> disabled confirm, explicit message, no submission
+(pass) initial sold-out UI disables confirmation and shows an explicit unavailable message [4.08ms]
+(pass) basket capacity recovery clears unavailable state [4.14ms]
+Heading matches saved owner-list reference; unrelated name/email absent
+(pass) saved heading uses the exact owner-list reference and excludes unrelated customer data [5.09ms]
+(pass) failed save shows no confirmation heading or reference [3.92ms]
+
+ 20 pass
+ 0 fail
+ 173 expect() calls
+Ran 20 tests across 3 files. [576.00ms]
+```
+
+Final verification commands:
+```sh
+git rev-parse HEAD
+git status --porcelain=v1
+git diff-tree --no-commit-id --stat -r HEAD
+git diff --exit-code HEAD -- page.ts ui.test.ts app.ts app.test.ts runtime.test.ts policy.ts server.ts Dockerfile backroom.deploy.json build-report.md
+```
+Real result (shell also printed an unrelated fnm startup symlink warning before these commands):
+```text
+e401b45c84340f50327c6be88567cb71bb442266
+ page.ts    | 2 +-
+ ui.test.ts | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+```
+No status entries or working-copy diff; verification command batch exited 0. Source reads used cat and nl -ba; the required plan existence check printed `docs/PLAN.md is absent in the authorized product root`.
+
+Exact commit reviewed: e401b45c84340f50327c6be88567cb71bb442266. Candidate suite: 20 pass, 0 fail, 173 assertions. Review complete; no release authority conferred.
+
+
+
+## Resume checkpoint: frozen assignment established
+
+New brief and architecture v8 were created/approved through scripted SAMPLE roles; live lead posted a new spec and live builder is validating existing clean commit e401b45 without product edits. Dryrun runtime now invokes the same RealStagesLoop.resume() recovery entry point as the real main runtime, including the concurrently added delivery/event/handoff recovery, rather than only afterBrief(). Restarted only dryrun desk to load this combined code. No direct database repairs or guard bypass.
+
+Combined verification at this checkpoint, `bun test desk/tests`:
+```text
+bun test v1.3.14 (0d9b296a)
+
+desk/tests/core.test.ts:
+(pass) approval gate > changed draft text is refused at delivery [3.47ms]
+(pass) approval gate > swapped attachment bytes are refused [1.17ms]
+(pass) approval gate > wrong room is rejected and logged [0.70ms]
+(pass) approval gate > agent-sent approval is rejected even with owner id [0.56ms]
+(pass) approval gate > non-owner human approval is rejected [0.58ms]
+(pass) approval gate > bare yes is rejected [0.44ms]
+(pass) approval gate > malformed commands, extra whitespace and trailing newline are rejected [0.69ms]
+(pass) approval gate > unknown code is rejected [0.51ms]
+(pass) approval gate > duplicate event is ignored [0.89ms]
+(pass) approval gate > restart after confirmed send never repeats, including a new event [40.16ms]
+(pass) approval gate > uncertain send after crash is not resent; fresh owner approval is required [45.65ms]
+(pass) approval gate > transport failure leaves uncertainty and never automatically retries [1.30ms]
+(pass) approval gate > send intent exists before transport is invoked [0.89ms]
+(pass) approval gate > superseded code cannot be approved [0.87ms]
+(pass) approval gate > same content has unique codes and separate threads remain active [0.97ms]
+(pass) approval gate > wrong-project code cannot be released from another studio [0.65ms]
+(pass) approval gate > draft content is deeply frozen and SQLite rejects content updates [0.61ms]
+(pass) approval gate > mutating the caller's original input cannot change frozen content [0.81ms]
+(pass) approval gate > delivery uses only the bound destination [0.79ms]
+(pass) approval gate > concurrent approvals cannot send the same draft twice [0.75ms]
+(pass) approval gate > a revision while preparing a send blocks the superseded draft [0.81ms]
+(pass) deploy gate and fixed client lines > three-argument recordReview works with one project and ambiguous project scope is rejected [0.84ms]
+(pass) deploy gate and fixed client lines > deploy of an unreviewed commit is rejected [0.45ms]
+(pass) deploy gate and fixed client lines > only an exact reviewed SHA in the same project can deploy [0.77ms]
+(pass) deploy gate and fixed client lines > latest failing review revokes an earlier pass and review ids are immutable [0.63ms]
+(pass) deploy gate and fixed client lines > ambiguous deploy failure cannot count as a confirmed deployment [0.69ms]
+(pass) deploy gate and fixed client lines > free text cannot enter fixed lines [0.73ms]
+(pass) deploy gate and fixed client lines > fixed template sends only numeric interpolation to the bound client room and deduplicates [0.61ms]
+(pass) deploy gate and fixed client lines > fixed line snapshots the validated number before interpolation [0.57ms]
+(pass) stage state machine > question changes no stage, version or approval [1.05ms]
+(pass) stage state machine > suggestion creates a new version and clears prior approval [0.56ms]
+(pass) stage state machine > approval applies only to the identified current version and artifact [0.65ms]
+(pass) stage state machine > brief closes only after owner then client approves [0.58ms]
+(pass) stage state machine > architecture closes only by owner [1.01ms]
+(pass) stage state machine > build closes only by owner for a deployed commit [0.88ms]
+(pass) stage state machine > client review closes only by client [1.03ms]
+(pass) stage state machine > video needs owner then client, both for the same file hash [1.05ms]
+(pass) stage state machine > learn closes only by owner [1.04ms]
+(pass) stage state machine > scope revision reopens affected later approvals and invalidates their versions [1.02ms]
+(pass) stage state machine > scope revision can identify only the affected later stages [1.06ms]
+(pass) stage state machine > unaffected later approvals remain effective after a revised stage closes [0.97ms]
+(pass) stage state machine > reopened later stages reject old approvals after the revised brief closes [1.03ms]
+(pass) stage state machine > future stage publication and non-hash video artifacts are rejected [0.86ms]
+(pass) stage state machine > app acceptance cannot bind to an undeployed or different commit [0.84ms]
+(pass) stage state machine > stage approval rejects agents, unknown clients and wrong rooms [0.54ms]
+(pass) stage state machine > workflow and exact artifact approvals survive restart [54.17ms]
+
+desk/tests/switch.test.ts:
+(pass) verified identity fails closed; display names and platform notices cannot become humans [2.55ms]
+(pass) one client ticket, frozen lead draft, agent rejection, owner release, client closes only Stage 1 [6.81ms]
+(pass) new client message invalidates the old code before lead replies and stale lead drafts are refused [3.82ms]
+(pass) simulation never sends a ticket line or accepts a human release [2.66ms]
+(pass) Switch transport hands exact bytes/text to the API; gate catches a changed cached file [2.44ms]
+
+desk/tests/stages.test.ts:
+(pass) role and room checks reject forged lead output, wrong-room owner, unknown sender and future protocols [4.79ms]
+(pass) architecture question keeps version; change revokes code; stale/wrong-room/agent approvals cannot close it [2.93ms]
+(pass) changed document cannot be approved or mutate workflow [2.87ms]
+(pass) late architecture/spec and old reviewer cannot overwrite current build [3.79ms]
+(pass) review failure routes blocker; pass is bound to current round and SHA without deploying [3.64ms]
+(pass) build approval checks actual current deployment before changing approval state [3.32ms]
+(pass) deploy rejects agent, wrong stage, wrong candidate and missing review [2.43ms]
+(pass) client question is unchanged; revision clears later approvals, candidate/review and active send [3.94ms]
+(pass) client acceptance requires delivered current version, exact hash and current deployed SHA [2.28ms]
+(pass) changed video bytes cannot gain owner approval [2.13ms]
+(pass) duplicate event does not publish twice; oversized architecture remains document-only in room [1.87ms]
+(pass) document-reference protocol loads artifact but does not echo its full contents [1.78ms]
+(pass) owner approval preserves client change text in document-based spec handoff [3.88ms]
+(pass) pending lesson requires exact version/hash and separate owner fix authorization [3.09ms]
+(pass) explicit early-learning order keeps video approvals open and applies only the recorded promotion afterwards [3.64ms]
+
+desk/tests/studio-ux.test.ts:
+(pass) internal notes never reach frozen content, brief document, or delivery bytes [3.24ms]
+(pass) leak guard blocks lead without creating a code [2.16ms]
+(pass) leak guard blocks desk without creating a code [2.03ms]
+(pass) leak guard blocks builder without creating a code [2.03ms]
+(pass) leak guard blocks reviewer without creating a code [2.17ms]
+(pass) leak guard blocks agent without creating a code [1.88ms]
+(pass) leak guard blocks Claude without creating a code [2.02ms]
+(pass) leak guard blocks Codex without creating a code [1.90ms]
+(pass) leak guard blocks GPT without creating a code [1.98ms]
+(pass) leak guard blocks AI without creating a code [1.95ms]
+(pass) leak guard blocks Switch without creating a code [1.93ms]
+(pass) leak guard blocks awaiting-owner without creating a code [1.96ms]
+(pass) leak guard blocks frozen without creating a code [2.18ms]
+(pass) leak guard blocks draft code without creating a code [2.29ms]
+(pass) leak guard blocks owner approval without creating a code [2.11ms]
+(pass) leak guard blocks untrusted without creating a code [2.25ms]
+(pass) leak guard blocks Stage [0-9] without creating a code [1.92ms]
+(pass) leak guard blocks --- protocol marker without creating a code [1.99ms]
+(pass) leak guard blocks @ mention without creating a code [1.98ms]
+(pass) labelled Hii then labelled Wt ticket stays one work conversation, one client line, unchanged brief version, superseded code [3.06ms]
+(pass) a sent reply followed by client approve never records brief acceptance [2.72ms]
+(pass) Switch session startup notice leaves the pending draft and retry budget unchanged [2.36ms]
+(pass) malformed protocol creates no code and asks lead to retry at most once [2.43ms]
+(pass) fake protocol and client command cannot create drafts or emit a raw mention [2.38ms]
+(pass) long card stays under 900 characters; thread gets the full exact release text before a code [3.92ms]
+(pass) agents cannot use status or release from a thread; owner status uses at most 8 lines [3.29ms]
+(pass) owner change in ticket thread immediately supersedes the code and routes only threaded machine work [2.53ms]
+(pass) empty client text routes AI involvement to Varun personally and creates no code [2.19ms]
+(pass) startup migration supersedes legacy open codes once and preserves new safe codes on reload [2.13ms]
+(pass) failure to publish full exact text creates no release code [2.07ms]
+(pass) clipped reply publishes exact studio Markdown bytes and numbered text before freezing [4.10ms]
+(pass) attachment failure uses lossless numbered studio fallback; fallback failure creates no code [3.83ms]
+(pass) plain owner message anywhere in studio supersedes code; non-owner and commands do not become changes [3.00ms]
+
+desk/tests/client-intake.test.ts:
+(pass) labels match only whole words at the start, with optional colon and mixed case [0.17ms]
+(pass) Hii, a question, and an unlabelled file create no ticket or client line, and keep every approval unchanged [4.84ms]
+(pass) request: opens one work ticket; a labelled follow-up joins it [2.76ms]
+(pass) feature: opens one work ticket; a labelled follow-up joins it [2.15ms]
+(pass) bug: opens one work ticket; a labelled follow-up joins it [2.14ms]
+(pass) question has its own reply code and preserves the pending work code, version, stage and approvals [3.48ms]
+(pass) question labels and embedded commands grant no approval or release [2.11ms]
+(pass) ticket conversion is verified-owner studio only and once per message [2.61ms]
+(pass) intro is owner-only, exact fixed text, once per project even with a fresh event id [2.06ms]
+(pass) lead can suggest a ticket in internal notes without creating one; status separates questions and tickets [2.14ms]
+
+desk/tests/real-loop.test.ts:
+(pass) isolated real-mode dry run closes Stage 1 and produces a Stage 2 card without live services [6.87ms]
+(pass) real stages 2–6 have short command cards, explicit deploy/send gates and identified lesson approval [14.58ms]
+(pass) real future-stage questions preserve the waiting ticket release code and work approval [6.45ms]
+(pass) real live builder handoff accepts a protocol first line followed by evidence [4.76ms]
+(pass) real repeated build tasks use distinct Switch document names [4.64ms]
+(pass) real labelled feature ending in a question mark still reopens work; plain chat does not [7.05ms]
+(pass) real wrong-room and agent approvals cannot close architecture; changed document is rejected [4.38ms]
+(pass) real owner question cannot accidentally create a new architecture version [4.07ms]
+(pass) real owner conversion at a later stage clears stale candidate, review and outgoing state [6.69ms]
+(pass) owner build questions preserve candidate, review and pending client release [6.45ms]
+(pass) real dryrun card addresses its separate desk identity and its exact command works [4.74ms]
+(pass) independent assignment distinguishes immutable source from disposable test fixtures [6.05ms]
+(pass) owner can request a fresh review of unchanged SHA after a failed verification [5.71ms]
+(pass) bounded build assignment authorizes local product commits while protecting the outer repo [4.36ms]
+
+desk/tests/final-review.test.ts:
+(pass) review 1: labelled work reopens scope and enters intake at every later stage, including completed Learn [34.29ms]
+(pass) review 2: changed brief document cannot inherit frozen send or client acceptance [9.29ms]
+(pass) review 2: approved architecture and spec are checked again at review and deploy [18.25ms]
+(pass) review 3: replacement spec revokes passed review and rejects its deploy and late verdict [8.47ms]
+(pass) review 4: restart repairs confirmed brief projection without a second client delivery [10.68ms]
+(pass) review 4: stage confirmation recovers delivered artifact, uncertain send never does [20.22ms]
+(pass) review 5: transient artifact read is replayable after restart with one version [8.73ms]
+(pass) review 5: approved architecture resumes its interrupted build handoff without reapproval [6.67ms]
+(pass) review 6: uppercase and exact-SHA client approvals use one acceptance grammar [23.98ms]
+(pass) review 6: video hash approval works, wrong hashes and malformed text preserve acceptance state [10.72ms]
+
+ 133 pass
+ 0 fail
+ 572 expect() calls
+Ran 133 tests across 7 files. [634.00ms]
+```
+
+Old-project source evidence (SAMPLE in-memory probe, no listener):
+```text
+SAMPLE old-shop baseline: quantity=2, caller unitPriceCents=1 -> totalCents=2; catalog expectation=2400. Existing client-controlled-price flaw reproduced without a listener.
+```
+The probe called isolated old-shop createApp with tea-tin quantity2, caller unitPriceCents1 and fictional name/email and asserted201/total2; catalog expectation2400. This deliberately reproduces the existing flaw; it is not a security pass. No old-project edits or branch yet.
+
+## Resume compatibility fix and verification
+
+A pending legacy brief would otherwise fail the new snapshot guard after the final real-desk restart. Added a guarded lazy import only from existing immutable gate bytes whose stored content hash, project, client destination, default thread, empty attachment list and exact desk prefix all match. No current room-document text is adopted as authority. The pending draft code/status and workflow remain unchanged; changed room text still fails comparison. Reply/unknown/corrupt records are refused. This is code-driven snapshot derivation, not a manual edit to the real database; no real migration or approval was executed by the orchestrator. Regression tests exercise the legacy format in fictional stores.
+
+`bun test desk/tests` (combined workspace, including concurrent security-review changes):
+```text
+bun test v1.3.14 (0d9b296a)
+
+desk/tests/core.test.ts:
+(pass) approval gate > changed draft text is refused at delivery [3.21ms]
+(pass) approval gate > swapped attachment bytes are refused [1.24ms]
+(pass) approval gate > wrong room is rejected and logged [0.73ms]
+(pass) approval gate > agent-sent approval is rejected even with owner id [0.57ms]
+(pass) approval gate > non-owner human approval is rejected [0.59ms]
+(pass) approval gate > bare yes is rejected [0.43ms]
+(pass) approval gate > malformed commands, extra whitespace and trailing newline are rejected [0.73ms]
+(pass) approval gate > unknown code is rejected [0.90ms]
+(pass) approval gate > duplicate event is ignored [1.93ms]
+(pass) approval gate > restart after confirmed send never repeats, including a new event [44.40ms]
+(pass) approval gate > uncertain send after crash is not resent; fresh owner approval is required [44.49ms]
+(pass) approval gate > transport failure leaves uncertainty and never automatically retries [1.04ms]
+(pass) approval gate > send intent exists before transport is invoked [0.78ms]
+(pass) approval gate > superseded code cannot be approved [0.81ms]
+(pass) approval gate > same content has unique codes and separate threads remain active [1.42ms]
+(pass) approval gate > wrong-project code cannot be released from another studio [0.70ms]
+(pass) approval gate > draft content is deeply frozen and SQLite rejects content updates [0.59ms]
+(pass) approval gate > mutating the caller's original input cannot change frozen content [0.85ms]
+(pass) approval gate > delivery uses only the bound destination [0.81ms]
+(pass) approval gate > concurrent approvals cannot send the same draft twice [0.77ms]
+(pass) approval gate > a revision while preparing a send blocks the superseded draft [0.79ms]
+(pass) deploy gate and fixed client lines > three-argument recordReview works with one project and ambiguous project scope is rejected [0.95ms]
+(pass) deploy gate and fixed client lines > deploy of an unreviewed commit is rejected [0.48ms]
+(pass) deploy gate and fixed client lines > only an exact reviewed SHA in the same project can deploy [0.77ms]
+(pass) deploy gate and fixed client lines > latest failing review revokes an earlier pass and review ids are immutable [0.60ms]
+(pass) deploy gate and fixed client lines > ambiguous deploy failure cannot count as a confirmed deployment [0.72ms]
+(pass) deploy gate and fixed client lines > free text cannot enter fixed lines [0.76ms]
+(pass) deploy gate and fixed client lines > fixed template sends only numeric interpolation to the bound client room and deduplicates [0.59ms]
+(pass) deploy gate and fixed client lines > fixed line snapshots the validated number before interpolation [0.62ms]
+(pass) stage state machine > question changes no stage, version or approval [0.99ms]
+(pass) stage state machine > suggestion creates a new version and clears prior approval [0.57ms]
+(pass) stage state machine > approval applies only to the identified current version and artifact [0.64ms]
+(pass) stage state machine > brief closes only after owner then client approves [0.63ms]
+(pass) stage state machine > architecture closes only by owner [1.00ms]
+(pass) stage state machine > build closes only by owner for a deployed commit [0.87ms]
+(pass) stage state machine > client review closes only by client [0.87ms]
+(pass) stage state machine > video needs owner then client, both for the same file hash [0.98ms]
+(pass) stage state machine > learn closes only by owner [1.10ms]
+(pass) stage state machine > scope revision reopens affected later approvals and invalidates their versions [1.01ms]
+(pass) stage state machine > scope revision can identify only the affected later stages [1.04ms]
+(pass) stage state machine > unaffected later approvals remain effective after a revised stage closes [0.96ms]
+(pass) stage state machine > reopened later stages reject old approvals after the revised brief closes [1.08ms]
+(pass) stage state machine > future stage publication and non-hash video artifacts are rejected [1.54ms]
+(pass) stage state machine > app acceptance cannot bind to an undeployed or different commit [1.55ms]
+(pass) stage state machine > stage approval rejects agents, unknown clients and wrong rooms [0.58ms]
+(pass) stage state machine > workflow and exact artifact approvals survive restart [57.32ms]
+
+desk/tests/switch.test.ts:
+(pass) verified identity fails closed; display names and platform notices cannot become humans [4.30ms]
+(pass) one client ticket, frozen lead draft, agent rejection, owner release, client closes only Stage 1 [8.27ms]
+(pass) new client message invalidates the old code before lead replies and stale lead drafts are refused [6.12ms]
+(pass) simulation never sends a ticket line or accepts a human release [4.78ms]
+(pass) Switch transport hands exact bytes/text to the API; gate catches a changed cached file [2.72ms]
+
+desk/tests/stages.test.ts:
+(pass) role and room checks reject forged lead output, wrong-room owner, unknown sender and future protocols [4.47ms]
+(pass) architecture question keeps version; change revokes code; stale/wrong-room/agent approvals cannot close it [2.82ms]
+(pass) changed document cannot be approved or mutate workflow [1.97ms]
+(pass) late architecture/spec and old reviewer cannot overwrite current build [2.12ms]
+(pass) review failure routes blocker; pass is bound to current round and SHA without deploying [2.09ms]
+(pass) build approval checks actual current deployment before changing approval state [2.06ms]
+(pass) deploy rejects agent, wrong stage, wrong candidate and missing review [1.89ms]
+(pass) client question is unchanged; revision clears later approvals, candidate/review and active send [3.64ms]
+(pass) client acceptance requires delivered current version, exact hash and current deployed SHA [2.64ms]
+(pass) changed video bytes cannot gain owner approval [2.29ms]
+(pass) duplicate event does not publish twice; oversized architecture remains document-only in room [1.97ms]
+(pass) document-reference protocol loads artifact but does not echo its full contents [1.85ms]
+(pass) owner approval preserves client change text in document-based spec handoff [3.82ms]
+(pass) pending lesson requires exact version/hash and separate owner fix authorization [3.65ms]
+(pass) explicit early-learning order keeps video approvals open and applies only the recorded promotion afterwards [3.97ms]
+
+desk/tests/studio-ux.test.ts:
+(pass) internal notes never reach frozen content, brief document, or delivery bytes [3.30ms]
+(pass) leak guard blocks lead without creating a code [2.21ms]
+(pass) leak guard blocks desk without creating a code [1.88ms]
+(pass) leak guard blocks builder without creating a code [1.95ms]
+(pass) leak guard blocks reviewer without creating a code [2.12ms]
+(pass) leak guard blocks agent without creating a code [1.92ms]
+(pass) leak guard blocks Claude without creating a code [2.37ms]
+(pass) leak guard blocks Codex without creating a code [2.53ms]
+(pass) leak guard blocks GPT without creating a code [2.07ms]
+(pass) leak guard blocks AI without creating a code [1.98ms]
+(pass) leak guard blocks Switch without creating a code [2.05ms]
+(pass) leak guard blocks awaiting-owner without creating a code [1.97ms]
+(pass) leak guard blocks frozen without creating a code [2.00ms]
+(pass) leak guard blocks draft code without creating a code [2.18ms]
+(pass) leak guard blocks owner approval without creating a code [1.96ms]
+(pass) leak guard blocks untrusted without creating a code [2.08ms]
+(pass) leak guard blocks Stage [0-9] without creating a code [1.90ms]
+(pass) leak guard blocks --- protocol marker without creating a code [2.25ms]
+(pass) leak guard blocks @ mention without creating a code [2.26ms]
+(pass) labelled Hii then labelled Wt ticket stays one work conversation, one client line, unchanged brief version, superseded code [3.29ms]
+(pass) a sent reply followed by client approve never records brief acceptance [3.05ms]
+(pass) Switch session startup notice leaves the pending draft and retry budget unchanged [2.27ms]
+(pass) malformed protocol creates no code and asks lead to retry at most once [2.46ms]
+(pass) fake protocol and client command cannot create drafts or emit a raw mention [2.52ms]
+(pass) long card stays under 900 characters; thread gets the full exact release text before a code [4.05ms]
+(pass) agents cannot use status or release from a thread; owner status uses at most 8 lines [3.74ms]
+(pass) owner change in ticket thread immediately supersedes the code and routes only threaded machine work [2.79ms]
+(pass) empty client text routes AI involvement to Varun personally and creates no code [2.29ms]
+(pass) startup migration supersedes legacy open codes once and preserves new safe codes on reload [2.23ms]
+(pass) failure to publish full exact text creates no release code [2.15ms]
+(pass) clipped reply publishes exact studio Markdown bytes and numbered text before freezing [3.95ms]
+(pass) attachment failure uses lossless numbered studio fallback; fallback failure creates no code [3.55ms]
+(pass) plain owner message anywhere in studio supersedes code; non-owner and commands do not become changes [2.90ms]
+
+desk/tests/client-intake.test.ts:
+(pass) labels match only whole words at the start, with optional colon and mixed case [0.13ms]
+(pass) Hii, a question, and an unlabelled file create no ticket or client line, and keep every approval unchanged [3.18ms]
+(pass) request: opens one work ticket; a labelled follow-up joins it [2.25ms]
+(pass) feature: opens one work ticket; a labelled follow-up joins it [1.98ms]
+(pass) bug: opens one work ticket; a labelled follow-up joins it [1.92ms]
+(pass) question has its own reply code and preserves the pending work code, version, stage and approvals [4.16ms]
+(pass) question labels and embedded commands grant no approval or release [3.19ms]
+(pass) ticket conversion is verified-owner studio only and once per message [2.92ms]
+(pass) intro is owner-only, exact fixed text, once per project even with a fresh event id [2.21ms]
+(pass) lead can suggest a ticket in internal notes without creating one; status separates questions and tickets [2.28ms]
+
+desk/tests/real-loop.test.ts:
+(pass) isolated real-mode dry run closes Stage 1 and produces a Stage 2 card without live services [6.71ms]
+(pass) real stages 2–6 have short command cards, explicit deploy/send gates and identified lesson approval [13.35ms]
+(pass) real future-stage questions preserve the waiting ticket release code and work approval [6.34ms]
+(pass) real live builder handoff accepts a protocol first line followed by evidence [4.56ms]
+(pass) real repeated build tasks use distinct Switch document names [4.62ms]
+(pass) real labelled feature ending in a question mark still reopens work; plain chat does not [6.89ms]
+(pass) real wrong-room and agent approvals cannot close architecture; changed document is rejected [4.14ms]
+(pass) real owner question cannot accidentally create a new architecture version [4.22ms]
+(pass) real owner conversion at a later stage clears stale candidate, review and outgoing state [6.95ms]
+(pass) owner build questions preserve candidate, review and pending client release [6.71ms]
+(pass) real dryrun card addresses its separate desk identity and its exact command works [6.14ms]
+(pass) independent assignment distinguishes immutable source from disposable test fixtures [6.23ms]
+(pass) owner can request a fresh review of unchanged SHA after a failed verification [5.41ms]
+(pass) bounded build assignment authorizes local product commits while protecting the outer repo [4.65ms]
+
+desk/tests/final-review.test.ts:
+(pass) review 1: labelled work reopens scope and enters intake at every later stage, including completed Learn [36.31ms]
+(pass) review 2: changed brief document cannot inherit frozen send or client acceptance [9.42ms]
+(pass) review 2: approved architecture and spec are checked again at review and deploy [12.97ms]
+(pass) review 3: replacement spec revokes passed review and rejects its deploy and late verdict [10.26ms]
+(pass) review 4: restart repairs confirmed brief projection without a second client delivery [14.55ms]
+(pass) review 4: stage confirmation recovers delivered artifact, uncertain send never does [17.58ms]
+(pass) review 5: transient artifact read is replayable after restart with one version [6.55ms]
+(pass) review 5: approved architecture resumes its interrupted build handoff without reapproval [6.58ms]
+(pass) review 6: uppercase and exact-SHA client approvals use one acceptance grammar [26.00ms]
+(pass) review 6: video hash approval works, wrong hashes and malformed text preserve acceptance state [10.41ms]
+(pass) review 7: owner Brief question preserves code and accepts only an answer across restart [5.86ms]
+
+desk/tests/document-snapshots.test.ts:
+(pass) legacy brief snapshot comes from immutable gate bytes and preserves pending code/status [1.16ms]
+(pass) legacy import refuses reply documents and unknown text formats [1.19ms]
+(pass) legacy import refuses corrupt frozen records and leaves authority absent [0.71ms]
+
+ 137 pass
+ 0 fail
+ 588 expect() calls
+Ran 137 tests across 8 files. [661.00ms]
+```
+
+Current position: bound independent review round5 in progress for e401b45c84340f50327c6be88567cb71bb442266; old app still serving and its new SAMPLE order remains. No real desk restart yet.
+
+## Resume milestone 4: bound review pass and exact revision redeploy
+
+Fresh independent round5 passed clean commit e401b45c84340f50327c6be88567cb71bb442266 against newly frozen brief/architecture/spec and assignment generation. Scripted SAMPLE owner typed its exact deploy card command. Current deployment state now identifies that SHA; source/generation guards passed.
+
+`python3 scripts/dryrun/check.py` (exit0):
+```text
+PASS existing SAMPLE order survives deployment; retry=200, receipt=200, rows=1; credential/token values withheld.
+PASS /health=200; absent/wrong owner auth=401; correct owner auth=200; deployment bound to 127.0.0.1.
+Exact deployed commit: e401b45c84340f50327c6be88567cb71bb442266
+```
+
+The existing fictional order was created after restoring the intentionally retired initial volume, then survived this actual revision container replacement. This is real HTTP persistence evidence across redeploy; it does not claim survival across the prior deliberate volume deletion. Receipt capability and runtime credential values were not printed.
+
+Independent round5 report and real command/output evidence:
+
+# Independent review 5
+
+Result: pass
+Exact commit: e401b45c84340f50327c6be88567cb71bb442266
+Product root: ${BACKROOM_ROOT}/workspaces/dryrun-bakery
+Reviewer report: isolated working directory only.
+
+No blocking product findings in the frozen validation scope. This review is evidence only; it grants no approval, sending, deployment or promotion authority.
+
+## Inputs and independence
+
+Loaded assignment <redacted-id> and only its named documents: Brief v8 <redacted-id>, architecture v8 <redacted-id>, spec <redacted-id>, checklist <redacted-id>. Reviewed candidate tracked implementation, tests and configuration independently. Did not read room history, builder conversation or build reports. Architecture text still labels itself a proposal with approval outstanding; that wording is not treated as approval. The assignment authorizes validation only.
+
+Initial command: `git rev-parse HEAD && git status --short && git ls-files`
+Exit code: 0. HEAD was e401b45c84340f50327c6be88567cb71bb442266, status had no entries. Tracked paths were .dockerignore, .gitignore, Dockerfile, README.md, app.test.ts, app.ts, backroom.deploy.json, build-report.md, package.json, page.ts, policy.ts, runtime.test.ts and ui.test.ts. Existing tracked build-report.md was not opened or edited.
+
+## Requirement and security evidence
+
+- Heading: page.ts:12 assigns textContent from the committed response reference without regeneration. ui.test.ts's saved-heading case compares it to the actual authenticated owner-list reference, checks date/window/timezone, INR 180 total and absence of unrelated customer name/contact. Failed storage produces no heading or confirmation.
+- Trusted prices: app.ts:135-144 validates required fields and a bounded basket, resolves product IDs against the server catalog, ignores supplied monetary fields and computes integer rupee totals. No discounts are applied. Maximum permitted basket total is 40 * 240 = INR 9600, so arithmetic remains safe. Existing forged-price/total test expects INR 360 for two INR 180 loaves. Unknown, negative, zero, fractional and oversized quantities are rejected.
+- Pickup: app.ts:12-19 uses Asia/Kolkata calendar dates, tomorrow through day +7, Thu-Sun and a strict previous-day 20:00 cutoff. app.ts:101 rechecks on submission. Controlled-clock tests cover 19:59:59.999 versus 20:00, stale pages, closed weekdays, invalid dates and day-seven/day-eight boundaries. policy.ts retains only morning 09:00-11:00 and capacity 40; dormant two-session code is disabled.
+- Capacity and retries: app.ts:98-109 and 147 use an immediate transaction for duplicate lookup, cutoff, capacity and both order/order_items writes. Unique idempotency keys and normalized fingerprints prevent duplicate insertion; changed details with reused key return 409. Existing same-process and independent-process races yield 201/409 at the last unit; cookie boxes count once. Forced item insertion failure rolls back the order.
+- Persistence: SQLite WAL, synchronous FULL and busy timeout appear at app.ts:24. Runtime test saves through real ephemeral loopback HTTP, terminates/restarts the process, retrieves the receipt and retries without duplication. Cross-process test reopens two rows totaling 40 units. Currency migration tests preserve identifiers/economic values and verify rollback for ambiguous data; no migration or accepted data was manually changed.
+- Owner access: app.ts:116-122 checks Basic credentials before selecting/listing private orders using timingSafeEqual. Existing tests cover unauthenticated 401 and authenticated access. Receipt tokens are 24 random bytes and receipt responses exclude customer name/email. SQL statements use bound values; customer confirmation uses textContent; printable owner cells escape HTML at page.ts:16-18. No shell or external-service execution path exists in the reviewed application.
+- Runtime file: server.ts:4-13 requires OWNER_PASSWORD_FILE and reads it before opening a listener; OWNER_PASSWORD cannot replace it. Empty, absent and unreadable fixtures fail startup. createApp rejects credentials shorter than 20 characters. Credential content is not returned or logged in reviewed application paths. The Dockerfile copies only four source files, uses user bun, and includes no credential fixture.
+- Health: app.ts:74-83 and 112 probe tables and an attempted metadata write inside a rolled-back immediate transaction. Existing tests verify 200 on healthy storage, 503 for closed/missing-table/rejected-write storage, rollback of probe effects and startup failure for unavailable storage.
+- Deployment contract: Dockerfile exposes 3210; server.ts:14 defaults to container 0.0.0.0. This matches the approved container architecture. backroom.deploy.json declares persistent /data, DB_PATH /data/orders.db and runtime secret target /run/secrets/owner-password. Host publication on 127.0.0.1 and a read-only secret mount must be supplied by the deployment adapter; these properties are not encoded/proven by this product manifest alone. No wildcard host publication is present in the reviewed product configuration. Direct local starts are documented with BIND_HOST=127.0.0.1.
+- UI retains all three products' allergen statements, shared-kitchen warning and pay-at-collection copy in visible static markup and generated menu. Labels, focus styling and live status/error output are present. No online payment, delivery, accounts, mail service, blockchain or Kubernetes implementation was found.
+
+## Coverage limits and nonblocking gaps
+
+No Docker commands, image build, deployment, host-published-port reachability, container replacement, persistent mount behavior or actual read-only /run/secrets mount was exercised. File-only credentials and HTTP process restart were tested with disposable fictional fixtures. These checks are not deployment evidence.
+
+The suite executes the actual inline UI script using a DOM harness, not a rendering engine. Phone/desktop layout, visual contrast and keyboard behavior were inspected in source only, not manually/browser-tested.
+
+The existing suite does not explicitly submit a forged discount or a wrong nonempty Basic credential, and does not compare every receipt field after the HTTP restart. Those paths were inspected: discounts are never consulted; any mismatched authorization string is denied; saved receipt fields are read from the same SQLite row. Unsafe integers beyond the allowed bounds are excluded by the quantity checks but do not have a dedicated assertion. The disabled two-session migration is outside this frozen brief and not exercised. No new tests or product edits were made.
+
+## Actual test command and output
+
+Working directory for both runs: ${BACKROOM_ROOT}/workspaces/dryrun-bakery
+
+First attempt, restricted sandbox:
+Command: `bun test`
+Exit code: 1
+The fixture directory writes were denied by sandbox filesystem restrictions. Full actual output:
+
+```text
+error: Can't create the symlink for multishells at "${HOME}/.local/state/fnm_multishells/32_1793941130222". Maybe there are some issues with permissions for the directory? Read-only file system (os error 30)
+bun test v1.3.14 (0d9b296a)
+
+runtime.test.ts:
+1 | import { test, expect } from "bun:test";
+2 | import { mkdirSync, mkdtempSync, writeFileSync, rmSync, chmodSync } from "node:fs";
+3 | import { join } from "node:path";
+4 | 
+5 | test("runtime secret file config precedes readiness; HTTP restart retains saved orders",async()=>{
+6 |  const root=join(import.meta.dir,".runtime");mkdirSync(root,{recursive:true});const dir=mkdtempSync(join(root,"runtime-"));
+                                                                                            ^
+EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/runtime-Fynf2R'
+    path: "${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/runtime-Fynf2R",
+ syscall: "mkdtemp",
+   errno: -30,
+    code: "EROFS"
+
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/runtime.test.ts:6:89)
+(fail) runtime secret file config precedes readiness; HTTP restart retains saved orders [1.41ms]
+Runtime file setting unset/empty with fictional environment password: startup rejected before listener
+(pass) environment password cannot bypass the mandatory runtime file setting [46.10ms]
+
+app.test.ts:
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-bCymL7'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) trusted prices, own receipt, private owner list and durable duplicate protection [0.17ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-WamIml'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) server enforces exact prior-evening cut-off and seven-calendar-day/open-day window [0.03ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-CYzcL8'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) capacity uses menu units; last-unit race and retries cannot oversell [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-ULjaOm'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) rejects malformed baskets and customer fields; storage failure gives no confirmation [0.01ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-QBHIqi'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) every product has allergens and shared-kitchen warning remains visible in markup [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-AWuaoE'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) spec routes, private printable list, WAL, rollback and static allergen lines [0.01ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-RSloOh'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) stale page, all closed weekdays and missing fields are rejected [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-OWXtZw'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) independent processes serialize the last unit and preserve rows after exit [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-o20Chv'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) fully sold-out week offers no capacity and never creates another order [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-V4zZC9'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) legacy paise and unmarked rupee orders migrate once without changing value or identity [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-2hM576'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) ambiguous legacy currency blocks startup and rolls back every order change [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-GEK7tO'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) approved tomorrow-through-day-seven horizon and SQLite readiness [0.02ms]
+4 | import { TWO_SESSIONS, sessions } from "./policy";
+5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+6 | import { resolve } from "node:path";
+7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+                        ^
+error: EROFS: read-only file system, mkdtemp '${BACKROOM_ROOT}/workspaces/dryrun-bakery/.runtime/tests/case-gmgG6U'
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:9:21)
+ 5 | import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+ 6 | import { resolve } from "node:path";
+ 7 | let app:ReturnType<typeof createApp>,dir:string,password:string,clock:Date;
+ 8 | const root=resolve(import.meta.dir,".runtime/tests");mkdirSync(root,{recursive:true});
+ 9 | beforeEach(()=>{dir=mkdtempSync(root+"/case-");password=crypto.randomUUID();clock=new Date("2026-11-05T10:00:00Z");app=createApp({database:dir+"/orders.sqlite",ownerPassword:password,now:()=>clock});});
+10 | afterEach(()=>{try{app.close()}catch{}rmSync(dir,{recursive:true,force:true});});
+                                           ^
+TypeError: path must be a string or TypedArray
+      at <anonymous> (${BACKROOM_ROOT}/workspaces/dryrun-bakery/app.test.ts:10:39)
+(fail) readiness rolls back its write, rejects unavailable tables/writes and blocks startup [0.02ms]
+
+ui.test.ts:
+UI script: unchanged retry 201,200 with same key; quantity edit hides receipt and saves 201 with new key
+(pass) quantity events reset saved confirmation/key; unchanged retry retains its key [11.00ms]
+UI script: fully sold out -> disabled confirm, explicit message, no submission
+(pass) initial sold-out UI disables confirmation and shows an explicit unavailable message [5.03ms]
+(pass) basket capacity recovery clears unavailable state [4.69ms]
+Heading matches saved owner-list reference; unrelated name/email absent
+(pass) saved heading uses the exact owner-list reference and excludes unrelated customer data [5.93ms]
+(pass) failed save shows no confirmation heading or reference [3.24ms]
+
+ 6 pass
+ 14 fail
+ 48 expect() calls
+Ran 20 tests across 3 files. [102.00ms]
+```
+
+Second attempt, approved sandbox escalation for the assigned disposable .runtime fixtures and ephemeral loopback listener:
+Command: `bun test`
+Exit code: 0
+Full actual output:
+
+```text
+bun test v1.3.14 (0d9b296a)
+
+runtime.test.ts:
+Runtime fake-file probe: missing file refuses startup; health=200, order=201; SIGTERM/restart receipt=200, duplicate=200, rows=1, private list=401 without auth
+(pass) runtime secret file config precedes readiness; HTTP restart retains saved orders [198.54ms]
+Runtime file setting unset/empty with fictional environment password: startup rejected before listener
+(pass) environment password cannot bypass the mandatory runtime file setting [44.70ms]
+
+app.test.ts:
+(pass) trusted prices, own receipt, private owner list and durable duplicate protection [21.93ms]
+(pass) server enforces exact prior-evening cut-off and seven-calendar-day/open-day window [18.30ms]
+(pass) capacity uses menu units; last-unit race and retries cannot oversell [22.23ms]
+(pass) rejects malformed baskets and customer fields; storage failure gives no confirmation [14.53ms]
+(pass) every product has allergens and shared-kitchen warning remains visible in markup [13.90ms]
+(pass) spec routes, private printable list, WAL, rollback and static allergen lines [19.81ms]
+(pass) stale page, all closed weekdays and missing fields are rejected [21.06ms]
+Cross-process race: 201,409; reopened database: 2 rows, 40 units
+(pass) independent processes serialize the last unit and preserve rows after exit [64.27ms]
+(pass) fully sold-out week offers no capacity and never creates another order [23.99ms]
+Currency migration: paise 18000 -> INR 180; unmarked INR 180 unchanged; 2 rows/items after second startup; legacy duplicate=200
+(pass) legacy paise and unmarked rupee orders migrate once without changing value or identity [34.30ms]
+(pass) ambiguous legacy currency blocks startup and rolls back every order change [23.64ms]
+(pass) approved tomorrow-through-day-seven horizon and SQLite readiness [22.00ms]
+(pass) readiness rolls back its write, rejects unavailable tables/writes and blocks startup [22.13ms]
+
+ui.test.ts:
+UI script: unchanged retry 201,200 with same key; quantity edit hides receipt and saves 201 with new key
+(pass) quantity events reset saved confirmation/key; unchanged retry retains its key [7.42ms]
+UI script: fully sold out -> disabled confirm, explicit message, no submission
+(pass) initial sold-out UI disables confirmation and shows an explicit unavailable message [4.85ms]
+(pass) basket capacity recovery clears unavailable state [5.64ms]
+Heading matches saved owner-list reference; unrelated name/email absent
+(pass) saved heading uses the exact owner-list reference and excludes unrelated customer data [4.25ms]
+(pass) failed save shows no confirmation heading or reference [2.80ms]
+
+ 20 pass
+ 0 fail
+ 173 expect() calls
+Ran 20 tests across 3 files. [628.00ms]
+```
+
+## Final checkpoint and cleanliness
+
+Command:
+```sh
+git rev-parse HEAD && git status --porcelain=v1 && git diff --exit-code e401b45c84340f50327c6be88567cb71bb442266 -- . ':!build-report.md' && git diff --exit-code HEAD -- build-report.md
+```
+Exit code: 0
+Full actual output:
+
+```text
+error: Can't create the symlink for multishells at "${HOME}/.local/state/fnm_multishells/32_1793941158384". Maybe there are some issues with permissions for the directory? Read-only file system (os error 30)
+e401b45c84340f50327c6be88567cb71bb442266
+```
+
+No status/diff entries: tracked tree remains clean, HEAD matches the exact assigned commit, and tracked build-report.md remains unchanged. Restricted shell startup emitted a harmless fnm symlink permission error; Bun itself executed successfully in the escalated run.
+
+review 5 e401b45c84340f50327c6be88567cb71bb442266 pass
+
+
+
+## Resume milestone 5: client accepted revised product; video requested
+
+After the redeploy HTTP checks, scripted SAMPLE owner approved the exact active build artifact and released the revised URL. Scripted SAMPLE client accepted the delivered exact current commit; workflow advanced to Video. Scripted SAMPLE owner explicitly requested the video. Local actor ledger records these commands as SAMPLE native-account decisions driven by the orchestrating session, not real-human approval. Live builder is producing a fresh 30–45s capture of accepted commit e401b45 with disposable fictional data. The original final video is not reused as new picture.
+
+Read-only real Ticket #4 metadata check: unchanged row fingerprint; latest active draft is kind=reply, valid frozen hash, recognized outgoing prefix, default thread, empty attachments. That reply does not require the legacy-brief snapshot import. The compatibility fix protects existing brief artifacts separately; no actual Ticket #4 record was migrated or edited by this session. Real desk remains running with no restart yet.
+
+## Stopped by Varun's usage instruction
+
+The orchestrating session stopped this run at the Video stage to save Codex allowance. Passed live on real-mode code with SAMPLE accounts: intake, Stage 1, architecture, build, independent review, exact deploy, client change, rebuild, fresh review, redeploy and client acceptance. Video approval, lesson promotion and the old-project fix were not run in real mode here; they were covered by the earlier rehearsal and fake-transport tests.
