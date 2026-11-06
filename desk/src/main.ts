@@ -79,5 +79,5 @@ const timer = setInterval(()=>{
 },1000);
 async function stop() { stopping=true;clearInterval(timer);for(const ws of sockets.values())ws.close();await queue;store.close();process.exit(0); }
 process.on("SIGINT",stop);process.on("SIGTERM",stop);
-if(loop instanceof RealStagesLoop)enqueue(async()=>{await loop.afterBrief();});
+enqueue(async()=>{await loop.resume();});
 console.log("desk: runtime started; credential and message bodies are not logged.");

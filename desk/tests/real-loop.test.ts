@@ -46,6 +46,22 @@ test('real stages 2–6 have short command cards, explicit deploy/send gates and
  const lesson='SAMPLE reusable lesson: check private access, with evidence from regression tests.';await f.loop.handle(f.event('lead','lesson private-access 1 document '+f.doc(lesson)));
  const proposal=f.loop.get('lesson');expect(f.promoted()).toBe(0);await f.loop.handle(f.event('owner',`@desk promote private-access 1 ${proposal.hash}`));
  expect(f.promoted()).toBe(1);expect(f.loop.state.get(f.config.projectId).completed).toBe(true);
+ const control=(f.loop as any).realControl;
+ control.prepareFix=async()=>{throw new Error('SAMPLE preparation interrupted');};
+ await expect(f.loop.handle(f.event('owner',`@desk fix old-shop ${proposal.hash}`))).rejects.toThrow('SAMPLE preparation interrupted');
+ expect(f.loop.get('fixAuthorized')).toBeNull();
+ control.prepareFix=async()=>({id:'fix-builder',name:'fix-builder'});
+ (f.loop as any).identitySource().push({sender:'fix-builder',kind:'agent',agent_id:'fix-builder',users:[]});
+ await f.loop.handle(f.event('owner',`@desk fix old-shop ${proposal.hash}`));
+ const assignment=[...f.posts].reverse().find(p=>p.room==='work'&&p.text.includes('backward fix'))!.text;
+ expect(assignment).toContain('@fix-builder ');
+ expect(assignment).toContain('Return exactly fix <branch> <exact-commit-SHA>');
+ expect(assignment).toContain('Never commit the outer Backroom repository');
+ await f.loop.handle(f.event('builder',`fix fix/private-access ${SHA}`));
+ expect(f.loop.get('backwardFix')).toBeNull();
+ await f.loop.handle(f.event('fix-builder',`fix fix/private-access ${SHA}`));
+ expect(f.loop.get('backwardFix')).toEqual({branch:'fix/private-access',sha:SHA});
+
  const cards=f.posts.filter(p=>p.room==='studio'&&p.text.includes(' of 6:'));
  for(const n of [2,3,4,5,6])expect(cards.some(c=>c.text.includes(`Stage ${n} of 6:`))).toBe(true);
  expect(cards.every(c=>c.text.length<=900&&c.text.includes('@desk '))).toBe(true);
@@ -143,4 +159,14 @@ test('owner can request a fresh review of unchanged SHA after a failed verificat
  await f.loop.handle(f.event('owner','@desk review'));
  expect(f.loop.get('reviewer').round).toBe(round+1);
  expect(f.loop.get('reviewVerdict')).toBeNull();
+});
+
+test('bounded build assignment authorizes local product commits while protecting the outer repo',async()=>{
+ const f=fixture();await f.architecture();
+ await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
+ await f.loop.handle(f.event('owner','@desk approve architecture '+f.code('architecture')));
+ const task=[...f.documents.values()].find(x=>x.startsWith('Reason:'))!;
+ expect(task).toContain('Bounded local product source/test commits are authorized after checks');
+ expect(task).toContain('without AI attribution');
+ expect(task).toContain('never commit the outer Backroom repository');
 });

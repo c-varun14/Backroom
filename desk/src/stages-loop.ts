@@ -5,7 +5,7 @@ import { Desk, sha256 } from "./gate";
 import { Store } from "./store";
 import { StageMachine } from "./workflow";
 import { leakWord } from "./cards";
-import {classifyClient} from "./client-intake";
+import {classifyClient,parseClientApproval} from "./client-intake";
 import { SwitchAPI, SwitchTransport } from "./switch-transport";
 import { VisibleLoop, type SwitchEvent } from "./visible-loop";
 import type { Artifact, Stage } from "./types";
@@ -13,7 +13,7 @@ import type { Identity } from "./switch-identities";
 import { LocalComposeDeployer } from "../../deploy/local-compose";
 
 export interface RehearsalConfig { mode?:"real";deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
-export type Control = { freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void> };
+export type Control = { freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void|{id:string;name:string}> };
 const COMMIT=/^[a-f0-9]{40}$/;
 const HASH=/^[a-f0-9]{64}$/;
 
@@ -129,9 +129,10 @@ export class StagesLoop {
     if(event.room_id===this.config.clientRoomId){
       if(!client||!['client_review','video'].includes(workflow.stage)||workflow.completed)return;
       const delivered=this.get('delivered');
-      if(/^approve(?: [a-f0-9]{40,64})?$/.test(body.trim())&&delivered?.stage===workflow.stage){
+      const approval=parseClientApproval(body);
+      if(approval&&delivered?.stage===workflow.stage){
         const artifact=delivered.artifact as Artifact;
-        const explicit=body.trim().split(' ')[1];
+        const explicit=approval.artifact;
         if(explicit&&explicit!==(artifact.kind==='commit'?artifact.sha:artifact.kind==='video'?artifact.sha256:''))return;
         if(delivered.version!==workflow.stages[workflow.stage].version)return;
         if(artifact.kind==='commit'&&(await this.deployer.current(this.config.projectId))?.commitSha!==artifact.sha)return;
@@ -144,7 +145,7 @@ export class StagesLoop {
         }
         this.set('delivered',null);await this.studio(`SIMULATION client approved ${workflow.stage} exact artifact. Next: ${this.state.get(this.config.projectId).stage}.`);
         if(workflow.stage==='video'&&!this.get('promoted'))await this.mention(this.config.leadName,'SIMULATION client accepted the exact video hash. Propose pending private-order-lists v1 with reusable privacy lesson, evidence that bakery owner route rejects unauthenticated access and old-shop GET /api/orders exposes contacts; no client facts. Return protocol lesson. Promotion requires an owner command.');
-      } else if(/^approve\b/.test(body.trim())){return;}
+      } else if(approval){return;}
       else if(/\?$/.test(body.trim())&&!['request','bug'].includes(classifyClient(body).kind)){this.set('clientQuestion',{stage:workflow.stage,version:workflow.stages[workflow.stage].version});await this.mention(this.config.leadName,`SIMULATION client question; do not change version or approve anything. Answer via protocol answer: ${body}`);}
       else {
         const deployed=await this.deployer.current(this.config.projectId);

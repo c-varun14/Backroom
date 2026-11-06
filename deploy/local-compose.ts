@@ -1,8 +1,9 @@
 import type { Deployer } from "../desk/src/types";
-import { mkdir, mkdtemp, readFile, writeFile, rm, open, realpath, stat, rename, readdir } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile, rm, realpath, stat, rename, readdir } from "node:fs/promises";
 import { resolve, join, isAbsolute } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
+import {acquireProjectLock} from "./project-lock";
 import { parseRuntimeContract, emptyRuntime, composeLiteral, type RuntimeContract } from "./runtime-contract";
 export type ProjectConfig = { repoPath: string; containerPort: number; healthPath?: string; secretFiles?: Record<string,string>; secretsRoot?: string; persistData?: boolean; ownerPasswordFile?: string };
 export type Deployment = { url: string; port: number; commitSha: string; intentId: string; composeProject: string; directory: string; healthPath?: string };
@@ -30,10 +31,41 @@ export class LocalComposeDeployer implements Deployer {
     this.config(project);
     try {
       const d=JSON.parse(await readFile(join(this.root,`${project}.json`),"utf8"));
-      d.port??=Number(new URL(d.url).port); // migrate the earlier state's URL-only port
-      if(!Number.isInteger(d.port)||d.port<1||d.port>65535||d.url!==`http://127.0.0.1:${d.port}`||!new RegExp(`^backroom-demo-${project}-[a-f0-9]{10}$`).test(d.composeProject)||!resolve(d.directory).startsWith(this.root+"/run-"))throw new Error("Invalid deployment state");
-      return d;
+      return this.validateState(project,d);
     }catch(e:any){if(e.code==="ENOENT")return null;throw e;}
+  }
+  private validateState(project:string,d:any):Deployment{
+    d.port??=Number(new URL(d.url).port);
+    if(!Number.isInteger(d.port)||d.port<1||d.port>65535||d.url!==`http://127.0.0.1:${d.port}`||!new RegExp(`^backroom-demo-${project}-[a-f0-9]{10}$`).test(d.composeProject)||!resolve(d.directory).startsWith(this.root+"/run-"))throw new Error("Invalid deployment state");
+    return d;
+  }
+  private async exists(path:string){try{await stat(path);return true;}catch(e:any){if(e.code==="ENOENT")return false;throw e;}}
+  private async transition(project:string,value:{previous:Deployment|null;candidate:Deployment;oldMayBeStopped:boolean}){
+    const file=join(this.root,`${project}.transition.json`);
+    await writeFile(file+".tmp",JSON.stringify(value),{mode:0o600});await rename(file+".tmp",file);
+  }
+  private async retire(d:Deployment,repo:string){
+    if(await this.exists(join(d.directory,"compose.json")))await this.command(d,"down");
+    if(await this.exists(join(d.directory,"source")))await run(["git","-C",repo,"worktree","remove","--force",join(d.directory,"source")],this.root);
+    await rm(d.directory,{recursive:true,force:true});
+  }
+  private async reconcileTransition(project:string,c:ProjectConfig){
+    const file=join(this.root,`${project}.transition.json`);
+    let journal:any;try{journal=JSON.parse(await readFile(file,"utf8"));}catch(e:any){if(e.code==="ENOENT")return;throw e;}
+    const candidate=this.validateState(project,journal.candidate),previous=journal.previous?this.validateState(project,journal.previous):null,current=await this.current(project);
+    const published=current?.intentId===candidate.intentId&&current?.composeProject===candidate.composeProject;
+    if(!published&&current?.composeProject!==previous?.composeProject)throw new Error("Deployment transition conflicts with current state");
+    const repo=await realpath(c.repoPath);
+    if(published){if(previous)await this.retire(previous,repo);}
+    else{
+      // Retire the candidate before restoring the old writer on their shared port.
+      // Keep the journal if any cleanup fails; a later owner operation can retry.
+      let cleanupError:unknown;
+      try{await this.retire(candidate,repo);}catch(e){cleanupError=e;}
+      if(!cleanupError&&previous&&journal.oldMayBeStopped){await this.command(previous,"start","app");await this.health(previous,{...c,healthPath:previous.healthPath??c.healthPath});}
+      if(cleanupError)throw cleanupError;
+    }
+    await rm(file);
   }
   private async command(d:Deployment,...args:string[]) {
     if(!/^backroom-demo-[a-z0-9-]+$/.test(d.composeProject)||!resolve(d.directory).startsWith(this.root+"/run-"))throw new Error("Unsafe deployment target");
@@ -109,9 +141,10 @@ export class LocalComposeDeployer implements Deployer {
     const c=this.config(input.project);
     if(!/^[a-f0-9]{40}$/.test(input.commitSha)||!input.intentId)throw new Error("Exact 40-character commit SHA and intent ID required");
     await mkdir(this.root,{recursive:true,mode:0o700});
-    const lock=await open(join(this.root,`${input.project}.lock`),"wx",0o600);
-    let next:Deployment|undefined,repo:string|undefined,old:Deployment|null=null,treeAdded=false,oldStopped=false,published=false,hasCompose=false;
+    const lock=await acquireProjectLock(join(this.root,`${input.project}.lock`));
+    let next:Deployment|undefined,repo:string|undefined,old:Deployment|null=null;
     try {
+      await this.reconcileTransition(input.project,c);
       old=await this.current(input.project);
       if(old?.intentId===input.intentId){if(old.commitSha!==input.commitSha)throw new Error("Intent already used for another commit");await this.health(old,c);return old.url;}
       repo=await realpath(c.repoPath);
@@ -120,41 +153,31 @@ export class LocalComposeDeployer implements Deployer {
       const port=await this.port(input.project,old),directory=await mkdtemp(join(this.root,"run-"));
       const suffix=createHash("sha256").update(randomUUID()).digest("hex").slice(0,10);
       next={url:`http://127.0.0.1:${port}`,port,commitSha:sha,intentId:input.intentId,composeProject:`backroom-demo-${input.project}-${suffix}`,directory,healthPath:c.healthPath??"/"};
-      const tree=join(directory,"source");await run(["git","-C",repo,"worktree","add","--detach",tree,sha],this.root);treeAdded=true;
+      await this.transition(input.project,{previous:old,candidate:next,oldMayBeStopped:false});
+      const tree=join(directory,"source");await run(["git","-C",repo,"worktree","add","--detach",tree,sha],this.root);
       const runtime=await this.contract(tree,c);
-      await this.compose(input.project,next,tree,c,runtime);hasCompose=true;
+      await this.compose(input.project,next,tree,c,runtime);
       // Build first without runtime secrets, while the prior app is still serving.
       await this.command(next,"build","app");
       // Same port and shared writable storage require a single running writer.
-      if(old){await this.command(old,"stop","app");oldStopped=true;}
+      if(old){await this.transition(input.project,{previous:old,candidate:next,oldMayBeStopped:true});await this.command(old,"stop","app");}
       await this.command(next,"up","--no-build","-d");
       const binding=await this.command(next,"port","app",String(c.containerPort));
       if(binding!==`127.0.0.1:${port}`)throw new Error("Unexpected/non-loopback binding refused");
       await this.health(next,c);
       const stateFile=join(this.root,`${input.project}.json`);
-      await writeFile(stateFile+".tmp",JSON.stringify(next),{mode:0o600});await rename(stateFile+".tmp",stateFile);published=true;
-      if(old){await this.command(old,"down");await run(["git","-C",repo,"worktree","remove","--force",join(old.directory,"source")],this.root);await rm(old.directory,{recursive:true,force:true});}
+      await writeFile(stateFile+".tmp",JSON.stringify(next),{mode:0o600});await rename(stateFile+".tmp",stateFile);
       return next.url;
     } finally {
-      try {
-        let cleanupError:unknown;
-        try { if(!published&&next){
-          // Do not lose the cleanup recipe if Docker cannot retire the candidate.
-          if(hasCompose)await this.command(next,"down");
-          if(treeAdded&&repo)await run(["git","-C",repo,"worktree","remove","--force",join(next.directory,"source")],this.root);
-          await rm(next.directory,{recursive:true,force:true});
-        }
-        } catch(error){cleanupError=error;}
-        if(!published&&oldStopped&&old){await this.command(old,"start","app");await this.health(old,{...c,healthPath:old.healthPath??c.healthPath});}
-        if(cleanupError)throw cleanupError;
-      } finally {await lock.close();await rm(join(this.root,`${input.project}.lock`),{force:true});}
+      try{await this.reconcileTransition(input.project,c);}finally{await lock.release();}
     }
   }
+
   async stop(project:string) {
     const c=this.config(project);await mkdir(this.root,{recursive:true,mode:0o700});
-    const lock=await open(join(this.root,`${project}.lock`),"wx",0o600);
-    try{const d=await this.current(project);if(!d)return;await this.command(d,"down");await run(["git","-C",await realpath(c.repoPath),"worktree","remove","--force",join(d.directory,"source")],this.root);await rm(d.directory,{recursive:true,force:true});await rm(join(this.root,`${project}.json`));}
-    finally{await lock.close();await rm(join(this.root,`${project}.lock`),{force:true});}
+    const lock=await acquireProjectLock(join(this.root,`${project}.lock`));
+    try{await this.reconcileTransition(project,c);const d=await this.current(project);if(!d)return;await this.command(d,"down");await run(["git","-C",await realpath(c.repoPath),"worktree","remove","--force",join(d.directory,"source")],this.root);await rm(d.directory,{recursive:true,force:true});await rm(join(this.root,`${project}.json`));}
+    finally{await lock.release();}
     // Port lease and external named data volumes deliberately survive stop().
   }
 }

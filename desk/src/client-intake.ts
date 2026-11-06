@@ -1,7 +1,12 @@
 import {Store} from "./store";
 export type ClientKind="question"|"request"|"bug"|"chat"|"approve";
+/** One exact whole-message grammar shared by intake and stage acceptance. */
+export function parseClientApproval(body:string):{artifact?:string}|undefined {
+  const match=/^approve(?: ([a-f0-9]{40}|[a-f0-9]{64}))?$/i.exec(body);
+  return match?{...(match[1]?{artifact:match[1].toLowerCase()}:{})}:undefined;
+}
 export function classifyClient(body:string):{kind:ClientKind;text:string} {
-  if(/^approve$/i.test(body))return {kind:"approve",text:body};
+  if(parseClientApproval(body))return {kind:"approve",text:body};
   const m=/^(question|request|feature|bug)(?::\s*|\s+|$)([\s\S]*)$/i.exec(body);
   if(!m)return {kind:"chat",text:body};
   return {kind:m[1].toLowerCase()==="feature"?"request":m[1].toLowerCase() as ClientKind,text:m[2]};
@@ -21,7 +26,7 @@ export class ClientIntake {
     return this.store.db.query("SELECT * FROM client_messages WHERE event_id=?").get(eventId) as any;
   }
   message(n:number){return this.store.db.query("SELECT * FROM client_messages WHERE n=?").get(n) as any;}
-  latestConvertible(){return this.store.db.query("SELECT * FROM client_messages WHERE kind IN ('question','chat') ORDER BY n DESC LIMIT 1").get() as any;}
+  latestConvertible(){return this.store.db.query("SELECT * FROM client_messages WHERE kind IN ('question','chat') AND event_id NOT LIKE 'conversion:%' ORDER BY n DESC LIMIT 1").get() as any;}
   conversationCode(code:string){return this.store.db.query("SELECT c.*,d.code,d.status,m.simulated FROM conversation_drafts c JOIN drafts d ON d.id=c.id JOIN client_messages m ON m.n=c.message WHERE d.code=?").get(code) as any;}
   summary(){
     const tickets=this.store.db.query("SELECT n FROM tickets WHERE status NOT IN ('closed','stage1-closed') ORDER BY n").all() as {n:number}[];
