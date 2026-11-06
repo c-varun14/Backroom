@@ -57,7 +57,7 @@ class Session{
   }
   async login(email:string,password:string){const user=await this.call('POST','/gateway/auth/login',{email,password});this.id=user.id;return this;}
 }
-const admin=new Session(),owner=new Session(),client=new Session(),workers=new Session();
+const admin=new Session(),owner=new Session(),client=new Session(),workers=new Session(),observer=new Session();
 const adapters:Awaited<ReturnType<typeof commandAgent>>[]=[];
 const loopErrors:unknown[]=[];const agents:Record<string,any>={};
 let loop:RealStagesLoop,api:SwitchAPI,store:Store,config:RealConfig;
@@ -103,18 +103,26 @@ async function messages(){return (await owner.call('GET',`/gateway/chats/${confi
 async function workflowStage(stage:string){await wait(stage,()=>loop.state.get(config.projectId).stage===stage);}
 const activeCode=(stage:string)=>(store.db.query("SELECT code FROM stage_artifacts WHERE stage=? AND status='active' ORDER BY rowid DESC LIMIT 1").get(stage) as any)?.code;
 async function ownerCommand(body:string){await human('owner',body);}
+function pendingCard(command:string){
+  return (store.db.query("SELECT * FROM owner_cards WHERE status='open' ORDER BY rowid DESC").all() as any[]).find(row=>JSON.parse(row.buttons).some((b:any)=>b.command===command));
+}
+async function press(row:any,session=owner,command?:string){
+  const payload=JSON.parse(row.payload),button=JSON.parse(row.buttons).find((b:any)=>command?b.command===command:b.command!=='__change');
+  return session.call('POST',`/gateway/agent-sessions/${config.deskId}/${loop.brief.ownerCards.session}/approvals/${payload.request_id}/answer`,{answer:button.id});
+}
 async function briefRound(){
   await wait('brief draft',()=>loop.latestDraft()?.status==='active'&&loop.latestTicket()?.status==='awaiting-owner');
-  await ownerCommand('@desk send '+loop.latestDraft().code);
+  const draft=loop.latestDraft();await wait('send card',()=>pendingCard('@desk send '+draft.code));
+  await press(pendingCard('@desk send '+draft.code),owner,'@desk send '+draft.code);await loop.tick();
   await wait('brief delivered',()=>loop.latestDraft()?.status==='sent');
   await human('client','approve');await workflowStage('architecture');
-  await wait('stage card',async()=>(await owner.call('GET',`/gateway/chats/${config.studioRoomId}/messages`)).messages.some((m:any)=>String(m.body??m.content??'').includes('Stage 2 of 6')));
+  await wait('stage card',()=>store.db.query("SELECT request FROM owner_cards WHERE payload LIKE '%Stage 2 of 6%'").get());
 }
 async function buildRound(){
   await wait('architecture code',()=>activeCode('architecture'));
   await ownerCommand('@desk approve architecture '+activeCode('architecture'));
   await wait('builder result',()=>loop.get('buildReady'),60000);
-  const ownerCards=(await owner.call('GET',`/gateway/chats/${config.studioRoomId}/messages`)).messages;
+  const ownerCards=(store.db.query('SELECT payload FROM owner_cards').all() as any[]).map(r=>({body:JSON.parse(r.payload).detail}));
   assert(ownerCards.some((m:any)=>String(m.body??m.content??'').includes('SAMPLE image fixture')&&String(m.body??m.content??'').includes(receipt.bakery)));
   assert(loop.get('buildVerification')?.sample===true&&loop.get('buildVerification')?.hash);
   await ownerCommand('@desk review');await wait('review verdict',()=>loop.get('reviewVerdict')==='pass',60000);
@@ -128,7 +136,7 @@ async function buildRound(){
 async function story(){
   for(let i=0;i<120;i++){try{const r=await fetch(base+'/health',{signal:AbortSignal.timeout(1000)});if(r.ok)break;}catch{}if(i===119)throw new Error('Switch readiness timeout');await Bun.sleep(1000);}
   await admin.login(env.GATEWAY_ADMIN_EMAIL,env.GATEWAY_ADMIN_PASSWORD);
-  for(const [name,session] of [['owner',owner],['client',client],['workers',workers]] as const){const password=randomUUID()+randomUUID();await admin.call('POST','/gateway/users',{name:'SAMPLE scripted '+name,email:name+'@judge.example.test',password,role:'user'});await session.login(name+'@judge.example.test',password);}
+  for(const [name,session] of [['owner',owner],['client',client],['workers',workers],['observer',observer]] as const){const password=randomUUID()+randomUUID();await admin.call('POST','/gateway/users',{name:'SAMPLE scripted '+name,email:name+'@judge.example.test',password,role:'user'});await session.login(name+'@judge.example.test',password);}
   await register('desk',owner);for(const role of ['lead','builder','reviewer'])await register(role,workers);
   const provision=await admin.call('POST','/gateway/rooms/from-yaml',{yaml:readFileSync('/repo/switch/backroom.template.yaml','utf8'),inputs:{desk:'desk',lead:'lead',builder:'builder',reviewer:'reviewer',client_room:'client-judge',studio_room:'studio-judge',work_room:'work-judge'},template_name:'SAMPLE scripted judge'});
   assert(provision.rooms.length===3&&!provision.errors?.length&&provision.rooms.every((r:any)=>!r.failed_attachments.length));
@@ -187,21 +195,39 @@ async function story(){
   await wait('first brief',()=>loop.latestDraft()?.status==='active');
   assert((await messages()).some((m:any)=>String(m.body??m.content??'').includes('Ticket #1: assigned to Varun')));
   record('Request intake',true,'Real fixed assignment line, ticket #1 and versioned brief created through Switch.');
-  loop.watchdog.assign(loop.ticket(),'lead');demoClock+=20*60*1000;await loop.tick();await loop.tick();
-  const warningCards=(await owner.call('GET',`/gateway/chats/${config.studioRoomId}/messages`)).messages.filter((m:any)=>String(m.body??m.content??'').includes('has made no progress'));
+  await (loop as any).pending;loop.watchdog.assign(loop.ticket(),'lead');demoClock+=20*60*1000;await loop.tick();await loop.tick();
+  const warningCards=(store.db.query('SELECT payload FROM owner_cards').all() as any[]).filter(row=>JSON.parse(row.payload).detail.includes('has made no progress'));
   assert(warningCards.length===1);loop.watchdog.clear();
   record('Watchdog sample clock',true,'SAMPLE injected stalled assignment and fake 20-minute clock produce one warning card; second tick does not repeat it.');
   const old=loop.latestDraft().code,before=(await messages()).length;
+  const firstCard=pendingCard('@desk send '+old);assert(firstCard);
+  await admin.call('POST',`/gateway/chats/${studioRoom}/members`,{userId:observer.id});
+  await press(firstCard,observer,'@desk send '+old);await loop.tick();
+  const refreshed=pendingCard('@desk send '+old);assert(refreshed&&refreshed.request!==firstCard.request&&(await messages()).length===before);
+  record('Non-owner button blocked',true,'Different SAMPLE account answered; nothing released and a fresh card for the same artifact appeared.');
+  let studioHidden=false;try{await client.call('GET',`/gateway/chats/${studioRoom}/messages`);}catch(e){studioHidden=e instanceof Error&&e.message==='HTTP 403; response withheld';}
+  assert(studioHidden);record('Client cannot see studio',true,'SAMPLE client gets HTTP 403; unauthorized card probe uses a separate SAMPLE observer account.');
   try{await adapters[0].api.post(clientRoom,'SAMPLE unauthorized agent post');throw new Error('Unexpected authorized post');}catch(e){assert(e instanceof Error&&e.message==='Switch HTTP 403; response withheld');record('Room wall',true,safe(e));}
   await adapters[0].api.post(work.id,'@desk send '+old);
   await wait('agent refusal audit',()=>store.audit().some((a:any)=>a.reason==='agent sender'));
   assert((await messages()).length===before);record('Agent release blocked',true,'Real desk audit: agent sender; client message count unchanged.');
   await human('client','request: SAMPLE clarify morning pickup only, still 40 units.');
   await wait('changed brief',()=>loop.latestDraft()?.status==='active'&&loop.latestDraft().code!==old);
+  await loop.brief.ownerCards.closeStale();
+  let staleRefused=false;try{await press(refreshed,owner,'@desk send '+old);}catch(e){staleRefused=e instanceof Error&&e.message==='HTTP 409; response withheld';}
+  assert(staleRefused);record('Superseded button closed',true,'Switch HTTP 409 refused a press on the closed old-version card.');
   const staleBefore=(await messages()).length;
   await ownerCommand('@desk send '+old);await wait('stale audit',()=>store.audit().some((a:any)=>a.reason==='superseded code'));
   assert((await messages()).length===staleBefore);record('Stale code blocked',true,'Real desk audit: superseded code; no delivery.');
-  await briefRound();record('Brief approval',true,'Exact owner code released; SAMPLE client approval produced Stage 2 card.');
+  const expected=JSON.parse((store.db.query('SELECT frozen FROM drafts WHERE code=?').get(loop.latestDraft().code) as any).frozen).text;
+  await briefRound();assert((await messages()).filter((m:any)=>(m.body??m.content)===expected).length===1);record('Owner Send button',true,'Verified SAMPLE gateway press delivered the exact frozen client text once.');record('Brief approval',true,'Exact owner code released; SAMPLE client approval produced Stage 2 card.');
+  await adapters[0].api.post(work.id,'question 1\nWhich login should this app use?\n- Email\n- Google\n- None');
+  await wait('team question',()=>store.db.query("SELECT request FROM owner_cards WHERE binding='question:1'").get());
+  const question=store.db.query("SELECT * FROM owner_cards WHERE binding='question:1'").get() as any,qPayload=JSON.parse(question.payload),q=qPayload.questions[0];
+  await owner.call('POST',`/gateway/agent-sessions/${config.deskId}/${loop.brief.ownerCards.session}/approvals/${question.request}/answer`,{answers:[{question_id:q.id,selected_option_ids:[q.options[0].id],customText:null}]});
+  await loop.tick();
+  await wait('team answer',async()=>(await owner.call('GET',`/gateway/chats/${work.id}/messages`)).messages.some((m:any)=>String(m.body??m.content??'').includes('answer 1: Email')));
+  record('Team question button',true,'Verified owner answer reached lead in the private work room as answer 1: Email.');
   const first=await buildRound();
   const initial=await(await fetch('http://127.0.0.1:3210/api/catalog')).json();assert(Object.keys(initial.sessions).length===1&&initial.sessions.morning.capacity===40);
   const slot=initial.available[0];assert(slot);
@@ -269,7 +295,7 @@ async function story(){
 }
 async function off(){
   let result='';
-  for(const [name,operation] of [['Client message reaches studio',clientToStudio],['Handoff to an agent',handoff],['Owner release',release],['Lesson reaches project room',attachLesson]] as const){
+  for(const [name,operation] of [['Client message reaches studio',clientToStudio],['Handoff to an agent',handoff],['Owner release',release],['Lesson reaches project room',attachLesson],['Owner card answer',()=>press(pendingCard('@desk send '+offlineCode),owner,'@desk send '+offlineCode)]] as const){
     let error:unknown;try{await operation();}catch(e){error=e;}
     const detail=name==='Owner release'&&error instanceof Error?error.message:safe(error);
     const connectionFailure=detail.includes('connection error:')||detail==='Switch request failed; response withheld';
@@ -295,7 +321,7 @@ Bun.serve({hostname:'127.0.0.1',port:3211,idleTimeout:255,async fetch(r){
   try{const action=new URL(r.url).pathname;
     if(action==='/off')return new Response(await off());
     if(action==='/recover')return new Response(await recover());
-    if(action==='/summary'){assert(checks.some(c=>c.step==='Switch recovery')&&checks.filter(c=>c.step.startsWith('Switch off:')).length===4&&!checks.some(c=>!c.pass));save();return new Response(checks.map(c=>`${c.pass?'PASS':'FAIL'} ${c.step}`).join('\n')+'\nAll '+checks.length+' steps passed.\n');}
+    if(action==='/summary'){assert(checks.some(c=>c.step==='Switch recovery')&&checks.filter(c=>c.step.startsWith('Switch off:')).length===5&&!checks.some(c=>!c.pass));save();return new Response(checks.map(c=>`${c.pass?'PASS':'FAIL'} ${c.step}`).join('\n')+'\nAll '+checks.length+' steps passed.\n');}
     return new Response('Not found',{status:404});
   }catch(e){return new Response(safe(e),{status:500});}
 }});

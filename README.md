@@ -44,7 +44,7 @@ bakery deployment, a client revision, and a package promotion. A second client,
 Fernline Books, then receives the lesson as the same package, cites it by ID and
 version in its architecture, and is refused on the first client's rooms and
 documents by live Switch. It then stops
-Switch, attempts four operations, prints their real errors, restarts Switch,
+Switch, attempts five operations, prints their real errors, restarts Switch,
 and checks recovery. Open `demo/out/receipt.html` and the printed loopback bakery
 URL. The synthetic video is only an exact-file gate fixture. This demo does not
 prove AI reasoning or production video quality. [Demo details](demo/README.md).

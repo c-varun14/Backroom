@@ -59,7 +59,7 @@ for(const name of ['Message','Question'] as const)for(const long of [false,true]
  await f.loop.handle(f.event(c.workRoomId!,'verified-lead',protocol(1,'reply',reply).replace(/^draft /,'draft message ')));
  const posts=f.sent.slice(before).filter(m=>m.room===c.studioRoomId);
  const card=posts.at(-1).text;
- expect(card).toContain(name+' #1');expect(card).not.toContain('Ticket #');expect(card).not.toContain('@desk');expect(card.length).toBeLessThanOrEqual(900);
+ expect(card).toContain(name+' #1');expect(card).not.toContain('Ticket #');expect(card).not.toContain('@desk');expect(card.length).toBeLessThanOrEqual(long?4000:900);
  expect(card).toMatch(/\n`[a-f0-9]{10,64}`\n/);
  if(!long){expect(posts).toHaveLength(1);expect(posts[0].attachments).toHaveLength(0);expect(card).toContain(reply);}
  else{

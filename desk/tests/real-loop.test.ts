@@ -8,12 +8,13 @@ import {Store} from '../src/store';
 import {SwitchAPI,SwitchTransport} from '../src/switch-transport';
 import {sha256} from '../src/gate';
 const SHA='a'.repeat(40),cleanup:(()=>void)[]=[];afterEach(()=>cleanup.splice(0).forEach(fn=>fn()));
-function fixture(deskName?:string,now?:()=>number){
+export function realFixture(deskName?:string,now?:()=>number){
  const root=mkdtempSync(join(tmpdir(),'backroom-real-test-')),store=new Store();cleanup.push(()=>{store.close();rmSync(root,{recursive:true,force:true});});
  const config:RealConfig={deskName,mode:'real',projectId:'sample-real',ownerId:'owner',clientId:'client',deskId:'desk',leadId:'lead',builderId:'builder',reviewerId:'reviewer',reviewerIds:['reviewer'],studioRoomId:'studio',clientRoomId:'client-room',workRoomId:'work',bridgeId:'bridge',workspace:root,memoryDocumentId:'memory',packageId:'package',leadName:'lead',builderName:'builder-real',reviewerName:'reviewer-real'};
  const identities:any[]=[{sender:'owner',kind:'human',users:['owner'],agent_id:null},{sender:'client',kind:'human',users:['client'],agent_id:null},{sender:'stranger',kind:'human',users:[],agent_id:null},...['lead','builder','reviewer'].map(id=>({sender:id,kind:'agent',agent_id:id,users:[]}))];
  const posts:any[]=[],documents=new Map<string,string>();let count=0,current:any=null,reviewers=0,promoted=0;
- const api:any={async post(room:string,text:string,files:any[]=[]){posts.push({room,text,files});return {event_id:'post-'+(++count)};},socket(){return {send(){}};},
+ const openedCards=new Set<string>();
+ const api:any={async json(path:string,body:any){if(path.endsWith("/outcomes"))return [];if(path.endsWith("/approvals")){if(openedCards.has(body.request_id))return {};openedCards.add(body.request_id);return api.post(body.room_id,body.detail);}return {};},async post(room:string,text:string,files:any[]=[]){posts.push({room,text,files});return {event_id:'post-'+(++count)};},socket(){return {send(){}};},
   async operation(name:string,args:any,connection:string){if(name==='load_internal_documents')return {result:args.ids.map((id:string)=>({content:documents.get(id)}))};if(name==='create_room_document'){const id=randomUUID();documents.set(id,args.content);return {result:{document_id:id}};}const row:any=store.db.query('SELECT room FROM room_cursors WHERE connection_id=?').get(connection);return api.post(row?.room,args.body);},thread:SwitchAPI.prototype.thread,publishApprovalText:SwitchAPI.prototype.publishApprovalText};
  const deployer:any={current:async()=>current,deploy:async(input:any)=>{current={commitSha:input.commitSha,url:'http://127.0.0.1:3210'};}};
  const loop=new RealStagesLoop(store,api,new SwitchTransport(api,join(root,'files')),config,deployer,()=>identities,{now,freshReviewer:async()=>{reviewers++;const id='reviewer-'+reviewers;identities.push({sender:id,kind:'agent',agent_id:id,users:[]});return {id,name:id};},promotePackage:async()=>{promoted++;}},root);
@@ -27,7 +28,7 @@ function fixture(deskName?:string,now?:()=>number){
 }
 
 test('isolated real-mode dry run closes Stage 1 and produces a Stage 2 card without live services',async()=>{
- const f=fixture();await f.architecture();expect(f.loop.state.get(f.config.projectId).stage).toBe('architecture');
+ const f=realFixture();await f.architecture();expect(f.loop.state.get(f.config.projectId).stage).toBe('architecture');
  expect(f.posts.some(p=>p.room==='studio'&&p.text.includes('Stage 2 of 6: Architecture')&&p.text.includes('Next: status'))).toBe(true);
  expect(f.posts.every(p=>!p.text.includes('SIMULATION'))).toBe(true);expect(f.posts.filter(p=>p.text.includes('@lead')).every(p=>p.room==='work')).toBe(true);
  const assignment=f.posts.find(p=>p.text.includes('The client approved Brief'))!.text;
@@ -36,7 +37,7 @@ test('isolated real-mode dry run closes Stage 1 and produces a Stage 2 card with
  expect(assignment).toContain('preserve an existing integer-INR menu');
 });
 test('real stages 2–6 have short command cards, explicit deploy/send gates and identified lesson approval',async()=>{
- const f=fixture();await f.clientReview();expect(f.loop.state.get(f.config.projectId).stage).toBe('client_review');
+ const f=realFixture();await f.clientReview();expect(f.loop.state.get(f.config.projectId).stage).toBe('client_review');
  const before=f.posts.filter(p=>p.room==='client-room').length;
  expect(before).toBe(2); // Stage 1 fixed line and explicitly approved brief only.
  let out=f.loop.get('outgoing');await f.loop.handle(f.event('owner','@desk send '+out.code));await f.loop.handle(f.event('client','approve'));
@@ -68,13 +69,13 @@ test('real stages 2–6 have short command cards, explicit deploy/send gates and
  expect(f.posts.filter(p=>p.room==='client-room').every(p=>!p.text.includes('INTERNAL')&&!p.text.includes('SIMULATION'))).toBe(true);
 });
 test('real future-stage questions preserve the waiting ticket release code and work approval',async()=>{
- const f=fixture();await f.clientReview();const out=f.loop.get('outgoing'),before=f.loop.state.get(f.config.projectId);
+ const f=realFixture();await f.clientReview();const out=f.loop.get('outgoing'),before=f.loop.state.get(f.config.projectId);
  await f.loop.handle(f.event('client','question: when?'));
  expect(f.loop.state.get(f.config.projectId)).toEqual(before);expect(f.loop.get('outgoing')).toEqual(out);
  expect(f.store.db.query('SELECT status FROM drafts WHERE code=?').get(out.code)).toEqual({status:'active'});
 });
 test('real live builder handoff accepts a protocol first line followed by evidence',async()=>{
- const f=fixture();await f.architecture();
+ const f=realFixture();await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  await f.loop.handle(f.event('owner','@desk approve architecture '+f.code('architecture')));
  await f.loop.handle(f.event('lead','spec document '+f.doc('SAMPLE validation spec')));
@@ -84,7 +85,7 @@ test('real live builder handoff accepts a protocol first line followed by eviden
  expect(f.loop.get('candidate')).toBeNull();
 });
 test('real repeated build tasks use distinct Switch document names',async()=>{
- const f=fixture();await f.architecture();
+ const f=realFixture();await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  const names=new Set<string>(),original=f.loop.api.operation.bind(f.loop.api);
  f.loop.api.operation=async(name,args,connection)=>{
@@ -99,35 +100,35 @@ test('real repeated build tasks use distinct Switch document names',async()=>{
  expect(names.size).toBe(2);
 });
 test('real labelled feature ending in a question mark still reopens work; plain chat does not',async()=>{
- const f=fixture();await f.clientReview();const before=f.loop.state.get(f.config.projectId);
+ const f=realFixture();await f.clientReview();const before=f.loop.state.get(f.config.projectId);
  await f.loop.handle(f.event('client','Could you add a form?'));expect(f.loop.state.get(f.config.projectId)).toEqual(before);
  await f.loop.handle(f.event('client','feature: Could you add a pickup option?'));expect(f.loop.state.get(f.config.projectId).stage).toBe('brief');
  expect(f.loop.state.get(f.config.projectId).stages.build.approvals).toEqual([]);
 });
 test('real wrong-room and agent approvals cannot close architecture; changed document is rejected',async()=>{
- const f=fixture();await f.architecture();const id=f.doc('SAMPLE architecture');await f.loop.handle(f.event('lead','architecture document '+id));const code=f.code('architecture');
+ const f=realFixture();await f.architecture();const id=f.doc('SAMPLE architecture');await f.loop.handle(f.event('lead','architecture document '+id));const code=f.code('architecture');
  await f.loop.handle(f.event('builder','@desk approve architecture '+code));await f.loop.handle(f.event('owner','@desk approve architecture '+code,'work'));
  expect(f.loop.state.get(f.config.projectId).stage).toBe('architecture');f.documents.set(id,'changed');await expect(f.loop.handle(f.event('owner','@desk approve architecture '+code))).rejects.toThrow('Changed document');
 });
 test('real owner question cannot accidentally create a new architecture version',async()=>{
- const f=fixture();await f.architecture();await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
+ const f=realFixture();await f.architecture();await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  const before=f.loop.state.get(f.config.projectId);await f.loop.handle(f.event('owner','Why this storage?'));
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE accidental replacement')));expect(f.loop.state.get(f.config.projectId)).toEqual(before);
  await f.loop.handle(f.event('lead','answer document '+f.doc('SAMPLE storage answer')));expect(f.loop.state.get(f.config.projectId)).toEqual(before);
 });
 test('real owner conversion at a later stage clears stale candidate, review and outgoing state',async()=>{
- const f=fixture();await f.clientReview();await f.loop.handle(f.event('client','question: can we add a form?'));
+ const f=realFixture();await f.clientReview();await f.loop.handle(f.event('client','question: can we add a form?'));
  await f.loop.handle(f.event('owner','@desk ticket'));
  expect(f.loop.state.get(f.config.projectId).stage).toBe('brief');expect(f.loop.get('candidate')).toBeNull();expect(f.loop.get('reviewer')).toBeNull();expect(f.loop.get('outgoing')).toBeNull();
 });
 test('owner build questions preserve candidate, review and pending client release',async()=>{
- const f=fixture();await f.clientReview();const before=f.loop.state.get(f.config.projectId),candidate=f.loop.get('candidate'),out=f.loop.get('outgoing');
+ const f=realFixture();await f.clientReview();const before=f.loop.state.get(f.config.projectId),candidate=f.loop.get('candidate'),out=f.loop.get('outgoing');
  await f.loop.handle(f.event('owner','Why this pickup window?'));
  expect(f.loop.state.get(f.config.projectId)).toEqual(before);expect(f.loop.get('candidate')).toBe(candidate);expect(f.loop.get('outgoing')).toEqual(out);
 });
 
 test('real dryrun card addresses its separate desk identity and its exact command works',async()=>{
- const f=fixture('desk-dryrun');await f.architecture();
+ const f=realFixture('desk-dryrun');await f.architecture();
  expect(f.posts.some(p=>p.room==='studio'&&p.text.includes('Next: status'))).toBe(true);
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  const card=f.posts.at(-1).text;
@@ -140,7 +141,7 @@ test('real dryrun card addresses its separate desk identity and its exact comman
 });
 
 test('independent assignment distinguishes immutable source from disposable test fixtures',async()=>{
- const f=fixture();await f.clientReview();
+ const f=realFixture();await f.clientReview();
  const assignment=[...f.documents.values()].find(text=>text.startsWith('Fresh independent review. Round'))!;
  expect(assignment).toContain('Tracked source, tests and configuration are read-only');
  expect(assignment).toContain('fixtures only under '+f.root+'/.runtime');
@@ -149,7 +150,7 @@ test('independent assignment distinguishes immutable source from disposable test
 });
 
 test('owner can request a fresh review of unchanged SHA after a failed verification',async()=>{
- const f=fixture();await f.architecture();
+ const f=realFixture();await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  await f.loop.handle(f.event('owner','@desk approve architecture '+f.code('architecture')));
  await f.loop.handle(f.event('lead','spec document '+f.doc('SAMPLE spec')));
@@ -162,7 +163,7 @@ test('owner can request a fresh review of unchanged SHA after a failed verificat
 });
 
 test('bounded build assignment authorizes local product commits while protecting the outer repo',async()=>{
- const f=fixture();await f.architecture();
+ const f=realFixture();await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  await f.loop.handle(f.event('owner','@desk approve architecture '+f.code('architecture')));
  const task=[...f.documents.values()].find(x=>x.startsWith('Reason:'))!;
@@ -172,7 +173,7 @@ test('bounded build assignment authorizes local product commits while protecting
 });
 
 test('owner build card carries the URL and frozen labelled sample screenshot',async()=>{
- const f=fixture();await f.architecture();
+ const f=realFixture();await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  await f.loop.handle(f.event('owner','@desk approve architecture '+f.code('architecture')));
  await f.loop.handle(f.event('lead','spec document '+f.doc('SAMPLE bounded spec')));
@@ -180,14 +181,14 @@ test('owner build card carries the URL and frozen labelled sample screenshot',as
  writeFileSync(join(f.root,'build-verification.json'),JSON.stringify({url:'http://127.0.0.1:3210',screenshot:'sample.png',sample:true}));
  await f.loop.handle(f.event('builder','build-ready build-report.md'));
  const card=f.posts.find(p=>p.text.includes('Product work ready.'));
- expect(card.room).toBe('studio');expect(card.text).toContain('http://127.0.0.1:3210');expect(card.text).toContain('SAMPLE image fixture');expect(Buffer.from(card.files[0].bytes)).toEqual(bytes);
+ expect(card.room).toBe('studio');expect(card.text).toContain('http://127.0.0.1:3210');expect(card.text).toContain('SAMPLE image fixture');expect(Buffer.from(f.posts.find(p=>p.text==='Files for your review').files[0].bytes)).toEqual(bytes);
  expect(f.loop.get('buildVerification').hash).toBe(sha256(bytes));
  expect(f.posts.filter(p=>p.room==='client-room').some(p=>p.files.length)).toBe(false);
 });
 
 
 test('missing verification sends the builder back and tells the owner instead of stalling',async()=>{
- const f=fixture();f.loop.real.ownerVerificationRequired=true;await f.architecture();
+ const f=realFixture();f.loop.real.ownerVerificationRequired=true;await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  await f.loop.handle(f.event('owner','@desk approve architecture '+f.code('architecture')));
  await f.loop.handle(f.event('lead','spec document '+f.doc('SAMPLE spec')));
@@ -200,7 +201,7 @@ test('missing verification sends the builder back and tells the owner instead of
 });
 
 test('watchdog follows builder and fresh reviewer handoffs without repeating on owner status',async()=>{
- let now=0;const f=fixture(undefined,()=>now);
+ let now=0;const f=realFixture(undefined,()=>now);
  await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  await f.loop.handle(f.event('owner','@desk approve architecture '+f.code('architecture')));
@@ -218,7 +219,7 @@ test('watchdog follows builder and fresh reviewer handoffs without repeating on 
 });
 
 test('plain owner commands reach stages 2–6 and compact deploy codes resolve only to the reviewed SHA',async()=>{
- const f=fixture();await f.architecture();
+ const f=realFixture();await f.architecture();
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));
  await f.loop.handle(f.event('owner','approve architecture '+f.code('architecture')));
  await f.loop.handle(f.event('lead','spec document '+f.doc('SAMPLE spec')));
@@ -233,7 +234,7 @@ test('plain owner commands reach stages 2–6 and compact deploy codes resolve o
  expect(f.loop.get('videoRequested')).toBe(true);
 });
 test('later-stage bare agreements preserve artifacts, approvals and release codes',async()=>{
- const f=fixture();await f.clientReview();const state=f.loop.state.get(f.config.projectId),out=f.loop.get('outgoing'),candidate=f.loop.get('candidate');
+ const f=realFixture();await f.clientReview();const state=f.loop.state.get(f.config.projectId),out=f.loop.get('outgoing'),candidate=f.loop.get('candidate');
  for(const word of ['ok','okay','yes','yep','send','approve','approved','looks good','lgtm']){
   const count=f.posts.length;await f.loop.handle(f.event('owner',word.toUpperCase()+'!!!'));
   expect(f.posts.slice(count)).toHaveLength(1);expect(f.posts.at(-1).text).toContain('send '+out.code);expect(f.posts.at(-1).text.split('\n').length).toBeLessThanOrEqual(3);
@@ -241,7 +242,7 @@ test('later-stage bare agreements preserve artifacts, approvals and release code
  }
 });
 test('status orders conversation and stage decisions by their publication order',async()=>{
- const f=fixture();await f.architecture();
+ const f=realFixture();await f.architecture();
  await f.loop.handle(f.event('client','question: SAMPLE when?'));
  await f.loop.handle(f.event('lead','draft message 2\nKIND: reply\n---CLIENT TEXT---\nFriday.\n---INTERNAL NOTES---\n'));
  await f.loop.handle(f.event('lead','architecture document '+f.doc('SAMPLE architecture')));

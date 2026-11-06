@@ -10,6 +10,7 @@ Backroom is plain code plus agents, joined only by Switch. `desk` speaks Switch'
 | --- | --- |
 | Client message reaches the studio | Connection error |
 | Handoff to an agent | Request fails |
+| Owner card answer | Connection error; no card can be answered |
 | Owner release | `desk` refuses because the verified owner event is unavailable, and nothing is sent |
 | Lesson reaches a project room | Connection error |
 

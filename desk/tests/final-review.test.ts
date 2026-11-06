@@ -14,7 +14,8 @@ function setup(){
  const identities:any[]=[{sender:'owner',kind:'human',users:['owner'],agent_id:null},{sender:'client',kind:'human',users:['client'],agent_id:null},...['lead','builder','reviewer'].map(id=>({sender:id,kind:'agent',agent_id:id,users:[]}))];
  const posts:any[]=[],docs=new Map<string,string>();let seq=0,current:any=null,failCreate=false,failLoad=false;
  let store:Store,loop:RealStagesLoop;
- const api:any={async post(room:string,text:string,files:any[]=[]){posts.push({room,text,files});return {event_id:'sample-post-'+(++seq)};},socket(){return {send(){}};},
+ const openedCards=new Set<string>();
+ const api:any={async json(path:string,body:any){if(path.endsWith("/outcomes"))return [];if(path.endsWith("/approvals")){if(openedCards.has(body.request_id))return {};openedCards.add(body.request_id);return api.post(body.room_id,body.detail);}return {};},async post(room:string,text:string,files:any[]=[]){posts.push({room,text,files});return {event_id:'sample-post-'+(++seq)};},socket(){return {send(){}};},
  async operation(name:string,args:any,connection:string){
   if(name==='create_room_document'){if(failCreate)throw Error('SAMPLE transient document creation failure');const id=randomUUID();docs.set(id,args.content);return {result:{document_id:id}};}
   if(name==='load_internal_documents'){if(failLoad)throw Error('SAMPLE transient document read failure');return {result:args.ids.map((id:string)=>({content:docs.get(id)}))};}

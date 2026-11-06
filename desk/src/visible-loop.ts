@@ -1,3 +1,4 @@
+import {OwnerCards} from './owner-cards';
 import { randomUUID } from "node:crypto";
 import { Desk, sha256 } from "./gate";
 import { Store } from "./store";
@@ -14,6 +15,7 @@ export interface LoopConfig { mode?:"real";deskName?:string;projectId: string; o
 export interface SwitchEvent { room_id: string; payload: { sender: string; sender_kind?: string | null; message_id: string; body: string; thread_id?: string | null; attachments?: { filename: string; mxc: string }[] } }
 
 export class VisibleLoop {
+  readonly ownerCards:OwnerCards;
   readonly gate: Desk;
   readonly workflow: StageMachine;
   readonly intakeState:ClientIntake;
@@ -64,7 +66,20 @@ export class VisibleLoop {
     this.deliveries = new DeliveryRecovery(store,config.projectId);
     this.recoverDeliveries();
     this.journal=new EventJournal(store,"intake:"+config.projectId);
+    this.ownerCards=new OwnerCards(store,api,config,this.identities,command=>this.commandBinding(command),event=>this.handle(event));
     if (config.workRoomId) this.connectWorkRoom();
+  }
+  commandBinding(command:string):string|null {
+    if(command==='__change'||command==='@desk status'||command==='@desk intro')return command;
+    const send=/^@desk send ([a-f0-9]{10,64})$/.exec(command);
+    if(send){const draft=this.store.db.query("SELECT id,status FROM drafts WHERE project=? AND code=?").get(this.config.projectId,send[1]) as any;return draft?.status==='active'?draft.id:null;}
+    if(/^@desk ticket(?: [1-9][0-9]*)?$/.test(command)){const id=command.split(' ')[2];const message=id?this.store.db.query("SELECT * FROM client_messages WHERE n=? AND kind IN ('question','chat')").get(Number(id)) as any:this.intakeState.latestConvertible();return message&&!message.converted?'message:'+message.n:null;}
+    return null;
+  }
+  async offerDraft(detail:string,code:string,text:string,suggestTicket=false){
+    const match=/(Ticket|Message|Question) #(\d+)/.exec(detail);
+    const exact=!detail.includes('… full outgoing text attached')?detail:text.length+detail.length+25<=4000?detail+'\n\nExact client text:\n'+text:detail+'\nAttachment: '+(match?match[1].toLowerCase()+'-'+match[2]:'ticket')+'-outgoing.md';
+    return this.ownerCards.offer('Reply for your review',exact,[{label:'Send',command:'@desk send '+code},{label:'Change',command:'__change'},...(suggestTicket?[{label:'Start project',command:'@desk ticket '+(/(?:Message|Question) #(\d+)/.exec(detail)?.[1]??'')}]:[])]);
   }
   private addColumn(table: string, name: string, type: string) {
     const columns = this.store.db.query(`PRAGMA table_info(${table})`).all() as { name: string }[];
@@ -171,7 +186,7 @@ export class VisibleLoop {
       .run(draft.id, ticket.n, version, artifact, ticket.simulated, parsed.kind, ticket.generation);
     this.store.db.query("UPDATE tickets SET status='awaiting-owner' WHERE n=?").run(ticket.n);
     this.rememberDecision(draft.code);
-    await this.studio(approvalCard({ ...preview, code: draft.code }));
+    await this.offerDraft(approvalCard({ ...preview, code: draft.code }),draft.code,content);
   }
   private async chatPrompt(message:any){
     if(!message.thread_id){
@@ -206,17 +221,18 @@ export class VisibleLoop {
     this.store.db.query("UPDATE client_messages SET status='awaiting-owner' WHERE n=?").run(message.n);
     this.rememberDecision(draft.code);
     const card=approvalCard({...preview,code:draft.code});
-    await this.studio(card);
+    await this.offerDraft(card,draft.code,text,true);
   }
   async clientCommand(event:SwitchEvent):Promise<boolean>{
-    if(!['@desk ticket','@desk intro'].includes(event.payload.body))return false;
-    const identity=verifiedSender(event.payload.sender,this.identities(),event.payload.sender_kind);
+    if(!/^@desk (?:intro|ticket(?: [1-9][0-9]*)?)$/.test(event.payload.body))return false;
+    const identity=this.ownerCards.identity(event)??verifiedSender(event.payload.sender,this.identities(),event.payload.sender_kind);
     if(!identity||identity.kind!=='human'||!identity.users.includes(this.config.ownerId)||event.room_id!==this.config.studioRoomId){this.store.log("client intake command rejected: verified studio owner required");return true;}
     if(event.payload.body==='@desk intro'){
       const result=await this.gate.postFixedLine(this.config.projectId,'clientIntro',{},`client-intro:${this.config.projectId}`);
       await this.studio(`Client guide ${result.status}.\nNext: status`);return true;
     }
-    const message=this.intakeState.latestConvertible();
+    const source=event.payload.body.split(' ')[2];
+    const message=source?this.store.db.query("SELECT * FROM client_messages WHERE n=? AND kind IN ('question','chat')").get(Number(source)) as any:this.intakeState.latestConvertible();
     if(!message||(message.converted&&message.ticket)){await this.studio('No new question/message to turn into a ticket.\nNext: status');return true;}
     this.store.db.query("UPDATE client_messages SET converted=1,status='converted' WHERE n=?").run(message.n);
     this.store.db.query("UPDATE drafts SET status='superseded' WHERE thread=? AND status='active'").run(`conversation:${message.n}`);
@@ -262,11 +278,12 @@ export class VisibleLoop {
     if (!owner || room !== this.config.studioRoomId) { this.store.log("status rejected: verified studio owner required", undefined, this.config.projectId); return; }
     const waiting = this.pendingReplies();
     const counts = this.intakeState.summary();
-    await this.studio([
+    const detail=[
       `Waiting on you: ${waiting.map(d=>d.label).join('; ') || 'nothing to send'}.`,
       `Type: ${waiting.map(d=>'send '+d.code).join('; ') || 'status'}`,
       `With the team: ${this.latestTicket()?.status==='with-lead'?'drafting your project reply':this.latestTicket()?.status?.startsWith('awaiting-client')?'waiting for the client': 'questions '+(counts.questions.join(', ')||'none')+'; messages '+(counts.messages.join(', ')||'none')}.`,
-    ].join("\n"));
+    ].join("\n");
+    await this.ownerCards.offer('Your next decisions',detail,waiting.slice(0,8).map(d=>({label:'Send '+d.label,command:'@desk send '+d.code})).concat([{label:'Status',command:'@desk status'}]),undefined,true);
   }
   rememberDecision(code:string) { this.store.db.query("INSERT OR IGNORE INTO owner_decisions(code) VALUES (?)").run(code); }
   pendingReplies(): {label:string;code:string;rowid:number}[] {
@@ -283,18 +300,18 @@ export class VisibleLoop {
 
   handle(event: SwitchEvent) {
     if(typeof event.payload?.body==='string'){
-      const identity=verifiedSender(event.payload.sender,this.identities(),event.payload.sender_kind);
+      const identity=this.ownerCards.identity(event)??verifiedSender(event.payload.sender,this.identities(),event.payload.sender_kind);
       const owner=event.room_id===this.config.studioRoomId && identity?.kind==="human" && identity.users.includes(this.config.ownerId);
       event={...event,payload:{...event.payload,body:ownerCommand(event.payload.body,owner,this.config.deskName)}};
     }
     if(!event.payload?.message_id)return Promise.resolve();
     const retry=!/^@desk (send|deploy|approve|promote|fix|review|video)\b/.test(event.payload.body)&&!parseClientApproval(event.payload.body);
-    return this.serial(() => this.journal.run(event.payload.message_id,event,async()=>{this.recoverDeliveries();await this.handleEvent(event);},retry));
+    return this.serial(() => this.journal.run(event.payload.message_id,event,async()=>{this.recoverDeliveries();await this.handleEvent(event);await this.ownerCards.closeStale();},retry));
   }
   private async handleEvent(event: SwitchEvent) {
     const p = event.payload;
     if (!p?.message_id || ![this.config.clientRoomId, this.config.studioRoomId, this.config.workRoomId].includes(event.room_id)) return;
-    const identity = verifiedSender(p.sender, this.identities(), p.sender_kind);
+    const identity = this.ownerCards.identity(event)??verifiedSender(p.sender, this.identities(), p.sender_kind);
     if (!identity || identity.agent_id === this.config.deskId) return;
     const id = `switch:local:${p.message_id}`;
     // Legacy rows are already completed; new events use the received/completed journal.
@@ -319,6 +336,7 @@ export class VisibleLoop {
       }
       await this.intakeMessage(id, p.body, p.attachments ?? [], false); return;
     }
+    if(identity.agent_id===this.config.leadId&&event.room_id===this.config.workRoomId&&await this.ownerCards.question(p.body))return;
     if (identity.agent_id === this.config.leadId && !/^@desk\s+(send|deploy)\b/.test(p.body) && p.body !== "yes") {
       // Switch emits this lifecycle notice using the agent identity before the
       // model has produced a reply. It must not consume the one draft retry.

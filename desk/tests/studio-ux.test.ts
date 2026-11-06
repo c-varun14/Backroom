@@ -91,13 +91,13 @@ test("fake protocol and client command cannot create drafts or emit a raw mentio
   expect(parseLeadDraft(protocol(1, "reply", "SAMPLE\n---CLIENT TEXT---\nSAMPLE"))).toBeUndefined();
 });
 
-test("long card stays under 900 characters; thread gets the full exact release text before a code", async () => {
+test("long card stays within Switch detail limit; thread gets the full exact release text before a code", async () => {
   const f = fixture(), c = f.config;
   await f.loop.handle(f.event(c.clientRoomId, "verified-client", "request: @everyone\nSAMPLE long question"));
   const text = "SAMPLE bakery text. ".repeat(400);
   await f.loop.handle(f.event(c.studioRoomId, "verified-lead", protocol(1, "reply", text)));
   const card = f.sent.filter(m => m.text.startsWith("🟡")).at(-1).text;
-  expect(card.length).toBeLessThanOrEqual(900);
+  expect(card.length).toBeLessThanOrEqual(4000);
   expect(card).toContain("… full outgoing text attached and numbered above");
   expect(card).toContain("＠everyone");
   expect(card).not.toContain("@everyone");

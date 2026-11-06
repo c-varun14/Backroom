@@ -28,6 +28,13 @@ export class RealStagesLoop extends StagesLoop {
     this.watchdog=new Watchdog(store,real.projectId,realControl.now??Date.now,real.watchdogMs);
     this.recoverDeliveries();
     this.journal=new EventJournal(store,"real:"+real.projectId);
+    this.brief.ownerCards.run=event=>this.handle(event);
+    const briefBinding=this.brief.ownerCards.binding;
+    this.brief.ownerCards.binding=command=>{
+      if(/^@desk (send|ticket|intro|status)\b/.test(command)||command==='__change')return briefBinding(command);
+      const state=this.state.get(real.projectId);
+      return JSON.stringify({command,state,candidate:this.get('candidate'),review:this.get('reviewVerdict'),ready:this.get('buildReady'),promoted:this.get('promoted'),video:this.get('videoRequested')});
+    };
     store.db.exec(`CREATE TABLE IF NOT EXISTS stage_followups(event TEXT PRIMARY KEY,code TEXT,stage TEXT,version INTEGER,artifact TEXT,reason TEXT,completed INTEGER NOT NULL DEFAULT 0);`);
   }
   async resume(){
@@ -53,9 +60,11 @@ export class RealStagesLoop extends StagesLoop {
   latestDraft(){return this.brief.latestDraft();}
   cursor(room:string){return this.brief.cursor(room);}
   ticket(){return this.latestTicket()?.n??0;}
-  async tick(){await this.watchdog.poll(async(ticket,role)=>{await this.api.post(this.real.studioRoomId,deskAddress(stageCard(ticket,this.real.projectId,this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️"),this.real.deskName));});}
+  async tick(){await this.brief.ownerCards.poll();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡",files:{name:string;bytes:Uint8Array}[]=[]) {
-    await this.api.post(this.real.studioRoomId,deskAddress(stageCard(this.ticket(),this.real.projectId,stage,summary,this.displayCommand(command),icon),this.real.deskName),files);
+    if(files.length)await this.api.post(this.real.studioRoomId,'Files for your review',files);
+    const detail=deskAddress(stageCard(this.ticket(),this.real.projectId,stage,summary,this.displayCommand(command),icon),this.real.deskName);
+    await this.brief.ownerCards.offer(stageLabel(stage),detail,[{label:({send:'Send',approve:'Approve',deploy:'Deploy',review:'Review',video:'Make video',promote:'Approve lesson',fix:'Prepare fix',status:'Status'} as Record<string,string>)[command.split(' ')[1]]??'Continue',command},{label:'Change',command:'__change'}]);
   }
   async studio(body:string){await this.card(this.state.get(this.real.projectId).stage,body);}
   async mention(name:string,body:string){
@@ -198,7 +207,7 @@ export class RealStagesLoop extends StagesLoop {
     this.brief.rememberDecision(draft.code);
     this.store.db.query("INSERT INTO stage_outgoing VALUES (?,?,?)").run(draft.id,stage,JSON.stringify(artifact));
     this.set("outgoing",{draftId:draft.id,code:draft.code,stage,artifact,version:this.state.get(this.real.projectId).stages[stage].version});
-    await this.api.post(this.real.studioRoomId,deskAddress(approvalCard({ticket:this.ticket(),project:this.real.projectId,clientText:this.get("clientQuestion")?.body??"",reply:text,code:draft.code,stage}),this.real.deskName));
+    await this.brief.offerDraft(deskAddress(approvalCard({ticket:this.ticket(),project:this.real.projectId,clientText:this.get("clientQuestion")?.body??"",reply:text,code:draft.code,stage}),this.real.deskName),draft.code,text);
   }
   async outgoing(text:string,stage:Stage,artifact:Artifact,attachments:{name:string;bytes:Uint8Array}[]=[]){
     // Even deterministic desk replies pass the same split parser and leak guard.
@@ -239,25 +248,26 @@ export class RealStagesLoop extends StagesLoop {
     const actions=replies.map(d=>({label:d.label,command:'send '+d.code,seq:d.rowid}));
     if(command!=="@desk status"&&!actions.some(a=>a.command===command.replace(/^@desk /,"")))actions.push({label:stageLabel(state.stage).split(': ')[1],command:command.replace(/^@desk /,""),seq:(this.store.db.query("SELECT seq FROM owner_decisions WHERE code=?").get(out?.code??row?.code??"") as any)?.seq??0});
     actions.sort((a,b)=>b.seq-a.seq);
-    await this.api.post(this.real.studioRoomId,[`Waiting on you: ${actions.map(a=>a.label).join('; ')||'nothing'}.`,`Type: ${actions.map(a=>a.command).join('; ')||'status'}`,`With the team: ${state.completed?'complete':this.get('delivered')?'waiting for the client':'current work in progress'}.`].join("\n"));
+    const detail=[`Waiting on you: ${actions.map(a=>a.label).join('; ')||'nothing'}.`,`Type: ${actions.map(a=>a.command).join('; ')||'status'}`,`With the team: ${state.completed?'complete':this.get('delivered')?'waiting for the client':'current work in progress'}.`].join("\n");
+    await this.brief.ownerCards.offer('Your next decisions',detail,actions.slice(0,8).map(a=>({label:a.label,command:'@desk '+a.command})).concat([{label:'Status',command:'@desk status'}]),undefined,true);
   }
   private activeArtifact(stage:Stage){return this.store.db.query("SELECT * FROM stage_artifacts WHERE stage=? AND status='active' ORDER BY rowid DESC LIMIT 1").get(stage) as any;}
   handle(event:SwitchEvent):Promise<void>{
     if(typeof event.payload?.body==='string'){
-      const identity=verifiedSender(event.payload.sender,this.identitySource(),event.payload.sender_kind);
+      const identity=this.brief.ownerCards.identity(event)??verifiedSender(event.payload.sender,this.identitySource(),event.payload.sender_kind);
       const owner=event.room_id===this.real.studioRoomId && identity?.kind==="human" && identity.users.includes(this.real.ownerId);
       event={...event,payload:{...event.payload,body:ownerCommand(event.payload.body,owner,this.real.deskName)}};
     }
     if(!event.payload?.message_id)return Promise.resolve();
     const retry=!/^@desk (send|deploy|approve|promote|fix|review|video)\b/.test(event.payload.body)&&!parseClientApproval(event.payload.body);
     const next=this.pending.then(()=>this.journal.run(event.payload.message_id,event,async()=>{
-      this.recoverDeliveries();await this.handleReal(event);await this.afterBrief();
+      this.recoverDeliveries();await this.handleReal(event);await this.afterBrief();await this.brief.ownerCards.closeStale();
     },retry));this.pending=next.catch(()=>{});return next;
   }
   private async handleReal(event:SwitchEvent){
     const p=event.payload;
     if(!p?.message_id||typeof p.body!=="string")return;
-    const identity=verifiedSender(p.sender,this.identitySource(),p.sender_kind);
+    const identity=this.brief.ownerCards.identity(event)??verifiedSender(p.sender,this.identitySource(),p.sender_kind);
     if(!identity||identity.agent_id===this.real.deskId)return;
     if(event.room_id===this.real.workRoomId&&identity.kind==="agent"){
       const role:WorkingRole|undefined=identity.agent_id===this.real.leadId?"lead":identity.agent_id===this.real.builderId?"builder":identity.agent_id===this.get("reviewer")?.id||identity.agent_id===this.real.reviewerId?"reviewer":undefined;
@@ -267,6 +277,7 @@ export class RealStagesLoop extends StagesLoop {
     const owner=event.room_id===this.real.studioRoomId&&identity.kind==="human"&&identity.users.includes(this.real.ownerId);
     const client=event.room_id===this.real.clientRoomId&&identity.kind==="human"&&!identity.users.includes(this.real.ownerId);
     if(!machine&&!owner&&!client)return;
+    if(machine&&identity.agent_id===this.real.leadId&&await this.brief.ownerCards.question(p.body))return;
     const id=`switch:local:${p.message_id}`;
     // Recovery has already projected confirmed sends. Replaying a consumed gate
     // operation must never re-enter transport, including uncertain outcomes.
@@ -275,9 +286,10 @@ export class RealStagesLoop extends StagesLoop {
     if(owner&&this.store.db.query("SELECT event FROM stage_followups WHERE event=? AND completed=0").get(id)){await this.runFollowup(id);return;}
     if(owner&&p.body==="@desk status"){if(this.state.get(this.real.projectId).stage==="brief")await this.brief.handle(event);else await this.status();return;}
     const state=this.state.get(this.real.projectId);
-    if(['@desk intro','@desk ticket'].includes(p.body)){
-      const message=this.brief.intakeState.latestConvertible();
-      if(owner&&p.body==='@desk ticket'&&state.stage!=='brief'&&message&&!message.converted){this.state.suggest(this.real.projectId,'brief',state.stages.brief.artifact!,{scopeChanging:true});for(const key of ['architectureRequested','candidate','reviewer','reviewVerdict','specDocument','video','videoRequested','buildReady','ownerQuestion'])this.set(key,null);this.invalidate(state.stage);}
+    if(/^@desk (?:intro|ticket(?: [1-9][0-9]*)?)$/.test(p.body)){
+      const source=p.body.split(' ')[2];
+      const message=source?this.store.db.query("SELECT * FROM client_messages WHERE n=? AND kind IN ('question','chat')").get(Number(source)) as any:this.brief.intakeState.latestConvertible();
+      if(owner&&p.body.startsWith('@desk ticket')&&state.stage!=='brief'&&message&&!message.converted){this.state.suggest(this.real.projectId,'brief',state.stages.brief.artifact!,{scopeChanging:true});for(const key of ['architectureRequested','candidate','reviewer','reviewVerdict','specDocument','video','videoRequested','buildReady','ownerQuestion'])this.set(key,null);this.invalidate(state.stage);}
       await this.brief.clientCommand(event);return;
     }
     if((client&&['question','chat'].includes(classifyClient(p.body).kind))||(machine&&identity.agent_id===this.real.leadId&&/^draft message /.test(p.body))||(owner&&/^@desk send /.test(p.body)&&this.brief.intakeState.conversationCode(p.body.split(' ')[2]))){await this.brief.handle(event);return;}
@@ -327,7 +339,7 @@ export class RealStagesLoop extends StagesLoop {
           }
           this.set("buildVerification",verification?{url:verification.url,sample:verification.sample,hash:this.transport.cache(verification.bytes)}:null);
           this.watchdog.clear();
-          await this.card("build",`Product work ready. ${verification?(verification.sample?'SAMPLE image fixture; ':'')+'Open '+verification.url+' and try the changed flow. Screenshot attached.':'Running app URL and screenshot have not been supplied.'} Request independent review of the clean local checkpoint.`,"@desk review","🟡",verification?[{name:verification.name,bytes:verification.bytes}]:[]);this.set("buildReady",true);return;
+          this.set("buildReady",true);await this.card("build",`Product work ready. ${verification?(verification.sample?'SAMPLE image fixture; ':'')+'Open '+verification.url+' and try the changed flow. Screenshot attached.':'Running app URL and screenshot have not been supplied.'} Request independent review of the clean local checkpoint.`,"@desk review","🟡",verification?[{name:verification.name,bytes:verification.bytes}]:[]);return;
         }
         const video=/^video ([a-f0-9]{64}) ([^\r\n]+)$/.exec(body);
         if(video&&state.stage==="video"&&this.get("videoRequested")){
