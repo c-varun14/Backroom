@@ -71,7 +71,7 @@ For a product-only demo, run `bun --no-env-file rehearsal/bakery/demo.ts` and op
 `desk` only speaks Switch's protocol, so it never knows which AI sits behind a role. Each role is one line in [`backroom.yaml`](backroom.yaml):
 
 ```diff
--builder: {harness: codex, model: gpt-6.1-sol}
+-builder: {harness: codex, model: gpt-6-luna}
 +builder: {harness: opencode, model: opencode/deepseek-v4.1-flash-free}
 ```
 

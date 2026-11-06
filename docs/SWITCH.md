@@ -32,7 +32,7 @@ After Switch restarts, the same handoff path succeeds. The client's message coun
 - **Attachments and room documents:** exact bytes/hash forwarding, persistent source/brief/review documents and frozen outgoing files.
 - **Mentions and addressing:** provider handoff and private-studio routing; participation policy is not a release approval.
 - **read_context:** working-room context/reply checks after a scoped lead restart.
-- **Providers on plan logins:** Claude→Codex handoff was tested; Codex runs use gpt-6.1-sol.
+- **Providers on plan logins:** Claude→Codex handoff was tested; the builder uses gpt-6-luna and the reviewer gpt-6.1-sol.
 - **Packages through Gateway:** operator-mediated attachment after exact-version simulated owner promotion.
 - **Native tool approval:** one real request and verified-owner decline was observed; visual rendering/reliability were not established. It does not replace desk's release gate.
 

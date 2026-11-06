@@ -10,7 +10,7 @@ Keep all new services in a fresh namespace with loopback-only published ports. K
 
 ## Native rehearsal setup
 
-1. Create distinct simulation owner/client accounts on a fresh Switch instance with no default bridge. Pre-provision plain-code desk with ownerA. Sign providers in on your controller; choose gpt-6.1-sol for every Codex identity. This is not a claim every stage used both vendors.
+1. Create distinct simulation owner/client accounts on a fresh Switch instance with no default bridge. Pre-provision plain-code desk with ownerA. Sign providers in on your controller; choose the models in `backroom.yaml` for each Codex identity. This is not a claim every stage used both vendors.
 2. Configure desk's studio/client/project bindings and verified sender lookup from your own authenticated identities. Do not invent UUIDs from display names or raw sender_kind. Do not copy another user's .secrets or .switch-runtime state.
 3. Review switch/README.md and the no-default-bridge precondition before using the template. Load each studio-kit/agents/ playbook explicitly. The YAML creates rooms/group using existing agents; it is not an automatic cross-owner/provider/bootstrap installer. Human client membership is not provisioned: unbridged v1 templates cannot attach human users. Configure and verify human access separately before a live run.
 4. Manually attach only approved sample memory files, following studio-memory/packages/approved-index.md. Do not attach pending lessons, the evaluator answer key or the whole sample-client directory. Package creation/attachment uses the operator's Gateway; code cannot assume a newly written Git file has entered Switch context.

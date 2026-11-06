@@ -1,6 +1,6 @@
 # Pinned reproduction template
 
-Runtime pins are in versions.json: server/controller0.31.0, Console0.40.1, Codex gpt-6.1-sol. `version: 1` inside the YAML is the template language, not the server version. The file cannot enforce the installed binary version or reconfigure pre-existing agents; verify these before use.
+Runtime pins are in versions.json: server/controller0.31.0, Console0.40.1, Codex gpt-6-luna (builder) and gpt-6.1-sol (reviewer). `version: 1` inside the YAML is the template language, not the server version. The file cannot enforce the installed binary version or reconfigure pre-existing agents; verify these before use.
 
 The manifest creates a group and two private rooms with existing identities. It creates no agents, posts no kickoff, imports no packages and sends no approvals. Pre-create plain-code desk under ownerA and lead/builder/reviewer under a different non-admin ownerB. Human client membership is not provisioned: v1 `user` parameters and room `users` require a messaging bridge, so they were removed after a real HTTP400 import failure. The caller owns both private rooms. Set up and verify distinct human owner/client access separately before any live workflow. Load studio-kit/agents/ role instructions separately, verify provider/model/addressing, and create a fresh reviewer identity/session for each exact-commit review. Do not put an AI agent in the client room.
 

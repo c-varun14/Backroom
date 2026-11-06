@@ -1,4 +1,6 @@
 import {readFileSync} from 'node:fs';
+/** Luna for routine work, Sol for reviews and security. Nothing else is approved. */
+export const CODEX_MODELS=['gpt-6-luna','gpt-6.1-sol'];
 export type Role='front'|'lead'|'builder'|'reviewer';
 export interface RoleConfig {harness:'claude'|'codex'|'opencode'|'command';model?:string;argv?:string[]}
 export function loadRole(path:string,role:Role,demo=false):RoleConfig {
@@ -8,7 +10,7 @@ export function loadRole(path:string,role:Role,demo=false):RoleConfig {
   if(c.harness==='command'){
     if(!Array.isArray(c.argv)||!c.argv.length||c.argv.some((a:unknown)=>typeof a!=='string'||!a))throw new Error('Command harness requires argv');
   }else if(typeof c.model!=='string'||!c.model)throw new Error('Harness requires model');
-  if(c.harness==='codex'&&c.model!=='gpt-6.1-sol')throw new Error('Codex model must be gpt-6.1-sol');
+  if(c.harness==='codex'&&!CODEX_MODELS.includes(c.model!))throw new Error('Codex model must be one of '+CODEX_MODELS.join(', '));
   return c;
 }
 export function roleDefinition(c:RoleConfig){return {provider:c.harness,...(c.model?{model:c.model}:{}),...(c.harness==='command'?{command:c.argv}:{} )};}
