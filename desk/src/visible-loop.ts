@@ -13,12 +13,13 @@ import {DeliveryRecovery} from "./delivery-recovery";
 import {DocumentSnapshots} from "./document-snapshots";
 import {ClientIntake,classifyClient,parseClientApproval} from "./client-intake";
 
-export interface LoopConfig extends ForumConfig { mode?:"real";stack?:string;videoEnabled?:boolean;deskName?:string;projectId: string; ownerId: string; bridgeId: string; deskId: string; leadId: string; probeId: string; clientRoomId: string; studioRoomId: string; workRoomId?: string; leadName?: string }
+export interface LoopConfig extends ForumConfig { github?:import("./github").GitHubConfig; mode?:"real";stack?:string;videoEnabled?:boolean;deskName?:string;projectId: string; ownerId: string; bridgeId: string; deskId: string; leadId: string; probeId: string; clientRoomId: string; studioRoomId: string; workRoomId?: string; leadName?: string }
 export interface SwitchEvent { room_id: string; payload: { sender: string; sender_kind?: string | null; message_id: string; body: string; thread_id?: string | null; attachments?: { filename: string; mxc: string }[] } }
 
 export class VisibleLoop {
   readonly ownerCards:OwnerCards;
   readonly talk?:TalkLane;
+  onForumTicket?:(ticket:any,start:boolean)=>Promise<void>;
   onForumMessage?:(ticket:any,event:SwitchEvent)=>Promise<boolean>;
   onForumActivate?:(ticket:any)=>Promise<boolean>;
   onForumPress?:(payload:import('./door-protocol').DoorPayload&{type:'press'},event:SwitchEvent)=>Promise<void>;
@@ -41,7 +42,7 @@ export class VisibleLoop {
   constructor(readonly store: Store, private api: SwitchAPI, readonly transport: SwitchTransport, readonly config: LoopConfig, identitySource?: () => Identity[]) {
     api=this.api=scopeStudio(api,config,room=>this.cursor(room).connection_id);
     this.identities = identitySource ?? (() => switchIdentities({ ownerId: config.ownerId, bridgeId: config.bridgeId, deskId: config.deskId, leadId: config.leadId, probeId: config.probeId }));
-    store.register({ id:config.projectId, ownerId:config.ownerId, studioRoomId:config.studioRoomId, clientRoomId:config.clientRoomId, clientIds:["verified-client-channel-human"],...(config.clientSurface==='forum'?{clientSurface:config.clientSurface,stack:config.stack,videoEnabled:config.videoEnabled??false}:{}) });
+    store.register({ id:config.projectId, ownerId:config.ownerId, studioRoomId:config.studioRoomId, clientRoomId:config.clientRoomId, clientIds:["verified-client-channel-human"],...(config.clientSurface==='forum'?{clientSurface:config.clientSurface,...(config.github?{github:config.github}:{}),stack:config.stack,videoEnabled:config.videoEnabled??false}:{}) });
     store.db.exec(`CREATE TABLE IF NOT EXISTS owner_decisions(seq INTEGER PRIMARY KEY AUTOINCREMENT,code TEXT UNIQUE NOT NULL);
       CREATE TABLE IF NOT EXISTS intake_events(id TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS tickets(n INTEGER PRIMARY KEY AUTOINCREMENT,event_id TEXT UNIQUE,simulated INTEGER NOT NULL,status TEXT NOT NULL);
@@ -159,6 +160,7 @@ export class VisibleLoop {
         .run(event.payload.message_id,active?'queued':'received',post.switch_thread,ticketKind??(post.tag==='Bug/Change'?'bug':'phase'),post.text);
       ticket=this.store.db.query('SELECT * FROM tickets WHERE post=?').get(post.switch_thread);this.ticketStatus(ticket,'Received');
     }
+    if(ticket.status!=='closed')await this.onForumTicket?.(ticket,false);
     if(ticket.status==='queued'||ticket.status==='closed')return true;
     if(!isNew&&await this.onForumMessage?.(ticket,event))return true;
     if(!isNew&&(this.workflow.get(this.config.projectId).stage!=='brief'||/^(?:looks good|looks right|approve|approved)[.! ]*$/i.test(event.payload.body.trim())))return false;
@@ -168,6 +170,7 @@ export class VisibleLoop {
   }
   async activateForumTicket(ticket:any,event?:SwitchEvent){
     const post=this.talk!.post(ticket.post)!;
+    await this.onForumTicket?.(ticket,true);
     this.store.db.query("UPDATE tickets SET status='received' WHERE n=?").run(ticket.n);this.ticketStatus(ticket,'In progress');
     if(await this.onForumActivate?.(ticket))return;
     if(ticket.kind==='bug'){ticket.kind='phase';this.store.db.query("UPDATE tickets SET kind='phase' WHERE n=?").run(ticket.n);}

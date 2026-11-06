@@ -14,8 +14,8 @@ import type { Artifact, Stage } from "./types";
 import type { Identity } from "./switch-identities";
 import { LocalComposeDeployer } from "../../deploy/local-compose";
 
-export interface RehearsalConfig extends ForumConfig { mode?:"real";stack?:string;videoEnabled?:boolean;deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
-export type Control = { prepareBuild?:()=>Promise<void>; now?:()=>number; freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void|{id:string;name:string}> };
+export interface RehearsalConfig extends ForumConfig { github?:import("./github").GitHubConfig; mode?:"real";stack?:string;videoEnabled?:boolean;deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
+export type Control = { github?:import("./github").GitHub; prepareBuild?:()=>Promise<void>; now?:()=>number; freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void|{id:string;name:string}> };
 const COMMIT=/^[a-f0-9]{40}$/;
 const HASH=/^[a-f0-9]{64}$/;
 

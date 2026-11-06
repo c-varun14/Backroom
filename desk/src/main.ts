@@ -1,3 +1,4 @@
+import {GhGitHub} from './github';
 import {Watchdog} from './watchdog';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -15,6 +16,8 @@ const secretRoot = join(root,".secrets");
 mkdirSync(secretRoot,{recursive:true,mode:0o700});
 const configPath = resolve(process.argv[2] ?? process.env.BACKROOM_CLIENT_CONFIG ?? join(runtime,"block1.json"));
 const config: LoopConfig & Partial<RealConfig> & {credentialsFile?:string;databasePath?:string;filesPath?:string;ownerPasswordFile?:string;healthFile?:string;simulateRequest?:string;switchBase?:string} = JSON.parse(readFileSync(configPath,"utf8"));
+// Reject public/wrong-owner repositories before connecting any other service.
+if(config.clientSurface==='forum'&&config.github)await new GhGitHub(config.github,config.workspace!).verifyRepo();
 // Read only the needed credential field. Never echo this object or errors.
 if(configPath !== join(runtime,"block1.json") && ![config.credentialsFile,config.databasePath,config.filesPath,config.workspace,config.healthFile,config.simulateRequest,config.ownerPasswordFile].every(Boolean))throw new Error("Per-client config requires isolated runtime paths");
 const key = JSON.parse(readFileSync(config.credentialsFile ?? join(secretRoot,"block1-credentials.json"),"utf8")).desk.api_key;

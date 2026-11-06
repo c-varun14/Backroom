@@ -1,4 +1,5 @@
 export interface Project {
+  github?: import("./github").GitHubConfig;
   clientSurface?: "forum";
   stack?: string;
   videoEnabled?: boolean;

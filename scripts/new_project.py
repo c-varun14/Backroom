@@ -47,6 +47,80 @@ def write_json(path, value):
     temporary.replace(path)
 
 
+def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=subprocess.run):
+    """Desk provisioning only. Inject runner for account-free tests; never echo output."""
+    if owner != 'WebbyWasp' or not re.fullmatch(r'[a-z0-9-]{1,60}', config['projectId']):
+        raise ValueError('Only WebbyWasp project repositories are allowed')
+    if not isinstance(allowed_authors, list) or any(not isinstance(a, str) or not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_-]{0,38}', a) for a in allowed_authors):
+        raise ValueError('Explicit GitHub author logins required')
+    repo = owner + '/' + config['projectId']
+    if config.get('github') and config['github']['repo'] != repo:
+        raise ValueError('Project GitHub repository mismatch')
+    workspace = Path(config['workspace']).resolve()
+    workspace.mkdir(parents=True, exist_ok=True)
+    def command(args, missing=False):
+        try:
+            result = runner(args, cwd=str(workspace), capture_output=True, text=True,
+                            env={**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GH_PROMPT_DISABLED': '1'})
+        except Exception:
+            raise ValueError('GitHub provisioning failed; response withheld') from None
+        if result.returncode:
+            if missing and re.search(r'\bHTTP 404\b', result.stderr or ''):
+                return None
+            raise ValueError('GitHub provisioning failed; response withheld')
+        return result.stdout.strip()
+    def metadata(name):
+        raw = command(['gh', 'api', '--hostname', 'github.com', 'repos/' + name], missing=True)
+        return json.loads(raw) if raw is not None else None
+    existing = metadata(repo)
+    if existing is None:
+        template = metadata('WebbyWasp/app-base')
+        args = ['gh', 'repo', 'create', repo, '--private']
+        if template is not None:
+            if template.get('full_name') != 'WebbyWasp/app-base' or not template.get('is_template'):
+                raise ValueError('app-base exists but is not the expected template')
+            args += ['--template', 'WebbyWasp/app-base']
+        command(args)
+        existing = metadata(repo)
+    if not existing or existing.get('private') is not True or existing.get('full_name') != repo:
+        raise ValueError('Private WebbyWasp project repository required')
+    # Initialize this workspace explicitly; never inherit Backroom's enclosing .git.
+    if not (workspace / '.git').exists():
+        command(['git', 'init', '-b', 'main'])
+    top = command(['git', 'rev-parse', '--show-toplevel'])
+    if Path(top).resolve() != workspace:
+        raise ValueError('Isolated project Git repository required')
+    remote = 'https://github.com/' + repo + '.git'
+    remotes = command(['git', 'remote']).splitlines()
+    command(['git', 'remote', 'set-url' if 'origin' in remotes else 'add', 'origin', remote])
+    heads = command(['git', 'ls-remote', '--heads', 'origin'])
+    # An empty tree checkpoint gives the first issue branch a PR base. No product
+    # files are added; all application work still goes through CI and review.
+    if not heads:
+        head = runner(['git', 'rev-parse', '--verify', 'HEAD'], cwd=str(workspace), capture_output=True, text=True)
+        if head.returncode:
+            if command(['git', 'status', '--porcelain']):
+                raise ValueError('Clean empty project required for initialization')
+            command(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'user.name=Backroom desk',
+                     '-c', 'user.email=desk@backroom.invalid', 'commit', '--allow-empty', '-m', 'Initialize empty project main'])
+        elif command(['git', 'ls-tree', '-r', '--name-only', 'HEAD']):
+            raise ValueError('Refusing to seed main with unreviewed project files')
+        sha = command(['git', 'rev-parse', 'HEAD'])
+        if not re.fullmatch(r'[a-f0-9]{40}', sha):
+            raise ValueError('Exact empty checkpoint required')
+        command(['git', '-c', 'core.hooksPath=/dev/null', 'push', '--no-verify', '--force-with-lease=refs/heads/main:', 'origin', sha + ':refs/heads/main'])
+    else:
+        if not any(line.endswith('\trefs/heads/main') for line in heads.splitlines()):
+            raise ValueError('Project template must provide main')
+        command(['git', '-c', 'core.hooksPath=/dev/null', 'fetch', '--no-tags', 'origin', 'refs/heads/main:refs/remotes/backroom/main'])
+        head = runner(['git', 'rev-parse', '--verify', 'HEAD'], cwd=str(workspace), capture_output=True, text=True)
+        if head.returncode:
+            command(['git', '-c', 'core.hooksPath=/dev/null', 'switch', '-C', 'main', 'refs/remotes/backroom/main'])
+    config['github'] = {'repo': repo, 'allowedAuthors': allowed_authors}
+    save(config)
+    return config
+
+
 def provision(name, purpose, client_id, slug, base, discord, switch, create_agent, save, state=None):
     """All mutations are checkpointed in order. No member names grant authority."""
     if project_slug(name) != project_slug(name.strip()) or not re.fullmatch(r'[a-z0-9-]{1,60}', slug):
@@ -223,7 +297,11 @@ def main():
     parser.add_argument('--slug')
     parser.add_argument('--base-config', default=str(ROOT / '.switch-runtime/block1.json'))
     parser.add_argument('--no-start', action='store_true')
+    parser.add_argument('--github-owner', default='WebbyWasp')
+    parser.add_argument('--github-author', action='append', help='Allowed GitHub author login; repeat for more authors')
     args = parser.parse_args()
+    if args.github_owner != 'WebbyWasp':
+        raise ValueError('Only WebbyWasp is allowed')
     os.umask(0o077)
     import fcntl
     runtime = ROOT / '.switch-runtime'
@@ -276,6 +354,9 @@ def main():
             Path(paths['doorWebhookFile']).write_text(webhook['token'])
             Path(paths['doorWebhookFile']).chmod(0o600)
         write_json(state_path, config)
+    # GitHub is ready before any worker is created or started.
+    state['projectId'] = slug
+    provision_github(state, args.github_author if args.github_author is not None else base.get('github', {}).get('allowedAuthors', []), save, args.github_owner)
     config = provision(args.name, args.purpose, args.client_id, slug, base, discord.call,
                        lambda method, path, body=None: call(session, method, path, body), create_role, save, state)
     import time

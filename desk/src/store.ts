@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import type { Project } from "./types";
+import {validateGitHubConfig} from "./github";
 import {defaultStack} from './stacks';
 
 export class Store {
@@ -47,6 +48,7 @@ export class Store {
       BEGIN SELECT RAISE(ABORT, 'immutable client thread'); END;`);
   }
   register(input: Project) {
+    if(input.clientSurface==='forum'&&input.github)validateGitHubConfig(input.github);
     const project:Project={...input,stack:input.stack??defaultStack(input.clientSurface==='forum'),...(input.clientSurface==='forum'?{videoEnabled:input.videoEnabled??false}:{})};
     if (!project.id || !project.ownerId || !project.studioRoomId || !project.clientRoomId ||
         project.studioRoomId === project.clientRoomId || !project.clientIds.length ||

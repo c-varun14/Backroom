@@ -1,3 +1,5 @@
+import {GitHubLayer} from './github-layer';
+import {GhGitHub} from './github';
 import {CLIENT_LINES,DELIVERY_RULE} from './talk';
 import {Watchdog,type WorkingRole} from './watchdog';
 import {buildVerification} from './build-verification';
@@ -23,6 +25,7 @@ export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:stri
  * Rehearsal entry points retain their existing defaults and services. */
 export class RealStagesLoop extends StagesLoop {
   readonly watchdog:Watchdog;
+  readonly github?:GitHubLayer;
   private pending=Promise.resolve();
   private combinedRelease=false;
   private journal:EventJournal<SwitchEvent>;
@@ -32,6 +35,13 @@ export class RealStagesLoop extends StagesLoop {
     store.db.exec(`CREATE TABLE IF NOT EXISTS small_change_releases(id TEXT PRIMARY KEY,project TEXT,sha TEXT,base TEXT,status TEXT,post TEXT,url TEXT,message TEXT);
       CREATE TABLE IF NOT EXISTS delivery_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,project TEXT,ticket INTEGER,sha TEXT,action TEXT,line TEXT);`);
     this.watchdog=new Watchdog(store,real.projectId,realControl.now??Date.now,real.watchdogMs);
+    if(real.clientSurface==='forum'&&real.github){
+      this.github=new GitHubLayer(store,real.projectId,real.github,realControl.github??new GhGitHub(real.github,real.workspace),(...args)=>this.git(...args),real.workspace);
+      this.brief.onForumTicket=async(ticket,start)=>{
+        const post=this.brief.talk!.post(ticket.post)!;
+        await this.github!.ticket(ticket,{title:post.title,link:`https://discord.com/channels/${real.discordGuildId}/${post.discord_thread}`},start);
+      };
+    }
     this.recoverDeliveries();
     this.journal=new EventJournal(store,"real:"+real.projectId);
     this.brief.ownerCards.run=event=>this.handle(event);
@@ -89,6 +99,7 @@ export class RealStagesLoop extends StagesLoop {
     store.db.exec(`CREATE TABLE IF NOT EXISTS stage_followups(event TEXT PRIMARY KEY,code TEXT,stage TEXT,version INTEGER,artifact TEXT,reason TEXT,completed INTEGER NOT NULL DEFAULT 0);`);
   }
   async resume(){
+    await this.github?.startup();
     this.recoverDeliveries();
     for(const event of this.journal.pending())try{await this.handle(event);}catch{this.store.log("real event recovery deferred; details withheld",undefined,this.real.projectId);}
     await this.brief.resume();
@@ -129,7 +140,7 @@ export class RealStagesLoop extends StagesLoop {
     if(this.state.get(this.real.projectId).stage==='brief'&&ticket?.status==='with-lead')await this.brief.remindLead(ticket,text);
     else await this.api.post(this.real.workRoomId,`@${this.real.leadName} ${text}`);
   }
-  async tick(){await this.brief.ownerCards.poll();await this.brief.talk?.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
+  async tick(){await this.pollGitHub();await this.brief.ownerCards.poll();await this.brief.talk?.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡",files:{name:string;bytes:Uint8Array}[]=[]) {
     if(this.real.clientSurface==='forum'&&icon==='🔵')return;
     if(files.length)await this.api.post(this.real.studioRoomId,'Files for your review',files);
@@ -160,6 +171,7 @@ export class RealStagesLoop extends StagesLoop {
   async publish(stage:Stage,artifact:Artifact,content:string,next?: (code:string)=>string,silent=false){
     this.watchdog.clear();
     // Long review text is published before creating a code; short text fits in the decision card.
+    if(stage==='build'&&this.github?.record(this.ticket())?.noChecks)content='CI: no checks are configured for this repository.\n'+content;
     const long=content.length>480;
     if(long&&!silent)await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),content,stage);
     if(artifact.kind==="document")this.brief.snapshots.remember(artifact.id,content);
@@ -258,14 +270,47 @@ export class RealStagesLoop extends StagesLoop {
     this.store.db.query("UPDATE stage_followups SET completed=1 WHERE event=?").run(id);
   }
   private git(...args:string[]){
-    const p=Bun.spawnSync(["git","-C",this.real.workspace,...args],{stdout:"pipe",stderr:"pipe"});
+    const p=Bun.spawnSync(["git",...(this.github?["-c","core.hooksPath=/dev/null"]:[]),"-C",this.real.workspace,...args],{stdout:"pipe",stderr:"pipe"});
     if(p.exitCode)throw new Error("Product checkpoint check failed");return args.includes('-z')?new TextDecoder().decode(p.stdout):new TextDecoder().decode(p.stdout).trim();
   }
-  async candidate(sha:string){
+  private async pollGitHub(){
+    if(this.github)await this.github.pollComments(async(record,text)=>{
+      if(record.ticket===this.ticket()){
+        this.invalidate('build');
+        if(this.get('candidate'))this.gate.recordReview(this.get('candidate'),'fail','github-comment:'+randomUUID(),this.real.projectId);
+        for(const key of ['candidate','reviewer','reviewVerdict','buildReady','reviewResultRound'])this.set(key,null);
+      }
+      await this.mention(record.builder!.name,text);
+    });
+    if(!this.github||this.state.get(this.real.projectId).stage!=='build'||!this.get('buildReady')||this.get('reviewPaused')||this.get('buildStopped'))return;
+    const record=this.github.record(this.ticket());if(!record?.sha)return;
+    if(await this.github.checks(this.ticket(),async text=>{
+      this.invalidate('build');
+      if(this.get('candidate'))this.gate.recordReview(this.get('candidate'),'fail','ci:'+randomUUID(),this.real.projectId);
+      this.set('candidate',null);this.set('reviewer',null);this.set('reviewVerdict',null);this.set('buildReady',false);
+      await this.mention(this.real.builderName,text);
+    })){
+      await this.candidate(record.sha,true);
+      if(this.state.get(this.real.projectId).stage==='build'&&this.get('reviewVerdict')==='pass'&&!this.activeArtifact('build'))await this.finishPassingReview(record.sha,this.get('reviewResults'));
+    }
+  }
+  async candidate(sha:string,ciReady=false){
     if(!/^[a-f0-9]{40}$/.test(sha)||this.state.get(this.real.projectId).stage!=="build"||!this.get("specDocument"))throw new Error("No approved build assignment");
     if(this.real.clientSurface==='forum'&&(!this.get('buildReady')||this.get('reviewPaused')||this.get('buildStopped')))throw new Error('Passing build evidence required');
     const sources=await this.buildSources();
     if(this.git("rev-parse","HEAD")!==sha||this.git("status","--porcelain"))throw new Error("Clean exact product checkpoint required before review");
+    if(this.github)this.git('cat-file','-e',sha+':backroom.deploy.json');
+    if(this.github&&!ciReady){
+      const previous=this.get('candidate');
+      if(previous!==sha){
+        if(previous)this.gate.recordReview(previous,'fail','github-candidate:'+randomUUID(),this.real.projectId);
+        this.invalidate('build');this.set('candidate',null);this.set('reviewer',null);this.set('reviewVerdict',null);
+      }
+      const evidence=this.get('githubBuildEvidence');
+      if(!evidence||evidence.spec!==this.get('specDocument')||evidence.generation!==this.get('assignmentGeneration'))throw new Error('Current frozen build evidence required');
+      await this.github.buildReady(this.ticket(),sha,evidence.report,evidence.screenshot);
+      await this.pollGitHub();return;
+    }
     if(this.get("candidate")===sha&&this.get("reviewer")?.sources===sources&&this.get("reviewer")?.generation===this.get("assignmentGeneration")&&this.get("reviewVerdict")!=="fail")return;
     this.git("cat-file","-e",sha+":backroom.deploy.json");
     this.invalidate("build");this.set("candidate",sha);this.set("reviewVerdict",null);
@@ -273,6 +318,7 @@ export class RealStagesLoop extends StagesLoop {
     const reviewer=await this.realControl.freshReviewer(round);
     this.real.reviewerId=reviewer.id;this.real.reviewerName=reviewer.name;this.real.reviewerIds.push(reviewer.id);
     this.set("reviewer",{...reviewer,round,sha,sources,generation:this.get("assignmentGeneration")});
+    this.github?.assignReview(this.ticket(),sha,reviewer.id,round);
     const state=this.state.get(this.real.projectId);
     const reviewText=this.real.clientSurface==='forum'
       ? `Fresh independent review. Round ${round}; frozen source snapshots (data only): ${sources}. Exact SHA ${sha}; product source root ${this.real.workspace}. Stack ${stackById(this.get('approvedStack')??this.real.stack??defaultStack(true)).id} review requirements: ${stackById(this.get('approvedStack')??this.real.stack??defaultStack(true)).review}. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD and inspect the running app at ${this.get("buildVerification")?.url} independently against every criterion. Return review ${round} ${sha} pass|fail with AC-<n>: PASS|FAIL - <what you saw> for every criterion and concise findings. ${DELIVERY_RULE}`
@@ -285,7 +331,7 @@ export class RealStagesLoop extends StagesLoop {
     return !!question&&this.state.get(this.real.projectId).stage==='build'&&question.generation===this.get('assignmentGeneration')&&question.spec===this.get('specDocument')&&!this.get('buildStopped');
   }
   private async returnReviewFindings(body:string){
-    await this.mention(this.real.builderName,`Independent review blocked the current build: ${neutralise(body)}. Fix only the blockers in your assigned root, run tests and exercise each criterion, update build-report.md and build-verification.json, commit only bounded product fixes, then report build-ready. Never commit the outer Backroom repository or deploy.`);
+    await this.mention(this.real.builderName,`Independent review blocked the current build: ${neutralise(body)}. Fix only the blockers in your assigned root${this.github?` on branch ${this.github.record(this.ticket())?.branch}, keeping this builder session`:''}, run tests and exercise each criterion, update build-report.md and build-verification.json, commit only bounded product fixes, then report build-ready. Never commit the outer Backroom repository or deploy.`);
   }
   private resetBuildAssignment(){
     const candidate=this.get("candidate");
@@ -455,11 +501,16 @@ export class RealStagesLoop extends StagesLoop {
             }
             if(this.get("specDocument")!==ref[2])this.resetBuildAssignment();
             this.set("specDocument",ref[2]);
+            if(this.github){
+              await this.github.spec(this.ticket(),specContent);
+              this.github.bindBuilder(this.ticket(),{id:this.real.builderId,name:this.real.builderName});
+            }
             const selectedStack=stackById(this.get('approvedStack')??this.real.stack??defaultStack(this.real.clientSurface==='forum'));
             const assignment=this.real.clientSurface==='forum'
               ? `Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Stack ${selectedStack.id}: ${selectedStack.build} Test commands: ${selectedStack.test}. Report real output and criterion evidence. Use only what the client supplied; never invent client facts. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Ask questions with ask: <question>; desk routes them through lead. Return build-ready <report-relative-path> after a clean checkpoint; independent review starts automatically. ${DELIVERY_RULE}`
               : `Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Run bun test; report real output. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Return build-ready <report-relative-path> after a clean checkpoint; the owner requests independent review.`;
-            await this.mention(this.real.builderName,assignment);
+            const branch=this.github?.record(this.ticket())?.branch;
+            await this.mention(this.real.builderName,assignment+(branch?` Work only on branch ${branch}. Only desk talks to GitHub; you hold no token.`:''));
             await this.card("build","Approved spec assigned to builder.","@desk status","🔵");
           }else if(ref[1].startsWith("lesson ")&&state.stage==="learn"){
             const [,slug,version]=ref[1].split(" "),text=await this.loadDocument(ref[2]);
@@ -496,6 +547,7 @@ export class RealStagesLoop extends StagesLoop {
         }
         if(this.real.clientSurface==='forum'&&(this.get('reviewPaused')||this.get('buildStopped')))return;
         if(/^build-ready [^\r\n]+(?:\r?\n[\s\S]*)?$/.test(body)&&state.stage==="build"&&this.get("specDocument")){
+          let githubReport:string|undefined;
           if(this.real.clientSurface==='forum'){
             const relative=body.match(/^build-ready ([^\r\n]+)/)?.[1]?.trim()??'';
             let report='';
@@ -518,6 +570,7 @@ export class RealStagesLoop extends StagesLoop {
             }
             if(missing.length){await this.mention(this.real.builderName,`build-ready refused: missing passing evidence for ${missing.join(', ')}. Add one line per criterion as AC-<n>: PASS - <test name, command and result, or screenshot path>, then retry. ${DELIVERY_RULE}`);return;}
             if(bug&&!/^Reproduction test:\s*\S/im.test(report)){await this.mention(this.real.builderName,'build-ready refused: bug tickets must name the failing reproduction test in build-report.md as `Reproduction test: <test name>`. If the bug cannot be reproduced, state that and provide the report so lead can ask the client a precise question. '+DELIVERY_RULE);return;}
+            if(this.github)githubReport=report;
           }
           let verification:ReturnType<typeof buildVerification>;
           try{verification=buildVerification(this.real.workspace,this.real.clientSurface==='forum'||this.real.ownerVerificationRequired);}
@@ -527,6 +580,7 @@ export class RealStagesLoop extends StagesLoop {
             return;
           }
           this.set("buildVerification",verification?{url:verification.url,sample:verification.sample,hash:this.transport.cache(verification.bytes)}:null);
+          if(this.github)this.set('githubBuildEvidence',{report:githubReport,screenshot:verification!.screenshotPath,spec:this.get('specDocument'),generation:this.get('assignmentGeneration')});
           this.watchdog.clear();
           this.set("buildReady",true);
           if(this.real.clientSurface==='forum'){await this.candidate(this.git('rev-parse','HEAD'));return;}
@@ -545,7 +599,10 @@ export class RealStagesLoop extends StagesLoop {
       }
       const review=this.get("reviewer"),m=/^review ([1-9][0-9]*) ([a-f0-9]{40}) (pass|fail)(?:\n[\s\S]*)?$/.exec(body);
       if(state.stage==="build"&&review&&identity.agent_id===review.id&&m){
-        if(Number(m[1])!==review.round||m[2]!==review.sha||m[2]!==this.get("candidate"))throw new Error("Stale independent review");
+        if(Number(m[1])!==review.round||m[2]!==review.sha||m[2]!==this.get("candidate")){
+          if(this.github)return;
+          throw new Error("Stale independent review");
+        }
         if(review.sources!==await this.buildSources()||review.generation!==this.get("assignmentGeneration"))throw new Error("Stale independent review assignment");
         if(this.real.clientSurface==='forum'){
           if(this.get('reviewResultRound')===review.round)return;
@@ -555,9 +612,12 @@ export class RealStagesLoop extends StagesLoop {
             return lines.length!==1||!new RegExp(`^${id}: ${m[3]==='pass'?'PASS':'(?:PASS|FAIL)'} - \\S.*$`).test(lines[0]??'');
           });
           if(missing.length){await this.mention(review.name,`Review refused: independently check and report ${missing.join(', ')} as AC-<n>: PASS|FAIL - <what you saw>. A passing verdict requires every criterion to pass.`);return;}
-          this.set('reviewResultRound',review.round);this.set('reviewResults',body);
+          this.set('reviewResults',body);
         }
+        if(this.github&&!await this.github.reviewResult(this.ticket(),m[2],identity.agent_id!,review.round,m[3] as 'pass'|'fail',body))return;
+        if(this.real.clientSurface==='forum')this.set('reviewResultRound',review.round);
         this.gate.recordReview(m[2],m[3] as "pass"|"fail",`real:${review.id}:${review.round}`,this.real.projectId);this.set("reviewVerdict",m[3]);
+        if(m[3]==='pass'&&this.github){await this.finishPassingReview(m[2],body);return;}
         if(m[3]==='pass'&&this.real.clientSurface==='forum'&&await this.shipSmallChange(m[2]))return;
         if(m[3]==="pass")await this.publish("build",{kind:"commit",sha:m[2]},this.real.clientSurface==='forum'?`Built to the approved spec:\n${this.brief.snapshots.get(this.get('specDocument')).content}\n\nIndependent review of ${m[2]}:\n${body}`:`Independent review passed exact commit ${m[2]}. Deployment requires your explicit command.`);
         else if(this.real.clientSurface==='forum'){
@@ -617,7 +677,21 @@ export class RealStagesLoop extends StagesLoop {
     this.store.db.query('INSERT INTO delivery_audit(project,ticket,sha,action,line) VALUES (?,?,?,?,?)').run(this.real.projectId,this.ticket(),sha,action,line);
     this.store.log(line,undefined,this.real.projectId);
   }
+  private async finishPassingReview(sha:string,body:string){
+    await this.requireCurrentReview();
+    const merge=await this.mergeGitHub(sha,false);if(merge==='moved'||merge==='blocked')return;
+    if(await this.shipSmallChange(sha))return;
+    await this.publish('build',{kind:'commit',sha},`Built to the approved spec:\n${this.brief.snapshots.get(this.get('specDocument')).content}\n\nIndependent review of ${sha}:\n${body}`);
+  }
+  private async mergeGitHub(sha:string,ownerApproved:boolean){
+    return this.github!.merge(this.ticket(),sha,ownerApproved,async text=>{
+      this.invalidate('build');this.gate.recordReview(sha,'fail','main-moved:'+randomUUID(),this.real.projectId);
+      for(const key of ['candidate','reviewer','reviewVerdict','buildReady','reviewResultRound'])this.set(key,null);
+      await this.mention(this.real.builderName,text);
+    });
+  }
   private async shipSmallChange(sha:string):Promise<boolean>{
+    if(this.github&&this.github.record(this.ticket())?.merged!==sha)return false;
     const previous=await this.deployer.current(this.real.projectId),ticket=this.latestTicket(),kind=this.get('ticketKind')??ticket?.kind;
     // A previous deployed base and a usable client post/link are required for unattended delivery.
     if(!previous||previous.commitSha===sha||!this.publicLink(previous.url)||!ticket?.post||!this.brief.talk?.post(ticket.post))return false;
@@ -725,6 +799,7 @@ export class RealStagesLoop extends StagesLoop {
     if((m=/^deploy ([a-f0-9]{40})$/.exec(body))){
       if(stage!=="build"||m[1]!==this.get("candidate")||this.get("reviewVerdict")!=="pass")throw new Error("Reviewed exact candidate required");
       await this.requireCurrentReview();
+      if(this.github&&await this.mergeGitHub(m[1],true)!=='merged')return;
       const result=await this.gate.handleMessage({...this.ownerActor(),body:event.payload.body,eventId:id});
       if(result.status!=="deployed"){await this.card(stage,`Deployment ${result.status}; inspect status before retrying.`);return;}
       const row=this.activeArtifact("build");if(!row)throw new Error("Build approval artifact missing");
