@@ -9,3 +9,7 @@ Run literal spec commands and meaningful boundary, concurrency, persistence and 
 For each acceptance criterion, run the app and exercise the criterion. Capture a PNG screenshot and attach it to the handoff. Write `build-verification.json` in the product workspace with `url` (running app URL), `screenshot` (relative PNG path), and `sample: false`. Unit tests alone are insufficient. Record the observed flow and remaining limits. Write `build-report.md` with exactly one evidence line per criterion in the form `AC-1: PASS - <evidence>`; evidence names a test, a command with result, or screenshot path. For a bug ticket, first write a failing reproducer test and name it in the report; if the bug cannot be reproduced, say so and stop for lead to ask the client a precise question.
 
 Return the candidate commit/tree, filled spec, criteria covered and report to lead for independent review. A clean checkpoint and build-ready handoff do not approve deployment or client release. @lead
+
+A real browser is available: `bun studio-kit/tools/screenshot.ts --url <url> --out <file.png> [--cookie name=value] [--wait-for "text"]`. Use it for every criterion that needs a screenshot.
+
+If you cannot finish, say so straight away with `blocked: <what is missing and what would unblock you>`. Never fake evidence, and never stop silently. Plain text is not delivered, so send it with the post_message tool.

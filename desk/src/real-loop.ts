@@ -20,7 +20,7 @@ import {classifyClient,parseClientApproval} from "./client-intake";
 import {smallChange} from './small-change';
 import {defaultStack,stackById} from './stacks';
 
-export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:string;bridgeId:string;watchdogMs?:number;ownerVerificationRequired?:boolean;leadNudgeMs?:number}
+export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:string;bridgeId:string;watchdogMs?:number;ownerVerificationRequired?:boolean;leadNudgeMs?:number;builderNudgeMs?:number}
 /** Real-room transport/presentation around the rehearsal's durable stage model.
  * Rehearsal entry points retain their existing defaults and services. */
 export class RealStagesLoop extends StagesLoop {
@@ -134,6 +134,11 @@ export class RealStagesLoop extends StagesLoop {
   private async nudgeLead(){
     if(this.real.clientSurface!=='forum')return;
     const row=this.watchdog.current(),now=this.realControl.now??Date.now;
+    if(row?.role==='builder'&&now()-row.progress>=(this.real.builderNudgeMs??900000)){
+      // A builder can legitimately run long, so this asks for its state instead of insisting.
+      const key=`builderNudged:${row.ticket}:${row.progress}`;if(this.get(key))return;this.set(key,true);
+      await this.api.post(this.real.workRoomId,`@${this.real.builderName} No result has arrived. If you are finished, post build-ready <report>. If you cannot finish, post blocked: <reason>. If you are still working, carry on. ${DELIVERY_RULE}`);return;
+    }
     if(row?.role!=='lead'||now()-row.progress<(this.real.leadNudgeMs??180000))return;
     const key=`leadNudged:${row.ticket}:${row.progress}`;if(this.get(key))return;this.set(key,true);
     const ticket=this.latestTicket(),text=`Your last result did not arrive. ${DELIVERY_RULE}`;
@@ -539,6 +544,10 @@ export class RealStagesLoop extends StagesLoop {
         return;
       }
       if(identity.agent_id===this.real.builderId){
+        if(this.real.clientSurface==='forum'&&state.stage==='build'&&/^blocked:\s*\S/.test(body)){
+          this.watchdog.clear();
+          await this.card('build',`Builder is blocked: ${neutralise(body.replace(/^blocked:\s*/,'')).slice(0,600)}`,'@desk status','⚠️');return;
+        }
         if(this.real.clientSurface==='forum'&&state.stage==='build'&&this.get('specDocument')&&/^ask:\s*\S/.test(body)){
           if(this.get('reviewPaused')||this.get('buildStopped'))return;
           const ticket=this.latestTicket();

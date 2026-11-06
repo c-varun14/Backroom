@@ -286,3 +286,14 @@ test('review passed with a studio thread queues the frozen screenshot instead of
  expect(Buffer.from(data.png,'base64').subarray(0,8).toString('hex')).toBe('89504e470d0a1a0a');
  expect(data.code).toBe((f.store.db.query("SELECT code FROM stage_artifacts WHERE stage='build' AND status='active'").get() as any).code);
 });
+
+test('a blocked builder reaches the owner at once, and a silent one is asked for its state',async()=>{
+ const f=fixture({builderNudgeMs:0});await f.enterBuild();
+ f.loop.watchdog.assign(1,'builder');
+ await f.loop.tick();
+ expect(f.posts.some((p:any)=>p.room==='work'&&p.text.includes('post blocked:'))).toBe(true);
+ const count=f.posts.length;await f.loop.tick();expect(f.posts.length).toBe(count);
+ await f.loop.handle(f.event('builder','blocked: no browser available'));
+ const cards=(f.store.db.query('SELECT payload FROM owner_cards').all() as any[]).map(r=>JSON.parse(r.payload).detail);
+ expect(cards.some(c=>c.includes('Builder is blocked')&&c.includes('no browser available'))).toBe(true);
+});
