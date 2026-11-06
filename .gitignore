@@ -1,0 +1,62 @@
+.secrets/
+.env
+*.env
+node_modules/
+.switch-runtime/
+*.AppImage
+__pycache__/
+# Local rehearsal repos, data, media and deployment state are never source inputs.
+workspaces/
+deploy/.state/
+deploy/.runtime/
+studio-kit/video/.cache/
+studio-kit/video/.venv/
+studio-kit/video/artifacts/
+
+# Local operator policy and private planning; working copies remain available.
+/AGENTS.md
+/docs/PLAN.md
+/specs/lane-content.md
+/desk/reports/
+# Raw room histories and machine-generated diagnostics stay local.
+/reports/*-room-log.json
+/receipt/rehearsal.html
+/receipt/*.png
+/receipt/*-output.txt
+/deploy/*-output.txt
+/deploy/check-public.py
+/rehearsal/*-output.txt
+/rehearsal/*-failure.txt
+/rehearsal/*.png
+/rehearsal/timing.json
+# Credentials, databases, archives and generated media are not publication inputs.
+.env.*
+!.env.example
+!.env.template
+auth.json
+credentials.json
+.credentials.json
+cookies.json
+cookies.txt
+*.log
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.mp4
+*.webm
+*.wav
+*.AppImage
+*.zip
+*.tar
+*.tar.gz
+.venv/
+.cache/
+/demo/out/
+
+# Generated diagnostics from any lane, including reproduction drills.
+**/*-output.txt
+**/*-output.json
+/rehearsal/bakery/fresh-demo-*.png
