@@ -7,13 +7,13 @@ export function validateTemplate(text:string,pins:any){
  check(pins.codexModel==="gpt-6.1-sol","Codex model pin changed");check(typeof pins.templateImported==="boolean","import status must be explicit");
  check(Object.keys(d??{}).every(k=>["version","params","group","rooms"].includes(k)),"unexpected top-level field (no kickoff, links or agent creation allowed)");
  const params=d?.params??{};
- const required={desk:"agent",lead:"agent",builder:"agent",reviewer:"agent",client_room:"string",studio_room:"string"};
+ const required={desk:"agent",lead:"agent",builder:"agent",reviewer:"agent",client_room:"string",studio_room:"string",work_room:"string"};
  for(const [key,type]of Object.entries(required))check(params[key]?.type===type,`missing/wrong parameter ${key}`);
- check(Object.keys(params).length===6,"unexpected parameters");
+ check(Object.keys(params).length===7,"unexpected parameters");
  const body=JSON.stringify({group:d?.group,rooms:d?.rooms}),used=new Set([...body.matchAll(/\{([a-z_]+)\}/g)].map(m=>m[1]));
  for(const p of Object.keys(params))check(used.has(p),`unused parameter ${p}`);
  for(const p of used)check(Object.hasOwn(params,p),`undeclared parameter ${p}`);
- check(d?.group?.name&&d?.rooms?.length===2,"one group and two rooms required");
+ check(d?.group?.name&&d?.rooms?.length===3,"one group and three rooms required");
  const client=d?.rooms?.find((r:any)=>r.name==="{client_room}"),studio=d?.rooms?.find((r:any)=>r.name==="{studio_room}");
  for(const r of d?.rooms??[]){
   check(r.read_visibility==="private"&&r.write_visibility==="private"&&r.channel_type==="channel_private","private room shape required");
@@ -27,6 +27,6 @@ export function validateTemplate(text:string,pins:any){
 }
 if(import.meta.main){
  validateTemplate(readFileSync(resolve("switch/backroom.template.yaml"),"utf8"),JSON.parse(readFileSync(resolve("switch/versions.json"),"utf8")));
- console.log("Template static checks: PASS; server 0.31.0 / Console 0.40.1 / controller 0.31.0; two private rooms, existing identities, no kickoff.");
+ console.log("Template static checks: PASS; server 0.31.0 / Console 0.40.1 / controller 0.31.0; three private rooms, existing identities, no kickoff.");
  console.log("Requires no default bridge and verified separate owners; human client membership is a separate setup step.");
 }
