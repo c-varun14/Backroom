@@ -8,7 +8,7 @@ Clients talk to one person in one chat. Behind that chat, AI teammates on [Switc
 bash demo.sh
 ```
 
-That one command needs only Docker. It starts a real Switch server, runs the workflow with scripted agents, then turns Switch off to show what breaks. It takes about 90 seconds once images are pulled, and needs no accounts.
+That one command needs only Docker. It starts a real Switch server and runs two fictional clients with scripted agents. A lesson approved on one client reaches the other as a Switch package, while the second client gets real refusals on the first client's rooms and documents. Then it turns Switch off to show what breaks. It takes about 2 minutes once images are pulled, and needs no accounts.
 
 - **Live sample app:** [Morrowcrumb Bakery](https://98-91-25-101.sslip.io/)
 - **Proof page, no login:** [one client change, start to finish](https://98-91-25-101.sslip.io/proof/)
@@ -22,7 +22,7 @@ That one command needs only Docker. It starts a real Switch server, runs the wor
 | Question | Answer | Check it |
 | --- | --- | --- |
 | Is Switch central? Would it stop working without it? | Yes. With Switch off, client messages don't arrive, handoffs stop, the owner can't be verified so nothing is released, and lessons can't reach a project. Each is a real failed call, followed by recovery | `bash demo.sh`, and [how Backroom uses Switch](docs/SWITCH.md) |
-| Does it run? Can someone clone and reproduce it? | Yes. One command runs 17 live checks against a real Switch server, and `bash scripts/repro/test-all.sh` runs the code suite | |
+| Does it run? Can someone clone and reproduce it? | Yes. One command runs 40 live checks against a real Switch server, and `bash scripts/repro/test-all.sh` runs the code suite | |
 | Is it a fresh idea for a real problem? | A small agency owner spends the day carrying messages between clients and AI tools. Backroom removes the carrying but keeps the owner's decision, and lessons learned on one project improve the next | [Six stages](#six-stages) |
 | How is Switch used? | Rooms are the wall, handoffs run through mentions and documents, verified sender identity is the release gate, and packages carry memory | [Feature table](docs/SWITCH.md) |
 
@@ -40,7 +40,10 @@ It pulls pinned Switch 0.31.0 images anonymously, provisions disposable native
 SAMPLE accounts and private rooms from the template, and runs the real desk
 against real Switch. Role CLIs and human decisions are explicitly scripted;
 there are no AI/model calls. It checks rejected sends, a reviewed exact-commit
-bakery deployment, a client revision, and a package promotion. It then stops
+bakery deployment, a client revision, and a package promotion. A second client,
+Fernline Books, then receives the lesson as the same package, cites it by ID and
+version in its architecture, and is refused on the first client's rooms and
+documents by live Switch. It then stops
 Switch, attempts four operations, prints their real errors, restarts Switch,
 and checks recovery. Open `demo/out/receipt.html` and the printed loopback bakery
 URL. The synthetic video is only an exact-file gate fixture. This demo does not
@@ -51,7 +54,7 @@ and volumes. No host Bun, Python, accounts or keys are needed for this demo.
 
 For the separate Docker-free test suite:
 
-Install **Bun1.3.14** ([official versioned-install instructions](https://bun.sh/docs/installation#installing-older-versions)), Bash and Python3, then run from the repository root:
+Install **Bun 1.3.14** ([official versioned-install instructions](https://bun.sh/docs/installation#installing-older-versions)), Bash and Python 3, then run from the repository root:
 
 ```sh
 bash scripts/repro/test-all.sh
@@ -59,9 +62,20 @@ bash scripts/repro/test-all.sh
 
 No dependency install, AI login, Discord, Switch server, Docker or network access is needed for this suite. It tests a temporary source copy with an empty HOME/environment; existing credentials and runtime state are not used. Checks cover desk gates/stage versions/adapter fixtures, secret-scrubbed receipts, adversarial log effects, runtime-contract validation, bakery storage/time/capacity rules, the earlier-shop privacy fix and the pinned template's static policy. Exact command output and timing are in . Passing fixtures do not establish live human approvals or model compliance.
 
-The public tree must contain **regular source files** under `rehearsal/bakery/` and `sample-projects/old-shop/`; no nested Git history, credentials or empty gitlinks are needed. See . A source-copy self-check is `bash scripts/repro/verify-clean.sh`; publication-normalized verification adds `--public`.
+The public tree must contain **regular source files** under `rehearsal/bakery/` and `sample-projects/old-shop/`; no nested Git history, credentials or empty gitlinks are needed. A source-copy self-check is `bash scripts/repro/verify-clean.sh`; publication-normalized verification adds `--public`.
 
 For a product-only demo, run `bun --no-env-file rehearsal/bakery/demo.ts` and open its printed localhost URL. It starts a fresh fictional database using the real clock. Full optional Switch/Discord setup and its manual prerequisites are in [LIVE-SETUP](docs/LIVE-SETUP.md). The existing service helpers are not a clean-clone installer.
+
+## Swap the AI behind any role
+
+`desk` only speaks Switch's protocol, so it never knows which AI sits behind a role. Each role is one line in [`backroom.yaml`](backroom.yaml):
+
+```diff
+-builder: {harness: codex, model: gpt-6.1-sol}
++builder: {harness: opencode, model: opencode/deepseek-v4.1-flash-free}
+```
+
+Allowed harnesses are `claude`, `codex`, `opencode`, and `command` for any other CLI. A test fails if `desk/src` names a provider or model. With the demo stack running, `bun --no-env-file harness/swap-proof.ts <config>` sends one small task through Switch to the role in that config. We ran that with the line above on OpenCode's free model. That covers one task through the [command adapter](harness/command-agent.ts), not a full project.
 
 ## Six stages
 
