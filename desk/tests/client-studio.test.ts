@@ -171,7 +171,7 @@ test('a card with no buttons still opens, and a refused card cannot block other 
 test('final product press really records the client approval and moves the stage on',async()=>{
  const dir=mkdtempSync('/tmp/backroom-final-key-');writeFileSync(join(dir,'key'),key);
  try{
- const f=realFixture(undefined,undefined,{clientSurface:'forum',doorKeyFile:join(dir,'key'),discordClientIds:['client'],frontId:'front'});
+ const f=realFixture(undefined,undefined,{clientSurface:'forum',videoEnabled:true,doorKeyFile:join(dir,'key'),discordClientIds:['client'],frontId:'front'});
  const pid=f.config.projectId,sha='a'.repeat(40),commit={kind:'commit' as const,sha},owner={senderId:'owner',senderKind:'human' as const,roomId:'studio'},client={senderId:'verified-client-channel-human',senderKind:'human' as const,roomId:'client-room'};
  const postEvent=(sender:string,body:string,thread:string|null='T')=>{const e=f.event(sender,body,'client-room');return {...e,payload:{...e.payload,thread_id:thread}};};
  await f.loop.handle(postEvent('door',signDoor(envelope({project:pid,tag:'Question',title:'Launch',bodySha:sha256('x')}),key)));

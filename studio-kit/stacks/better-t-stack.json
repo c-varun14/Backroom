@@ -1,0 +1,9 @@
+{
+  "id": "better-t-stack",
+  "name": "Better-T-Stack",
+  "architecture": "SvelteKit web app, Hono server with oRPC, Postgres through Drizzle, Better Auth, Polar only when the brief needs payments. Name the tables, routes, auth rules and how each requirement is met.",
+  "build": "Run the scaffold only when the workspace is empty, then build inside apps/ and packages/. Add a health route if none exists. Never hand-write what the scaffold generates.",
+  "review": "Check authorization on every server route, input validation at the oRPC boundary, server-owned prices, secrets only from the environment, and Polar webhook signatures when payments are used.",
+  "test": "pnpm install --frozen-lockfile; pnpm check-types; pnpm test where tests exist.",
+  "scaffold": "pnpm dlx create-better-t-stack@latest <project> --frontend svelte --backend hono --runtime node --api orpc --database postgres --orm drizzle --auth better-auth --payments polar --db-setup none --package-manager pnpm --addons turborepo oxlint --examples none --web-deploy none --server-deploy none --git --install"
+}

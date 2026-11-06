@@ -1,5 +1,7 @@
 export interface Project {
   clientSurface?: "forum";
+  stack?: string;
+  videoEnabled?: boolean;
   id: string;
   ownerId: string;
   studioRoomId: string;

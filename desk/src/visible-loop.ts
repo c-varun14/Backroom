@@ -13,7 +13,7 @@ import {DeliveryRecovery} from "./delivery-recovery";
 import {DocumentSnapshots} from "./document-snapshots";
 import {ClientIntake,classifyClient,parseClientApproval} from "./client-intake";
 
-export interface LoopConfig extends ForumConfig { mode?:"real";deskName?:string;projectId: string; ownerId: string; bridgeId: string; deskId: string; leadId: string; probeId: string; clientRoomId: string; studioRoomId: string; workRoomId?: string; leadName?: string }
+export interface LoopConfig extends ForumConfig { mode?:"real";stack?:string;videoEnabled?:boolean;deskName?:string;projectId: string; ownerId: string; bridgeId: string; deskId: string; leadId: string; probeId: string; clientRoomId: string; studioRoomId: string; workRoomId?: string; leadName?: string }
 export interface SwitchEvent { room_id: string; payload: { sender: string; sender_kind?: string | null; message_id: string; body: string; thread_id?: string | null; attachments?: { filename: string; mxc: string }[] } }
 
 export class VisibleLoop {
@@ -40,7 +40,7 @@ export class VisibleLoop {
   constructor(readonly store: Store, private api: SwitchAPI, readonly transport: SwitchTransport, readonly config: LoopConfig, identitySource?: () => Identity[]) {
     api=this.api=scopeStudio(api,config,room=>this.cursor(room).connection_id);
     this.identities = identitySource ?? (() => switchIdentities({ ownerId: config.ownerId, bridgeId: config.bridgeId, deskId: config.deskId, leadId: config.leadId, probeId: config.probeId }));
-    store.register({ id:config.projectId, ownerId:config.ownerId, studioRoomId:config.studioRoomId, clientRoomId:config.clientRoomId, clientIds:["verified-client-channel-human"],...(config.clientSurface==='forum'?{clientSurface:config.clientSurface}:{}) });
+    store.register({ id:config.projectId, ownerId:config.ownerId, studioRoomId:config.studioRoomId, clientRoomId:config.clientRoomId, clientIds:["verified-client-channel-human"],...(config.clientSurface==='forum'?{clientSurface:config.clientSurface,stack:config.stack,videoEnabled:config.videoEnabled??false}:{}) });
     store.db.exec(`CREATE TABLE IF NOT EXISTS owner_decisions(seq INTEGER PRIMARY KEY AUTOINCREMENT,code TEXT UNIQUE NOT NULL);
       CREATE TABLE IF NOT EXISTS intake_events(id TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS tickets(n INTEGER PRIMARY KEY AUTOINCREMENT,event_id TEXT UNIQUE,simulated INTEGER NOT NULL,status TEXT NOT NULL);

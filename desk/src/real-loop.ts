@@ -1,7 +1,7 @@
 import {CLIENT_LINES,DELIVERY_RULE} from './talk';
 import {Watchdog,type WorkingRole} from './watchdog';
 import {buildVerification} from './build-verification';
-import {readFileSync, writeFileSync, mkdirSync, realpathSync} from "node:fs";
+import {readFileSync, writeFileSync, mkdirSync, realpathSync, existsSync} from "node:fs";
 import {join, resolve} from "node:path";
 import {randomUUID} from "node:crypto";
 import {StagesLoop, type RehearsalConfig, type Control} from "./stages-loop";
@@ -15,6 +15,7 @@ import {sha256} from "./gate";
 import {type LocalComposeDeployer} from "../../deploy/local-compose";
 import {EventJournal} from "./event-journal";
 import {classifyClient,parseClientApproval} from "./client-intake";
+import {defaultStack,stackById} from './stacks';
 
 export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:string;bridgeId:string;watchdogMs?:number;ownerVerificationRequired?:boolean;leadNudgeMs?:number}
 /** Real-room transport/presentation around the rehearsal's durable stage model.
@@ -50,11 +51,14 @@ export class RealStagesLoop extends StagesLoop {
       const id='press:'+event.payload.message_id;
       this.store.db.transaction(()=>{
         this.state.approve(real.projectId,state.stage,delivered.version,artifact,{senderId:'verified-client-channel-human',senderKind:'human',roomId:real.clientRoomId});
+        if(state.stage==='client_review'&&real.clientSurface==='forum'&&real.videoEnabled!==true)this.state.skipOptionalVideo(real.projectId);
         this.set('delivered',null);this.set('outgoing',null);this.store.db.query('DELETE FROM client_buttons WHERE post=?').run(post.switch_thread);
-        this.store.db.query('INSERT INTO stage_followups(event,stage,version,artifact) VALUES (?,?,?,?)').run(id,state.stage==='client_review'?'client-review-accepted':'video-accepted',this.state.get(real.projectId).stages[state.stage==='client_review'?'video':'learn'].version,JSON.stringify(artifact));
+        const acceptedStage=state.stage==='client_review'?(real.clientSurface==='forum'&&real.videoEnabled!==true?'learn':'video'):'learn';
+        this.store.db.query('INSERT INTO stage_followups(event,stage,version,artifact) VALUES (?,?,?,?)').run(id,state.stage==='client_review'?'client-review-accepted':'video-accepted',this.state.get(real.projectId).stages[acceptedStage].version,JSON.stringify(artifact));
       })();await this.runFollowup(id);
     };
     this.brief.onForumActivate=async ticket=>{
+      if(real.clientSurface==='forum')this.set('ticketKind',ticket.kind);
       const state=this.state.get(real.projectId);
       if(ticket.kind==='bug'&&state.stages.architecture.approvals.includes('owner')){
         const artifact=state.stages.build.artifact??{kind:'commit' as const,sha:'0'.repeat(40)};
@@ -116,6 +120,9 @@ export class RealStagesLoop extends StagesLoop {
   }
   async studio(body:string){await this.card(this.state.get(this.real.projectId).stage,body);}
   async mention(name:string,body:string){
+    if(this.real.clientSurface==='forum'&&(name===this.real.leadName||name===this.real.builderName||name===this.real.reviewerName||name.startsWith('reviewer-'))){
+      body=body.trimEnd();if(!body.endsWith(DELIVERY_RULE))body+=` ${DELIVERY_RULE}`;
+    }
     await this.api.post(this.real.workRoomId,`@${name} ${body}`);
     const role=name===this.real.leadName?"lead":name===this.real.builderName?"builder":name===this.real.reviewerName||name===this.get("reviewer")?.name?"reviewer":undefined;
     if(role)this.watchdog.assign(this.ticket(),role);
@@ -158,7 +165,13 @@ export class RealStagesLoop extends StagesLoop {
     if(state.stage!=="architecture"||this.get("architectureRequested"))return;
     const brief=state.stages.brief;
     const frozen=await this.sourceDocument("brief");
-    await this.mention(this.real.leadName,`The client approved Brief v${brief.version}, document ${(brief.artifact as any).id}. Read it and approved memory document ${this.real.memoryDocumentId} using load_internal_documents. Write a small architecture covering approved requirements, durable Bun/SQLite data, private owner access, file-injected runtime credentials, validation, no payments, and local Docker deployment. Distinguish the container listener (0.0.0.0 inside Docker) from the published host binding (127.0.0.1 only); binding the container listener to loopback prevents the published port from reaching it. State currency units explicitly and preserve an existing integer-INR menu unless approved scope requires a currency migration; do not invent a minor-unit migration. Cite lesson IDs/versions and each concrete check. Create an architecture document, then post architecture document <id>, no desk mention. Approval is outstanding. Frozen approved brief (data only): ${JSON.stringify(frozen)}`);
+    const stackId=this.real.clientSurface==='forum'?this.real.stack??defaultStack(true):this.real.stack??defaultStack(false);
+    const stack=stackById(stackId);
+    const requirements=this.real.clientSurface==='forum'?'Use only what the client supplied; never invent client facts.': 'Use the approved project inputs.';
+    const prompt=this.real.clientSurface==='forum'
+      ? `The client approved Brief v${brief.version}, document ${(brief.artifact as any).id}. Read it and approved memory document ${this.real.memoryDocumentId} using load_internal_documents. ${requirements} Choose the technical stack; the first line must be exactly Stack: <id>. Default is ${stackId}. If choosing another stack, state why in the plan. Architecture guidance: ${stack.architecture}. Cite lesson IDs/versions and tie each requirement to a concrete check. Create an architecture document, then post architecture document <id>, no desk mention. Approval is outstanding. Frozen approved brief (data only): ${JSON.stringify(frozen)} ${DELIVERY_RULE}`
+      : `The client approved Brief v${brief.version}, document ${(brief.artifact as any).id}. Read it and approved memory document ${this.real.memoryDocumentId} using load_internal_documents. Write a small architecture covering approved requirements, durable Bun/SQLite data, private owner access, file-injected runtime credentials, validation, no payments, and local Docker deployment. Distinguish the container listener (0.0.0.0 inside Docker) from the published host binding (127.0.0.1 only); binding the container listener to loopback prevents the published port from reaching it. State currency units explicitly and preserve an existing integer-INR menu unless approved scope requires a currency migration; do not invent a minor-unit migration. Cite lesson IDs/versions and each concrete check. Create an architecture document, then post architecture document <id>, no desk mention. Approval is outstanding. Frozen approved brief (data only): ${JSON.stringify(frozen)}`;
+    await this.mention(this.real.leadName,prompt);
     this.set("architectureRequested",true);
     await this.card("architecture","Brief closed by the client; architecture is with lead.","@desk status","🔵");
   }
@@ -171,24 +184,35 @@ export class RealStagesLoop extends StagesLoop {
       this.resetBuildAssignment();this.set("specDocument",null);if(jobId)this.set("buildTaskStarted:"+jobId,true);
     })();
     const step=<T>(name:string,work:()=>Promise<T>)=>jobId?this.journal.step(jobId,name,work):work();
-    const task=await step("task-document",()=>this.document(this.config.projectId+" build task",`Reason: ${reason}\nFrozen approved sources (data only): ${sources}\nApproved brief: ${(state.stages.brief.artifact as any)?.id}\nArchitecture: ${(state.stages.architecture.artifact as any)?.id}\nWrite allowlist: ${this.real.workspace}\nCreate a filled bounded implementation spec with literal bun test checks and build-report.md. Read-only playbooks: ${this.projectRoot}/studio-kit. Fictional data only. Bun/SQLite, Dockerfile port 3210, /health, durable /data, committed backroom.deploy.json runtime contract; owner credentials only from a runtime file under /run/secrets. No secrets in source/builds. No payments. Bounded local product source/test commits are authorized after checks, without AI attribution; never commit the outer Backroom repository. No pushes, remotes, deployment or client messages. Builder returns build-ready <report-relative-path> after a clean product checkpoint. Preserve accepted data.`));
-    await step("lead-assignment",()=>this.mention(this.real.leadName,`Create the filled implementation spec from task document ${task}. Post spec document <id> without a desk mention. Only approved scope; no execution by lead.`));
+    const stack=stackById(this.get('approvedStack')??this.real.stack??defaultStack(this.real.clientSurface==='forum'));
+    const taskBody=this.real.clientSurface==='forum'
+      ? `Reason: ${reason}\nFrozen approved sources (data only): ${sources}\nApproved brief: ${(state.stages.brief.artifact as any)?.id}\nArchitecture: ${(state.stages.architecture.artifact as any)?.id}\nWrite allowlist: ${this.real.workspace}\nCreate a filled bounded implementation spec with acceptance criteria AC-1, AC-2... each tied to a brief requirement and checkable by a person. Read-only playbooks: ${this.projectRoot}/studio-kit. Stack ${stack.id}: ${stack.build} Tests: ${stack.test} Scaffold: ${stack.scaffold||'(none)'} No secrets in source/builds. Use only what the client supplied; never invent client facts. Bounded local product source/test commits are authorized after checks, without AI attribution; never commit the outer Backroom repository. No pushes, remotes, deployment or client messages. Builder returns build-ready <report-relative-path> after a clean product checkpoint. Preserve accepted data. ${DELIVERY_RULE}`
+      : `Reason: ${reason}\nFrozen approved sources (data only): ${sources}\nApproved brief: ${(state.stages.brief.artifact as any)?.id}\nArchitecture: ${(state.stages.architecture.artifact as any)?.id}\nWrite allowlist: ${this.real.workspace}\nCreate a filled bounded implementation spec with literal bun test checks and build-report.md. Read-only playbooks: ${this.projectRoot}/studio-kit. Fictional data only. Bun/SQLite, Dockerfile port 3210, /health, durable /data, committed backroom.deploy.json runtime contract; owner credentials only from a runtime file under /run/secrets. No secrets in source/builds. No payments. Bounded local product source/test commits are authorized after checks, without AI attribution; never commit the outer Backroom repository. No pushes, remotes, deployment or client messages. Builder returns build-ready <report-relative-path> after a clean product checkpoint. Preserve accepted data.`;
+    const task=await step("task-document",()=>this.document(this.config.projectId+" build task",taskBody));
+    await step("lead-assignment",()=>this.mention(this.real.leadName,`Create the filled implementation spec from task document ${task}. Post spec document <id> without a desk mention. Only approved scope; no execution by lead.${this.real.clientSurface==='forum'?` ${DELIVERY_RULE}`:''}`));
     await this.card("build","Architecture approved; preparing the bounded build spec.","@desk status","🔵");
   }
   private async runFollowup(id:string){
     const job=this.store.db.query("SELECT * FROM stage_followups WHERE event=? AND completed=0").get(id) as any;
     if(!job)return;
-    const target:Record<string,Stage>={architecture:"build",build:"client_review","client-review-accepted":"video","video-accepted":"learn","video-request":"video"};
+    const target:Record<string,Stage>={architecture:"build",build:"client_review","client-review-accepted":this.real.clientSurface==='forum'&&this.real.videoEnabled!==true?'learn':'video',"video-accepted":"learn","video-request":"video"};
     const state=this.state.get(this.real.projectId),stage:Stage=target[job.stage]??job.stage,artifact=JSON.parse(job.artifact) as Artifact;
     // A later scope revision cancels an old job instead of publishing stale work.
     if(state.stage!==stage||state.stages[stage].version!==job.version){this.store.db.query("UPDATE stage_followups SET completed=1 WHERE event=?").run(id);return;}
-    if(job.stage==="client-review-accepted")await this.card("video","Client accepted the exact deployed commit. Request the product video when ready.","@desk video","✅");
+    if(job.stage==="client-review-accepted"){
+      if(this.real.clientSurface==='forum'&&this.real.videoEnabled!==true){
+        await this.journal.step(id,"lesson-request",()=>this.mention(this.real.leadName,`The client accepted the final product. Propose one reusable de-identified lesson from checked project evidence. Do not include client facts. Create a document then post lesson <slug> <version> document <id>. ${DELIVERY_RULE}`));
+      } else await this.card("video","Client accepted the exact deployed commit. Request the product video when ready.","@desk video","✅");
+    }
     else if(job.stage==="video-accepted"){
       await this.card("learn","Client accepted the exact video. Preparing a de-identified lesson.","@desk status","✅");
       await this.journal.step(id,"lesson-request",()=>this.mention(this.real.leadName,"Propose one reusable de-identified lesson from the actual checked project evidence. No client facts. Create a document then post lesson <slug> <version> document <id>. Promotion requires the owner's exact proposal hash."));
     }else if(job.stage==="video-request"){
       const d=await this.deployer.current(this.real.projectId);
-      await this.journal.step(id,"video-request",()=>this.mention(this.real.builderName,`Owner requests product video for accepted commit ${d?.commitSha}, local URL ${d?.url}. Use studio-kit/video/SKILL.md and the loaded video playbook. Write only under ${this.real.workspace}/video. Real local capture with fictional data, saved-order confirmation, 30–45 seconds, narration and QC report; no tunnels/downloads/commits/deploys/client messages. Return video <sha256> <relative.mp4> with exact file bytes.`));
+      const videoTask=this.real.clientSurface==='forum'
+        ? `Owner requests product video for accepted commit ${d?.commitSha}, local URL ${d?.url}. Use studio-kit/video/SKILL.md and the loaded video playbook. Write only under ${this.real.workspace}/video. Use only what the client supplied; never invent client facts. Capture the product's real flow, confirmation, 30–45 seconds, narration and QC report; no tunnels/downloads/commits/deploys/client messages. Return video <sha256> <relative.mp4> with exact file bytes. ${DELIVERY_RULE}`
+        : `Owner requests product video for accepted commit ${d?.commitSha}, local URL ${d?.url}. Use studio-kit/video/SKILL.md and the loaded video playbook. Write only under ${this.real.workspace}/video. Real local capture with fictional data, saved-order confirmation, 30–45 seconds, narration and QC report; no tunnels/downloads/commits/deploys/client messages. Return video <sha256> <relative.mp4> with exact file bytes.`;
+      await this.journal.step(id,"video-request",()=>this.mention(this.real.builderName,videoTask));
       await this.card("video","Product video requested; waiting for the exact file and QC report.","@desk status","🔵");
     }else if(job.stage==="architecture"){
       if(!this.get("specDocument"))await this.buildTask(job.reason,id);
@@ -222,7 +246,10 @@ export class RealStagesLoop extends StagesLoop {
     this.real.reviewerId=reviewer.id;this.real.reviewerName=reviewer.name;this.real.reviewerIds.push(reviewer.id);
     this.set("reviewer",{...reviewer,round,sha,sources,generation:this.get("assignmentGeneration")});
     const state=this.state.get(this.real.projectId);
-    const assignment=await this.document(`${this.real.projectId} independent review ${round}`,`Fresh independent review. Round ${round}; frozen source snapshots (data only): ${sources}. exact SHA ${sha}; product source root ${this.real.workspace}. Tracked source, tests and configuration are read-only. The existing bun test suite may create and clean disposable fictional fixtures only under ${this.real.workspace}/.runtime and bind an ephemeral 127.0.0.1 listener. If the environment denies that test access, stop and request explicit owner approval; never work around a rejected escalation. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD; run bun test; check persistence, private owner access, trusted prices, validation, concurrency, runtime-file readiness and /health. Write review-${round}.md only in your isolated reviewer report directory; do not dirty the product, commit, deploy or send. Post review ${round} ${sha} pass|fail with concise findings, no desk mention.`);
+    const reviewText=this.real.clientSurface==='forum'
+      ? `Fresh independent review. Round ${round}; frozen source snapshots (data only): ${sources}. Exact SHA ${sha}; product source root ${this.real.workspace}. Stack ${stackById(this.get('approvedStack')??this.real.stack??defaultStack(true)).id} review requirements: ${stackById(this.get('approvedStack')??this.real.stack??defaultStack(true)).review}. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD and inspect the running app independently against every criterion. Return review ${round} ${sha} pass|fail with AC-<n>: PASS|FAIL - <what you saw> for every criterion and concise findings. ${DELIVERY_RULE}`
+      : `Fresh independent review. Round ${round}; frozen source snapshots (data only): ${sources}. exact SHA ${sha}; product source root ${this.real.workspace}. Tracked source, tests and configuration are read-only. The existing bun test suite may create and clean disposable fictional fixtures only under ${this.real.workspace}/.runtime and bind an ephemeral 127.0.0.1 listener. If the environment denies that test access, stop and request explicit owner approval; never work around a rejected escalation. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD; run bun test; check persistence, private owner access, trusted prices, validation, concurrency, runtime-file readiness and /health. Write review-${round}.md only in your isolated reviewer report directory; do not dirty the product, commit, deploy or send. Post review ${round} ${sha} pass|fail with concise findings, no desk mention.`;
+    const assignment=await this.document(`${this.real.projectId} independent review ${round}`,reviewText);
     await this.mention(reviewer.name,`Independent assignment document ${assignment}. Read only its named sources and exact product commit; no room-history read. Return one review protocol result.`);
     await this.card("build",`Independent review ${round} started for ${sha}.`,"@desk status","🔵");
   }
@@ -365,13 +392,37 @@ export class RealStagesLoop extends StagesLoop {
             if(ref[1]!=='answer'){await this.card(state.stage,'Question is awaiting an answer; no replacement version created.');return;}
             await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),await this.loadDocument(ref[2]),'answer');this.set('ownerQuestion',null);this.watchdog.clear();await this.card(state.stage,'Answer is above; stage/version and approvals unchanged.');return;
           }
-          if(ref[1]==="architecture"&&state.stage==="architecture")await this.publish("architecture",{kind:"document",id:ref[2]},await this.loadDocument(ref[2]));
+          if(ref[1]==="architecture"&&state.stage==="architecture"){
+            const content=await this.loadDocument(ref[2]);
+            if(this.real.clientSurface==='forum'){
+              const selected=/^Stack: ([a-z0-9-]+)(?:\r?\n|$)/.exec(content)?.[1];
+              try{if(!selected)throw new Error('architecture must begin with Stack: <id>');stackById(selected);}
+              catch(error){await this.mention(this.real.leadName,`Architecture returned for correction: ${String(error instanceof Error?error.message:'invalid stack')}. Use only a known profile and put Stack: <id> on the first line. ${DELIVERY_RULE}`);return;}
+              this.set('proposedStack',selected);
+            }
+            await this.publish("architecture",{kind:"document",id:ref[2]},content);
+          }
           else if(ref[1]==="spec"&&state.stage==="build"){
             await this.buildSources(false);
-            this.brief.snapshots.remember(ref[2],await this.loadDocument(ref[2]));
+            const specContent=await this.loadDocument(ref[2]);
+            this.brief.snapshots.remember(ref[2],specContent);
+            if(this.real.clientSurface==='forum'){
+              const criteria=[...new Set([...specContent.matchAll(/\bAC-([1-9][0-9]*)\b/g)].map(m=>`AC-${m[1]}`))];
+              if(!criteria.length){
+                const failures=(this.get('specCriteriaFailures')??0)+1;this.set('specCriteriaFailures',failures);
+                if(failures===1)await this.mention(this.real.leadName,`Spec rejected: no AC-1, AC-2... acceptance criterion IDs were found. Tie each criterion to a brief requirement and make it checkable by a person. Return a corrected spec document. ${DELIVERY_RULE}`);
+                else await this.card('build','Lead returned a second spec without acceptance criteria. Check the spec and resolve it with lead.','@desk status','⚠️');
+                return;
+              }
+              this.set('specCriteriaFailures',0);this.set('specCriteria',criteria);
+            }
             if(this.get("specDocument")!==ref[2])this.resetBuildAssignment();
             this.set("specDocument",ref[2]);
-            await this.mention(this.real.builderName,`Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Run bun test; report real output. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Return build-ready <report-relative-path> after a clean checkpoint; the owner requests independent review.`);
+            const selectedStack=stackById(this.get('approvedStack')??this.real.stack??defaultStack(this.real.clientSurface==='forum'));
+            const assignment=this.real.clientSurface==='forum'
+              ? `Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Stack ${selectedStack.id}: ${selectedStack.build} Test commands: ${selectedStack.test}. Report real output and criterion evidence. Use only what the client supplied; never invent client facts. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Return build-ready <report-relative-path> after a clean checkpoint. ${DELIVERY_RULE}`
+              : `Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Run bun test; report real output. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Return build-ready <report-relative-path> after a clean checkpoint; the owner requests independent review.`;
+            await this.mention(this.real.builderName,assignment);
             await this.card("build","Approved spec assigned to builder.","@desk status","🔵");
           }else if(ref[1].startsWith("lesson ")&&state.stage==="learn"){
             const [,slug,version]=ref[1].split(" "),text=await this.loadDocument(ref[2]);
@@ -386,6 +437,28 @@ export class RealStagesLoop extends StagesLoop {
       }
       if(identity.agent_id===this.real.builderId){
         if(/^build-ready [^\r\n]+(?:\r?\n[\s\S]*)?$/.test(body)&&state.stage==="build"&&this.get("specDocument")){
+          if(this.real.clientSurface==='forum'){
+            const relative=body.match(/^build-ready ([^\r\n]+)/)?.[1]?.trim()??'';
+            let report='';
+            try{
+              if(relative.split(/[\\/]/).at(-1)!=='build-report.md')throw new Error('build-report.md required');
+              const root=realpathSync(this.real.workspace),path=realpathSync(resolve(root,relative));
+              if(!path.startsWith(root+'/')||!existsSync(path))throw new Error('missing report');
+              report=readFileSync(path,'utf8');
+            }catch{await this.mention(this.real.builderName,`build-ready refused: provide build-report.md inside the product workspace with one AC-<n>: PASS - <evidence> line for each stored criterion. ${DELIVERY_RULE}`);return;}
+            const criteria=this.get('specCriteria') as string[]??[];
+            const lines=report.split(/\r?\n/),missing=criteria.filter(id=>{
+              const criterionLines=lines.filter(line=>line.startsWith(`${id}:`));
+              return criterionLines.length!==1||!new RegExp(`^${id}: PASS - \\S.*$`).test(criterionLines[0]??'');
+            });
+            const bug=this.get('ticketKind')==='bug';
+            if(bug&&/cannot reproduce|could not reproduce|not reproducible/i.test(report)){
+              const reportId=await this.document(`${this.real.projectId} bug reproduction report`,report);
+              await this.mention(this.real.leadName,`Builder reports that the bug cannot be reproduced. Read report document ${reportId} and ask the client one precise question needed to reproduce it. Do not start review. ${DELIVERY_RULE}`);return;
+            }
+            if(missing.length){await this.mention(this.real.builderName,`build-ready refused: missing passing evidence for ${missing.join(', ')}. Add one line per criterion as AC-<n>: PASS - <test name, command and result, or screenshot path>, then retry. ${DELIVERY_RULE}`);return;}
+            if(bug&&!/^Reproduction test:\s*\S/im.test(report)){await this.mention(this.real.builderName,'build-ready refused: bug tickets must name the failing reproduction test in build-report.md as `Reproduction test: <test name>`. If the bug cannot be reproduced, state that and provide the report so lead can ask the client a precise question. '+DELIVERY_RULE);return;}
+          }
           let verification:ReturnType<typeof buildVerification>;
           try{verification=buildVerification(this.real.workspace,this.real.ownerVerificationRequired);}
           catch{
@@ -446,8 +519,9 @@ export class RealStagesLoop extends StagesLoop {
       const id=`switch:local:${event.payload.message_id}`;
       this.store.db.transaction(()=>{
         this.state.approve(this.real.projectId,stage,delivered.version,artifact,{senderId:"verified-client-channel-human",senderKind:"human",roomId:this.real.clientRoomId});
+        if(stage==='client_review'&&this.real.clientSurface==='forum'&&this.real.videoEnabled!==true)this.state.skipOptionalVideo(this.real.projectId);
         this.set("delivered",null);this.set("outgoing",null);
-        const target=stage==="client_review"?"video":"learn";
+        const target=stage==="client_review"?(this.real.clientSurface==='forum'&&this.real.videoEnabled!==true?'learn':'video'):"learn";
         this.store.db.query("INSERT INTO stage_followups(event,stage,version,artifact) VALUES (?,?,?,?)").run(id,stage==="client_review"?"client-review-accepted":"video-accepted",this.state.get(this.real.projectId).stages[target].version,JSON.stringify(artifact));
       })();
       await this.runFollowup(id);
@@ -490,6 +564,7 @@ export class RealStagesLoop extends StagesLoop {
       if(stage==="video"&&(artifact.kind!=="video"||sha256(readFileSync(this.get("video").path))!==artifact.sha256))throw new Error("Changed video");
       this.store.db.transaction(()=>{
         this.state.approve(this.real.projectId,stage,row.version,artifact,this.ownerActor());
+        if(stage==='architecture'&&this.real.clientSurface==='forum')this.set('approvedStack',this.get('proposedStack'));
         this.store.db.query("UPDATE stage_artifacts SET status='approved' WHERE code=?").run(row.code);
         if(stage==="build")this.state.suggest(this.real.projectId,"client_review",artifact);
         this.store.db.query("INSERT INTO stage_followups(event,code,stage,version,artifact,reason) VALUES (?,?,?,?,?,?)").run(id,row.code,stage,this.state.get(this.real.projectId).stages[stage==="architecture"?"build":stage==="build"?"client_review":stage].version,JSON.stringify(artifact),this.get("clientChange")??"initial build");

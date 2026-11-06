@@ -145,6 +145,8 @@ def provision(name, purpose, client_id, slug, base, discord, switch, create_agen
         remember('packageAttached', True)
     discord('PUT', f"/guilds/{guild}/members/{client_id}/roles/{c['discordClientRoleId']}")
     remember('clientSurface', 'forum')
+    remember('stack', c.get('stack') or 'better-t-stack')
+    remember('videoEnabled', False)
     c.pop('_doorWebhook', None)
     save(c)
     return c

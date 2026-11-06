@@ -76,6 +76,15 @@ export class StageMachine {
       return state;
     })();
   }
+  /** Skip the optional video stage for a forum project that has video disabled. */
+  skipOptionalVideo(project:string):Workflow {
+    return this.store.db.transaction(()=>{
+      const config=this.store.project(project),state=this.get(project);
+      if(config.clientSurface!=='forum'||config.videoEnabled===true||state.stage!=='video')throw new Error('video stage is not disabled for this project');
+      state.stages.video.version++;state.stages.video.approvals=[];state.stage='learn';state.completed=false;
+      this.save(project,state);return state;
+    })();
+  }
   private closers(config:Project,stage:Stage){return config.clientSurface==='forum'&&stage==='brief'?['client'] as const:closers[stage];}
   private role(config: Project, actor: StageActor): "owner" | "client" | undefined {
     if (actor.senderId === config.ownerId && actor.roomId === config.studioRoomId) return "owner";
