@@ -9,6 +9,7 @@ SAMPLE DATA — documentation-backed proposed lesson; no live payment integratio
 - Date: 2026-11-05
 - Status: pending
 - When it applies: A project that actually receives payment-provider webhooks. The bakery's pay-at-pickup flow has no webhook and must not add one because this lesson exists.
+- Stack scope: all
 - Review: Not reviewed or approved. Keep out of the approved package until the owner reviews this exact version with implementation evidence.
 
 Implementation proposal: preserve raw request bytes and headers, use a pinned SDK version matching the configured API version, reject invalid signatures without side effects, and verify a sandbox delivery plus a tampered-body failure. Separately test duplicate delivery handling so a valid retry cannot grant twice; signature verification alone is not duplicate prevention. Never log the signing secret. Recheck provider documentation when implementing; this exercise installs no SDK and creates no endpoint.
