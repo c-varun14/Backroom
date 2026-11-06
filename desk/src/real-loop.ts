@@ -10,16 +10,39 @@ import {type Artifact, type Stage} from "./types";
 import {approvalCard, leakWord, neutralise, parseLeadDraft, stageCard, stageLabel,deskAddress,canonicalDeskBody} from "./cards";
 import {sha256} from "./gate";
 import {type LocalComposeDeployer} from "../../deploy/local-compose";
-import {classifyClient} from "./client-intake";
+import {EventJournal} from "./event-journal";
+import {classifyClient,parseClientApproval} from "./client-intake";
 
 export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:string;bridgeId:string}
 /** Real-room transport/presentation around the rehearsal's durable stage model.
  * Rehearsal entry points retain their existing defaults and services. */
 export class RealStagesLoop extends StagesLoop {
   private pending=Promise.resolve();
+  private journal:EventJournal<SwitchEvent>;
   constructor(store:Store,api:SwitchAPI,transport:SwitchTransport,readonly real:RealConfig,
     deployer:LocalComposeDeployer,private identitySource:()=>Identity[],private realControl:Control,private projectRoot:string) {
     super(store,api,transport,real,deployer,identitySource,realControl,projectRoot);
+    this.recoverDeliveries();
+    this.journal=new EventJournal(store,"real:"+real.projectId);
+    store.db.exec(`CREATE TABLE IF NOT EXISTS stage_followups(event TEXT PRIMARY KEY,code TEXT,stage TEXT,version INTEGER,artifact TEXT,reason TEXT,completed INTEGER NOT NULL DEFAULT 0);`);
+  }
+  async resume(){
+    this.recoverDeliveries();
+    for(const event of this.journal.pending())try{await this.handle(event);}catch{this.store.log("real event recovery deferred; details withheld",undefined,this.real.projectId);}
+    await this.brief.resume();
+    for(const row of this.store.db.query("SELECT event FROM stage_followups WHERE completed=0 ORDER BY rowid").all() as any[])try{await this.runFollowup(row.event);}catch{this.store.log("stage handoff recovery deferred; details withheld",undefined,this.real.projectId);}
+    await this.afterBrief();
+  }
+  recoverDeliveries(){
+    this.brief.recoverDeliveries();
+    const outgoing=this.get("outgoing");
+    if(outgoing&&this.store.db.query("SELECT id FROM intents WHERE project=? AND kind='send' AND target=? AND status='confirmed'").get(this.real.projectId,outgoing.draftId))this.brief.deliveries.track(outgoing.draftId,"stage",outgoing);
+    this.brief.deliveries.reconcile("stage",out=>{
+      const state=this.state.get(this.real.projectId),active=this.get("outgoing");
+      if(!state.completed&&state.stage===out.stage&&state.stages[out.stage].version===out.version&&active?.draftId===out.draftId){
+        this.set("delivered",out);this.set("outgoing",null);
+      }
+    });
   }
   get workflow(){return this.state;}
   latestTicket(){return this.brief.latestTicket();}
@@ -40,10 +63,17 @@ export class RealStagesLoop extends StagesLoop {
   async publish(stage:Stage,artifact:Artifact,content:string){
     // Owner can inspect every word in Discord before an approval code exists.
     await this.api.publishApprovalText(this.real.studioRoomId,this.ticket(),content,stage);
-    const state=this.state.suggest(this.real.projectId,stage,artifact),version=state.stages[stage].version;
-    const hash=sha256(content),code=sha256(JSON.stringify({stage,version,artifact,hash})).slice(0,12);
-    this.store.db.query("UPDATE stage_artifacts SET status='superseded' WHERE stage=? AND status='active'").run(stage);
-    this.store.db.query("INSERT INTO stage_artifacts VALUES (?,?,?,?,?,'active')").run(code,stage,version,JSON.stringify(artifact),hash);
+    if(artifact.kind==="document")this.brief.snapshots.remember(artifact.id,content);
+    const hash=sha256(content),existing=this.activeArtifact(stage);
+    let version:number,code:string;
+    if(existing&&existing.artifact===JSON.stringify(artifact)&&existing.content_hash===hash&&existing.version===this.state.get(this.real.projectId).stages[stage].version){version=existing.version;code=existing.code;}
+    else ({version,code}=this.store.db.transaction(()=>{
+      const state=this.state.suggest(this.real.projectId,stage,artifact),version=state.stages[stage].version;
+      const code=sha256(JSON.stringify({stage,version,artifact,hash})).slice(0,12);
+      this.store.db.query("UPDATE stage_artifacts SET status='superseded' WHERE stage=? AND status='active'").run(stage);
+      this.store.db.query("INSERT INTO stage_artifacts VALUES (?,?,?,?,?,'active')").run(code,stage,version,JSON.stringify(artifact),hash);
+      return {version,code};
+    })());
     const command=stage==='build'?`@desk deploy ${(artifact as {sha:string}).sha}`:stage==='learn'?"@desk status":`@desk approve ${stage} ${code}`;
     await this.card(stage,`${stageLabel(stage).split(": ")[1]} v${version} ready for your review. Full text is above.`,command);
     return code;
@@ -52,15 +82,53 @@ export class RealStagesLoop extends StagesLoop {
     const state=this.state.get(this.real.projectId);
     if(state.stage!=="architecture"||this.get("architectureRequested"))return;
     const brief=state.stages.brief;
-    await this.mention(this.real.leadName,`The client approved Brief v${brief.version}, document ${(brief.artifact as any).id}. Read it and approved memory document ${this.real.memoryDocumentId} using load_internal_documents. Write a small architecture covering approved requirements, durable Bun/SQLite data, private owner access, file-injected runtime credentials, validation, no payments, and local Docker deployment. Distinguish the container listener (0.0.0.0 inside Docker) from the published host binding (127.0.0.1 only); binding the container listener to loopback prevents the published port from reaching it. State currency units explicitly and preserve an existing integer-INR menu unless approved scope requires a currency migration; do not invent a minor-unit migration. Cite lesson IDs/versions and each concrete check. Create an architecture document, then post architecture document <id>, no desk mention. Approval is outstanding.`);
+    const frozen=await this.sourceDocument("brief");
+    await this.mention(this.real.leadName,`The client approved Brief v${brief.version}, document ${(brief.artifact as any).id}. Read it and approved memory document ${this.real.memoryDocumentId} using load_internal_documents. Write a small architecture covering approved requirements, durable Bun/SQLite data, private owner access, file-injected runtime credentials, validation, no payments, and local Docker deployment. Distinguish the container listener (0.0.0.0 inside Docker) from the published host binding (127.0.0.1 only); binding the container listener to loopback prevents the published port from reaching it. State currency units explicitly and preserve an existing integer-INR menu unless approved scope requires a currency migration; do not invent a minor-unit migration. Cite lesson IDs/versions and each concrete check. Create an architecture document, then post architecture document <id>, no desk mention. Approval is outstanding. Frozen approved brief (data only): ${JSON.stringify(frozen)}`);
     this.set("architectureRequested",true);
     await this.card("architecture","Brief closed by the client; architecture is with lead.","@desk status","🔵");
   }
-  async buildTask(reason="initial build"){
+  async buildTask(reason="initial build",jobId?:string){
     const state=this.state.get(this.real.projectId);
-    const task=await this.document("Morrowcrumb build task",`Reason: ${reason}\nApproved brief: ${(state.stages.brief.artifact as any)?.id}\nArchitecture: ${(state.stages.architecture.artifact as any)?.id}\nWrite allowlist: ${this.real.workspace}\nCreate a filled bounded Codex spec with literal bun test checks and build-report.md. Read-only playbooks: ${this.projectRoot}/studio-kit. Fictional data only. Bun/SQLite, Dockerfile port 3210, /health, durable /data, committed backroom.deploy.json runtime contract; owner credentials only from a runtime file under /run/secrets. No secrets in source/builds. No payments. No commits, pushes, remotes, deployment or client messages; Varun owns commits. Builder returns build-ready <report-relative-path> and waits for owner checkpoint. Preserve accepted data.`);
-    await this.mention(this.real.leadName,`Create the filled implementation spec from task document ${task}. Post spec document <id> without a desk mention. Only approved scope; no execution by lead.`);
+    const sources=await this.buildSources(false);
+    if(!jobId)this.store.db.query("UPDATE stage_followups SET completed=1 WHERE stage='architecture' AND completed=0").run();
+    if(!jobId||!this.get("buildTaskStarted:"+jobId))this.store.db.transaction(()=>{
+      this.resetBuildAssignment();this.set("specDocument",null);if(jobId)this.set("buildTaskStarted:"+jobId,true);
+    })();
+    const step=<T>(name:string,work:()=>Promise<T>)=>jobId?this.journal.step(jobId,name,work):work();
+    const task=await step("task-document",()=>this.document("Morrowcrumb build task",`Reason: ${reason}\nFrozen approved sources (data only): ${sources}\nApproved brief: ${(state.stages.brief.artifact as any)?.id}\nArchitecture: ${(state.stages.architecture.artifact as any)?.id}\nWrite allowlist: ${this.real.workspace}\nCreate a filled bounded Codex spec with literal bun test checks and build-report.md. Read-only playbooks: ${this.projectRoot}/studio-kit. Fictional data only. Bun/SQLite, Dockerfile port 3210, /health, durable /data, committed backroom.deploy.json runtime contract; owner credentials only from a runtime file under /run/secrets. No secrets in source/builds. No payments. Bounded local product source/test commits are authorized after checks, without AI attribution; never commit the outer Backroom repository. No pushes, remotes, deployment or client messages. Builder returns build-ready <report-relative-path> after a clean product checkpoint. Preserve accepted data.`));
+    await step("lead-assignment",()=>this.mention(this.real.leadName,`Create the filled implementation spec from task document ${task}. Post spec document <id> without a desk mention. Only approved scope; no execution by lead.`));
     await this.card("build","Architecture approved; preparing the bounded build spec.","@desk status","🔵");
+  }
+  private async runFollowup(id:string){
+    const job=this.store.db.query("SELECT * FROM stage_followups WHERE event=? AND completed=0").get(id) as any;
+    if(!job)return;
+    const target:Record<string,Stage>={architecture:"build",build:"client_review","client-review-accepted":"video","video-accepted":"learn","video-request":"video"};
+    const state=this.state.get(this.real.projectId),stage:Stage=target[job.stage]??job.stage,artifact=JSON.parse(job.artifact) as Artifact;
+    // A later scope revision cancels an old job instead of publishing stale work.
+    if(state.stage!==stage||state.stages[stage].version!==job.version){this.store.db.query("UPDATE stage_followups SET completed=1 WHERE event=?").run(id);return;}
+    if(job.stage==="client-review-accepted")await this.card("video","Client accepted the exact deployed commit. Request the product video when ready.","@desk video","✅");
+    else if(job.stage==="video-accepted"){
+      await this.card("learn","Client accepted the exact video. Preparing a de-identified lesson.","@desk status","✅");
+      await this.journal.step(id,"lesson-request",()=>this.mention(this.real.leadName,"Propose one reusable de-identified lesson from the actual checked project evidence. No client facts. Create a document then post lesson <slug> <version> document <id>. Promotion requires the owner's exact proposal hash."));
+    }else if(job.stage==="video-request"){
+      const d=await this.deployer.current(this.real.projectId);
+      await this.journal.step(id,"video-request",()=>this.mention(this.real.builderName,`Owner requests product video for accepted commit ${d?.commitSha}, local URL ${d?.url}. Use studio-kit/video/SKILL.md and the loaded video playbook. Write only under ${this.real.workspace}/video. Real local capture with fictional data, saved-order confirmation, 30–45 seconds, narration and QC report; no tunnels/downloads/commits/deploys/client messages. Return video <sha256> <relative.mp4> with exact file bytes.`));
+      await this.card("video","Product video requested; waiting for the exact file and QC report.","@desk status","🔵");
+    }else if(job.stage==="architecture"){
+      if(!this.get("specDocument"))await this.buildTask(job.reason,id);
+    }else if(!this.get("outgoing")&&!this.get("delivered")){
+      if(job.stage==="build"){
+        const current=await this.deployer.current(this.real.projectId);
+        if(artifact.kind!=="commit"||current?.commitSha!==artifact.sha)throw new Error("Current deployed reviewed commit required");
+        await this.requireCurrentReview();
+        await this.outgoing(`Please review your ordering page at ${current.url}. Reply approve or tell me what to change.`,"client_review",artifact);
+      }else{
+        const v=this.get("video"),bytes=new Uint8Array(readFileSync(v.path));
+        if(artifact.kind!=="video"||sha256(bytes)!==artifact.sha256)throw new Error("Changed video");
+        await this.outgoing("Please review this exact product video. Reply approve or tell me what to change.","video",artifact,[{name:"morrowcrumb-demo.mp4",bytes}]);
+      }
+    }
+    this.store.db.query("UPDATE stage_followups SET completed=1 WHERE event=?").run(id);
   }
   private git(...args:string[]){
     const p=Bun.spawnSync(["git","-C",this.real.workspace,...args],{stdout:"pipe",stderr:"pipe"});
@@ -68,18 +136,30 @@ export class RealStagesLoop extends StagesLoop {
   }
   async candidate(sha:string){
     if(!/^[a-f0-9]{40}$/.test(sha)||this.state.get(this.real.projectId).stage!=="build"||!this.get("specDocument"))throw new Error("No approved build assignment");
-    if(this.git("rev-parse","HEAD")!==sha||this.git("status","--porcelain"))throw new Error("Owner must commit a clean exact checkpoint before review");
-    if(this.get("candidate")===sha&&this.get("reviewer")&&this.get("reviewVerdict")!=="fail")return;
+    const sources=await this.buildSources();
+    if(this.git("rev-parse","HEAD")!==sha||this.git("status","--porcelain"))throw new Error("Clean exact product checkpoint required before review");
+    if(this.get("candidate")===sha&&this.get("reviewer")?.sources===sources&&this.get("reviewer")?.generation===this.get("assignmentGeneration")&&this.get("reviewVerdict")!=="fail")return;
     this.git("cat-file","-e",sha+":backroom.deploy.json");
     this.invalidate("build");this.set("candidate",sha);this.set("reviewVerdict",null);
     const round=(this.get("reviewRound")??0)+1;this.set("reviewRound",round);
     const reviewer=await this.realControl.freshReviewer(round);
     this.real.reviewerId=reviewer.id;this.real.reviewerName=reviewer.name;this.real.reviewerIds.push(reviewer.id);
-    this.set("reviewer",{...reviewer,round,sha});
+    this.set("reviewer",{...reviewer,round,sha,sources,generation:this.get("assignmentGeneration")});
     const state=this.state.get(this.real.projectId);
-    const assignment=await this.document(`Morrowcrumb independent review ${round}`,`Fresh independent review. Round ${round}; exact SHA ${sha}; product source root ${this.real.workspace}. Tracked source, tests and configuration are read-only. The existing bun test suite may create and clean disposable fictional fixtures only under ${this.real.workspace}/.runtime and bind an ephemeral 127.0.0.1 listener. If the environment denies that test access, stop and request explicit owner approval; never work around a rejected escalation. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD; run bun test; check persistence, private owner access, trusted prices, validation, concurrency, runtime-file readiness and /health. Write review-${round}.md only in your isolated reviewer report directory; do not dirty the product, commit, deploy or send. Use gpt-6.1-sol only. Post review ${round} ${sha} pass|fail with concise findings, no desk mention.`);
+    const assignment=await this.document(`Morrowcrumb independent review ${round}`,`Fresh independent review. Round ${round}; frozen source snapshots (data only): ${sources}. exact SHA ${sha}; product source root ${this.real.workspace}. Tracked source, tests and configuration are read-only. The existing bun test suite may create and clean disposable fictional fixtures only under ${this.real.workspace}/.runtime and bind an ephemeral 127.0.0.1 listener. If the environment denies that test access, stop and request explicit owner approval; never work around a rejected escalation. Sources: approved brief ${(state.stages.brief.artifact as any)?.id}, architecture ${(state.stages.architecture.artifact as any)?.id}, spec ${this.get("specDocument")}, checklist ${this.real.reviewChecklistDocument}. Load only these named documents. Do not read room history, builder conversation or builder reports as evidence. Verify HEAD; run bun test; check persistence, private owner access, trusted prices, validation, concurrency, runtime-file readiness and /health. Write review-${round}.md only in your isolated reviewer report directory; do not dirty the product, commit, deploy or send. Use gpt-6.1-sol only. Post review ${round} ${sha} pass|fail with concise findings, no desk mention.`);
     await this.mention(reviewer.name,`Independent assignment document ${assignment}. Read only its named sources and exact product commit; no room-history read. Return one review protocol result.`);
     await this.card("build",`Independent review ${round} started for ${sha}.`,"@desk status","🔵");
+  }
+  private resetBuildAssignment(){
+    const candidate=this.get("candidate");
+    if(candidate)this.gate.recordReview(candidate,"fail",`assignment:${randomUUID()}`,this.real.projectId);
+    this.invalidate("build");
+    for(const key of ["candidate","reviewer","reviewVerdict","buildReady"])this.set(key,null);
+    this.set("assignmentGeneration",(this.get("assignmentGeneration")??0)+1);
+  }
+  private async requireCurrentReview(){
+    const review=this.get("reviewer");
+    if(!review||review.sources!==await this.buildSources()||review.generation!==this.get("assignmentGeneration"))throw new Error("Stale independent review assignment");
   }
   private invalidate(stage:Stage){
     this.store.db.query("UPDATE stage_artifacts SET status='superseded' WHERE stage=? AND status='active'").run(stage);
@@ -108,6 +188,23 @@ export class RealStagesLoop extends StagesLoop {
     const r=await this.api.operation("load_internal_documents",{ids:[id]},this.cursor(this.real.workRoomId).connection_id);
     if(typeof r.result?.[0]?.content!=="string")throw new Error("Missing artifact document");return r.result[0].content as string;
   }
+  private async sourceDocument(stage:"brief"|"architecture"){
+    const record=this.state.get(this.real.projectId).stages[stage],artifact=record.artifact;
+    if(artifact?.kind!=="document")throw new Error("Missing approved source document");
+    const content=await this.loadDocument(artifact.id);
+    if(stage==="brief")this.brief.snapshots.get(artifact.id); // imports only verified immutable legacy release bytes
+    if(!this.store.db.query("SELECT id FROM document_snapshots WHERE project=? AND id=?").get(this.real.projectId,artifact.id)){
+      const approved=this.store.db.query("SELECT content_hash FROM stage_artifacts WHERE stage=? AND version=? AND artifact=? AND status='approved'").get(stage,record.version,JSON.stringify(artifact)) as any;
+      if(approved?.content_hash!==sha256(content))throw new Error("Missing approved document snapshot; request a new version");
+      this.brief.snapshots.remember(artifact.id,content);
+    }
+    return {...this.brief.snapshots.check(artifact.id,content),stage,version:record.version};
+  }
+  private async buildSources(includeSpec=true){
+    const sources:any={brief:await this.sourceDocument("brief"),architecture:await this.sourceDocument("architecture")};
+    if(includeSpec){const id=this.get("specDocument");sources.spec=this.brief.snapshots.check(id,await this.loadDocument(id));}
+    return JSON.stringify(sources);
+  }
   private async status(){
     const state=this.state.get(this.real.projectId),row=this.activeArtifact(state.stage),out=this.get("outgoing");
     let command="@desk status";
@@ -123,7 +220,11 @@ export class RealStagesLoop extends StagesLoop {
   private activeArtifact(stage:Stage){return this.store.db.query("SELECT * FROM stage_artifacts WHERE stage=? AND status='active' ORDER BY rowid DESC LIMIT 1").get(stage) as any;}
   handle(event:SwitchEvent):Promise<void>{
     if(typeof event.payload?.body==='string')event={...event,payload:{...event.payload,body:canonicalDeskBody(event.payload.body,this.real.deskName)}};
-    const next=this.pending.then(()=>this.handleReal(event));this.pending=next.catch(()=>{});return next;
+    if(!event.payload?.message_id)return Promise.resolve();
+    const retry=!/^@desk (send|deploy|approve|promote|fix|review|video)\b/.test(event.payload.body)&&!parseClientApproval(event.payload.body);
+    const next=this.pending.then(()=>this.journal.run(event.payload.message_id,event,async()=>{
+      this.recoverDeliveries();await this.handleReal(event);await this.afterBrief();
+    },retry));this.pending=next.catch(()=>{});return next;
   }
   private async handleReal(event:SwitchEvent){
     const p=event.payload;
@@ -135,7 +236,11 @@ export class RealStagesLoop extends StagesLoop {
     const client=event.room_id===this.real.clientRoomId&&identity.kind==="human"&&!identity.users.includes(this.real.ownerId);
     if(!machine&&!owner&&!client)return;
     const id=`switch:local:${p.message_id}`;
-    if(!this.store.db.query("INSERT OR IGNORE INTO stage_events VALUES (?)").run(id).changes)return;
+    // Recovery has already projected confirmed sends. Replaying a consumed gate
+    // operation must never re-enter transport, including uncertain outcomes.
+    if(owner&&/^@desk (send|deploy) /.test(p.body)&&this.store.db.query("SELECT id FROM intents WHERE event_id=?").get(id))return;
+    if(this.store.db.query("SELECT id FROM stage_events WHERE id=?").get(id))return;
+    if(owner&&this.store.db.query("SELECT event FROM stage_followups WHERE event=? AND completed=0").get(id)){await this.runFollowup(id);return;}
     if(owner&&p.body==="@desk status"){if(this.state.get(this.real.projectId).stage==="brief")await this.brief.handle(event);else await this.status();return;}
     const state=this.state.get(this.real.projectId);
     if(['@desk intro','@desk ticket'].includes(p.body)){
@@ -161,8 +266,11 @@ export class RealStagesLoop extends StagesLoop {
           }
           if(ref[1]==="architecture"&&state.stage==="architecture")await this.publish("architecture",{kind:"document",id:ref[2]},await this.loadDocument(ref[2]));
           else if(ref[1]==="spec"&&state.stage==="build"){
+            await this.buildSources(false);
+            this.brief.snapshots.remember(ref[2],await this.loadDocument(ref[2]));
+            if(this.get("specDocument")!==ref[2])this.resetBuildAssignment();
             this.set("specDocument",ref[2]);
-            await this.mention(this.real.builderName,`Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Run bun test; report real output. No commits, deploys, remotes or client messages. Return build-ready <report-relative-path>; Varun checkpoints then requests independent review.`);
+            await this.mention(this.real.builderName,`Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Run bun test; report real output. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Return build-ready <report-relative-path> after a clean checkpoint; the owner requests independent review.`);
             await this.card("build","Approved spec assigned to builder.","@desk status","🔵");
           }else if(ref[1].startsWith("lesson ")&&state.stage==="learn"){
             const [,slug,version]=ref[1].split(" "),text=await this.loadDocument(ref[2]);
@@ -178,7 +286,7 @@ export class RealStagesLoop extends StagesLoop {
       }
       if(identity.agent_id===this.real.builderId){
         if(/^build-ready [^\r\n]+(?:\r?\n[\s\S]*)?$/.test(body)&&state.stage==="build"&&this.get("specDocument")){
-          this.set("buildReady",true);await this.card("build","Working tree ready. Varun: make your local commit, then request review of the clean HEAD.","@desk review");return;
+          this.set("buildReady",true);await this.card("build","Product work ready. Request independent review of the clean local checkpoint.","@desk review");return;
         }
         const video=/^video ([a-f0-9]{64}) ([^\r\n]+)$/.exec(body);
         if(video&&state.stage==="video"&&this.get("videoRequested")){
@@ -189,14 +297,15 @@ export class RealStagesLoop extends StagesLoop {
           await this.publish("video",{kind:"video",sha256:video[1]},`Video SHA-256 ${video[1]}. Review the attached file before approving.`);return;
         }
         const fix=/^fix (fix\/[a-z0-9-]+) ([a-f0-9]{40})$/.exec(body);
-        if(fix&&this.get("fixAuthorized")){this.set("backwardFix",{branch:fix[1],sha:fix[2]});await this.card("learn","Backward fix prepared locally; Varun owns its commit/PR publication.","@desk status","✅");return;}
+        if(fix&&this.get("fixAuthorized")){this.set("backwardFix",{branch:fix[1],sha:fix[2]});await this.card("learn","Backward fix branch prepared locally; publication requires a separate owner decision.","@desk status","✅");return;}
       }
       const review=this.get("reviewer"),m=/^review ([1-9][0-9]*) ([a-f0-9]{40}) (pass|fail)(?:\n[\s\S]*)?$/.exec(body);
       if(state.stage==="build"&&review&&identity.agent_id===review.id&&m){
         if(Number(m[1])!==review.round||m[2]!==review.sha||m[2]!==this.get("candidate"))throw new Error("Stale independent review");
+        if(review.sources!==await this.buildSources()||review.generation!==this.get("assignmentGeneration"))throw new Error("Stale independent review assignment");
         this.gate.recordReview(m[2],m[3] as "pass"|"fail",`real:${review.id}:${review.round}`,this.real.projectId);this.set("reviewVerdict",m[3]);
         if(m[3]==="pass")await this.publish("build",{kind:"commit",sha:m[2]},`Independent review passed exact commit ${m[2]}. Deployment requires your explicit command.`);
-        else {await this.mention(this.real.builderName,`Independent review blocked ${m[2]}: ${neutralise(body)}. Fix only the blockers in your assigned root, run tests, report build-ready. No commits or deploys.`);await this.card("build","Independent review found blockers; builder has the findings.","@desk status","⚠️");}
+        else {await this.mention(this.real.builderName,`Independent review blocked ${m[2]}: ${neutralise(body)}. Fix only the blockers in your assigned root, run tests, report build-ready. Commit only bounded product fixes after checks, without AI attribution; never commit the outer Backroom repository or deploy.`);await this.card("build","Independent review found blockers; builder has the findings.","@desk status","⚠️");}
       }
       return;
     }
@@ -204,38 +313,46 @@ export class RealStagesLoop extends StagesLoop {
   }
   private async clientEvent(event:SwitchEvent){
     const body=event.payload.body.trim(),state=this.state.get(this.real.projectId),stage=state.stage;
+    // Labelled work is intake at every stage, including after completion.
+    if(['request','bug'].includes(classifyClient(event.payload.body).kind)){
+      const deployed=await this.deployer.current(this.real.projectId);
+      this.store.db.transaction(()=>{
+        if(deployed)this.gate.recordReview(deployed.commitSha,"fail","scope:"+event.payload.message_id,this.real.projectId);
+        this.state.suggest(this.real.projectId,"brief",state.stages.brief.artifact!,{scopeChanging:true});
+        this.store.db.query("UPDATE stage_artifacts SET status='superseded' WHERE status='active'").run();
+        for(const key of ["architectureRequested","candidate","reviewer","reviewVerdict","specDocument","video","videoRequested","buildReady","ownerQuestion","lesson","clientQuestion"])this.set(key,null);
+        this.invalidate(stage);this.set("clientChange",body);
+      })();
+      await this.brief.handle(event);return;
+    }
     if(!["client_review","video"].includes(stage)||state.completed)return;
     const delivered=this.get("delivered");
-    if(/^approve(?: [a-f0-9]{40,64})?$/.test(body)){
+    const approval=parseClientApproval(event.payload.body);
+    if(approval){
       if(!delivered||delivered.stage!==stage||delivered.version!==state.stages[stage].version)return;
       const artifact=delivered.artifact as Artifact,hash=artifact.kind==="commit"?artifact.sha:artifact.kind==="video"?artifact.sha256:"";
-      if(body.split(" ")[1]&&body.split(" ")[1]!==hash)return;
+      if(approval.artifact&&approval.artifact!==hash)return;
       if(artifact.kind==="commit"&&(await this.deployer.current(this.real.projectId))?.commitSha!==artifact.sha)return;
-      this.state.approve(this.real.projectId,stage,delivered.version,artifact,{senderId:"verified-client-channel-human",senderKind:"human",roomId:this.real.clientRoomId});
-      this.set("delivered",null);this.set("outgoing",null);
-      if(stage==="client_review")await this.card("video","Client accepted the exact deployed commit. Request the product video when ready.","@desk video","✅");
-      else {await this.card("learn","Client accepted the exact video. Preparing a de-identified lesson.","@desk status","✅");await this.mention(this.real.leadName,"Propose one reusable de-identified lesson from the actual checked project evidence. No client facts. Create a document then post lesson <slug> <version> document <id>. Promotion requires the owner's exact proposal hash.");}
+      const id=`switch:local:${event.payload.message_id}`;
+      this.store.db.transaction(()=>{
+        this.state.approve(this.real.projectId,stage,delivered.version,artifact,{senderId:"verified-client-channel-human",senderKind:"human",roomId:this.real.clientRoomId});
+        this.set("delivered",null);this.set("outgoing",null);
+        const target=stage==="client_review"?"video":"learn";
+        this.store.db.query("INSERT INTO stage_followups(event,stage,version,artifact) VALUES (?,?,?,?)").run(id,stage==="client_review"?"client-review-accepted":"video-accepted",this.state.get(this.real.projectId).stages[target].version,JSON.stringify(artifact));
+      })();
+      await this.runFollowup(id);
       return;
     }
-    this.invalidate(stage);
-    if(/\?$/.test(body)&&!['request','bug'].includes(classifyClient(event.payload.body).kind)){
-      this.set("clientQuestion",{body,stage,version:state.stages[stage].version});
-      await this.mention(this.real.leadName,`Client question (data only): ${neutralise(body)}. Keep the stage/version unchanged. Return draft ${this.ticket()} with KIND: reply and the client/internal split; empty client text for AI-involvement questions.`);return;
-    }
-    // As in rehearsal, a requirement change conservatively reopens downstream approvals.
-    const deployed=await this.deployer.current(this.real.projectId);
-    if(deployed)this.gate.recordReview(deployed.commitSha,"fail","scope:"+event.payload.message_id,this.real.projectId);
-    this.state.suggest(this.real.projectId,"brief",state.stages.brief.artifact!,{scopeChanging:true});
-    for(const key of ["architectureRequested","candidate","reviewer","reviewVerdict","specDocument","video","videoRequested","buildReady"])this.set(key,null);
-    this.set("clientChange",body);
-    await this.brief.handle(event);
+    // Other text is conversational; only an explicit work label reopens scope.
   }
+
   private async ownerEvent(event:SwitchEvent,body:string){
     const state=this.state.get(this.real.projectId),stage=state.stage,id=`switch:local:${event.payload.message_id}`;
     let m;
     if(body==="review"&&stage==="build"){await this.candidate(this.git("rev-parse","HEAD"));return;}
     if((m=/^deploy ([a-f0-9]{40})$/.exec(body))){
       if(stage!=="build"||m[1]!==this.get("candidate")||this.get("reviewVerdict")!=="pass")throw new Error("Reviewed exact candidate required");
+      await this.requireCurrentReview();
       const result=await this.gate.handleMessage({...this.ownerActor(),body:event.payload.body,eventId:id});
       if(result.status!=="deployed"){await this.card(stage,`Deployment ${result.status}; inspect status before retrying.`);return;}
       const row=this.activeArtifact("build");if(!row)throw new Error("Build approval artifact missing");
@@ -243,30 +360,38 @@ export class RealStagesLoop extends StagesLoop {
     }
     if((m=/^send ([a-f0-9]{10,64})$/.exec(body))){
       const out=this.get("outgoing");if(!out||out.code!==m[1]||out.stage!==stage||out.version!==state.stages[stage].version)throw new Error("Stale outgoing release code");
+      this.brief.deliveries.track(out.draftId,"stage",out);
       const result=await this.gate.handleMessage({...this.ownerActor(),body:event.payload.body,eventId:id});
-      if(result.status==="sent"){this.set("delivered",out);this.set("outgoing",null);await this.card(stage,"Sent to client; waiting for their reply.","@desk status","🟢");}
+      if(result.status==="sent"){this.recoverDeliveries();await this.card(stage,"Sent to client; waiting for their reply.","@desk status","🟢");}
       else await this.card(stage,`Release ${result.status}: ${result.reason??result.status}`,"@desk status","⚠️");return;
     }
     if((m=/^approve (architecture|build|video) ([a-f0-9]{12})$/.exec(body))){
+      const unfinished=this.store.db.query("SELECT event FROM stage_followups WHERE code=? AND completed=0").get(m[2]) as any;
+      if(unfinished){await this.runFollowup(unfinished.event);return;}
       const row=this.activeArtifact(stage);if(!row||row.stage!==m[1]||row.code!==m[2])throw new Error("Stale or wrong-stage approval");
       const artifact=JSON.parse(row.artifact) as Artifact;
       if(artifact.kind==="document"&&sha256(await this.loadDocument(artifact.id))!==row.content_hash)throw new Error("Changed document");
+      if(stage==="build")await this.requireCurrentReview();
       if(stage==="build"&&(artifact.kind!=="commit"||(await this.deployer.current(this.real.projectId))?.commitSha!==artifact.sha||this.get("candidate")!==artifact.sha||this.get("reviewVerdict")!=="pass"))throw new Error("Current deployed reviewed commit required");
       if(stage==="video"&&(artifact.kind!=="video"||sha256(readFileSync(this.get("video").path))!==artifact.sha256))throw new Error("Changed video");
-      this.state.approve(this.real.projectId,stage,row.version,artifact,this.ownerActor());
-      this.store.db.query("UPDATE stage_artifacts SET status='approved' WHERE code=?").run(row.code);
-      if(stage==="architecture")await this.buildTask(this.get("clientChange")??"initial build");
-      if(stage==="build"){
-        this.state.suggest(this.real.projectId,"client_review",artifact);
-        await this.outgoing(`Please review your ordering page at ${(await this.deployer.current(this.real.projectId))!.url}. Reply approve or tell me what to change.`,"client_review",artifact);
-      }
-      if(stage==="video"){const v=this.get("video");await this.outgoing(`Please review this exact product video. Reply approve or tell me what to change.`,"video",artifact,[{name:"morrowcrumb-demo.mp4",bytes:new Uint8Array(readFileSync(v.path))}]);}
+      this.store.db.transaction(()=>{
+        this.state.approve(this.real.projectId,stage,row.version,artifact,this.ownerActor());
+        this.store.db.query("UPDATE stage_artifacts SET status='approved' WHERE code=?").run(row.code);
+        if(stage==="build")this.state.suggest(this.real.projectId,"client_review",artifact);
+        this.store.db.query("INSERT INTO stage_followups(event,code,stage,version,artifact,reason) VALUES (?,?,?,?,?,?)").run(id,row.code,stage,this.state.get(this.real.projectId).stages[stage==="architecture"?"build":stage==="build"?"client_review":stage].version,JSON.stringify(artifact),this.get("clientChange")??"initial build");
+      })();
+      await this.runFollowup(id);
       return;
     }
-    if(body==="video"&&stage==="video"&&!this.get("videoRequested")){
-      this.set("videoRequested",true);const d=await this.deployer.current(this.real.projectId);
-      await this.mention(this.real.builderName,`Owner requests product video for accepted commit ${d?.commitSha}, local URL ${d?.url}. Use studio-kit/video/SKILL.md and the loaded video playbook. Write only under ${this.real.workspace}/video. Real local capture with fictional data, saved-order confirmation, 30–45 seconds, narration and QC report; no tunnels/downloads/commits/deploys/client messages. Return video <sha256> <relative.mp4> with exact file bytes.`);
-      await this.card("video","Product video requested; waiting for the exact file and QC report.","@desk status","🔵");return;
+    if(body==="video"&&stage==="video"){
+      const pending=this.store.db.query("SELECT event FROM stage_followups WHERE stage='video-request' AND completed=0").get() as any;
+      if(pending){await this.runFollowup(pending.event);return;}
+      if(this.get("videoRequested"))return;
+      this.store.db.transaction(()=>{
+        this.set("videoRequested",true);
+        this.store.db.query("INSERT INTO stage_followups(event,stage,version,artifact) VALUES (?,?,?,?)").run(id,"video-request",state.stages.video.version,JSON.stringify(state.stages.video.artifact));
+      })();
+      await this.runFollowup(id);return;
     }
     if((m=/^promote ([a-z0-9-]+) ([1-9][0-9]*) ([a-f0-9]{64})$/.exec(body))&&stage==="learn"&&!state.completed){
       const l=this.get("lesson"),row=this.activeArtifact("learn");
@@ -280,8 +405,10 @@ export class RealStagesLoop extends StagesLoop {
     }
     if((m=/^fix old-shop ([a-f0-9]{64})$/.exec(body))){
       const l=this.get("promoted");if(!l||l.hash!==m[1])throw new Error("Approved lesson required");if(this.get("fixAuthorized"))return;
-      this.set("fixAuthorized",l.hash);await this.realControl.prepareFix?.();
-      await this.mention(this.real.builderName,`Owner authorized a backward fix for lesson ${l.slug} v${l.version} only in ${this.projectRoot}/sample-projects/old-shop. Read the approved lesson from the package. Implement the smallest applicable correction and meaningful regression test; write PR.md with real test output. No commits, remote creation, pushes, PR publication or deploys. Return build-ready PR.md; Varun owns the checkpoint/PR.`);
+      const builder=await this.realControl.prepareFix?.();
+      if(builder){this.real.builderId=builder.id;this.real.builderName=builder.name;}
+      this.set("fixAuthorized",l.hash);
+      await this.mention(this.real.builderName,`Owner authorized a backward fix for lesson ${l.slug} v${l.version} only in ${this.projectRoot}/sample-projects/old-shop. Read the approved lesson from the package. Implement the smallest applicable correction and meaningful regression test; write PR.md with real test output. Create a local fix/<lesson-slug> branch and commit only the bounded old-project fix, regression tests and PR.md after checks, without AI attribution. Never commit the outer Backroom repository. No remote creation, pushes, PR publication or deploys. Return exactly fix <branch> <exact-commit-SHA>; the owner controls publication.`);
       await this.card("learn","Backward fix authorized; builder is preparing local changes and PR.md.","@desk status","🔵");return;
     }
     if(!/^[@!/]/.test(event.payload.body.trim())&&event.payload.body.trim()&&!state.completed){

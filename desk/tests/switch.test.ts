@@ -22,6 +22,7 @@ export function fixture(workRoom = false){
   const api={async post(room:string,text:string,attachments:any[]=[]){sent.push({room,text,attachments});return{ok:true,event_id:"SAMPLE-post-"+sent.length};},
     async operation(name:string,body:any,connection:string){
       if(name==="create_room_document"){documents.push(body);return{result:{document_id:"SAMPLE-document-"+(++document)}};}
+      if(name==="load_internal_documents")return{result:body.ids.map((id:string)=>({content:documents[Number(id.split("-").at(-1))-1]?.content}))};
       const room=(store.db.query("SELECT room FROM room_cursors WHERE connection_id=?").get(connection) as any)?.room;
       sent.push({room,text:body.body,attachments:[],threadId:body.thread_id,targetNames:body.target_names});return{result:{event_id:"SAMPLE-op-"+sent.length}};
     },thread:SwitchAPI.prototype.thread,publishApprovalText:SwitchAPI.prototype.publishApprovalText,
