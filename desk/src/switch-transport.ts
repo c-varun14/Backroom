@@ -74,6 +74,7 @@ export class SwitchTransport implements Transport {
       return { name: a.name, bytes: new Uint8Array(readFileSync(join(this.filesDirectory, a.sha256))) };
     }) };
   }
+  onDelivered?:(delivery:Delivery)=>void;
   async send(delivery: Delivery) {
     // Exactly the verified snapshot. No text prefixing, re-fetching, or retry.
     if(delivery.clientThread){
@@ -81,5 +82,6 @@ export class SwitchTransport implements Transport {
       if(!this.connection)throw new Error('Client thread connection unavailable');
       await this.api.thread(delivery.text,delivery.clientThread,this.connection(delivery.destinationRoomId));
     } else await this.api.post(delivery.destinationRoomId, delivery.text, delivery.attachments);
+    this.onDelivered?.(delivery);
   }
 }

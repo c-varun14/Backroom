@@ -1,3 +1,4 @@
+import {ClientHub,HubClient} from './hub';
 import {scopeStudio} from './studio-scope';
 import {TalkLane,talkBlock,phaseBlock,CLIENT_LINES,DELIVERY_RULE,type Post,type ForumConfig} from './talk';
 import {OwnerCards} from './owner-cards';
@@ -17,6 +18,7 @@ export interface LoopConfig extends ForumConfig { github?:import("./github").Git
 export interface SwitchEvent { room_id: string; payload: { sender: string; sender_kind?: string | null; message_id: string; body: string; thread_id?: string | null; attachments?: { filename: string; mxc: string }[] } }
 
 export class VisibleLoop {
+  readonly hub?:ClientHub;
   readonly ownerCards:OwnerCards;
   readonly talk?:TalkLane;
   onForumTicket?:(ticket:any,start:boolean)=>Promise<void>;
@@ -98,7 +100,15 @@ export class VisibleLoop {
         await this.api.thread(text,thread,this.cursor(room).connection_id,[config.frontName??'front']);return thread;
       }
     });
+    if(config.clientSurface==='forum'&&config.hub){
+      this.hub=new ClientHub(store,config.projectId,new HubClient(config.hub.url,config.hub.secretFile));
+      transport.onDelivered=delivery=>this.hub!.recordReply(delivery);
+    }
     if (config.workRoomId) this.connectWorkRoom();
+  }
+  async tick(){
+    try{await this.hub?.tick();}catch{this.store.log('hub poll deferred; details withheld',undefined,this.config.projectId);}
+    await this.ownerCards.poll();await this.talk?.tick();
   }
   commandBinding(command:string):string|null {
     const start=/^@desk start ([1-9][0-9]*)$/.exec(command);

@@ -3,7 +3,7 @@ import type { Store } from './store';
 
 type Envelope = {v:1; nonce:string; ts:number; project:string};
 export type DoorPayload = Envelope & (
-  {type:'post-open'; discordThread:string; title:string; tag:string; authorId:string; authorName:string; bodySha:string} |
+  {type:'post-open'; discordThread:string; title:string; tag:string; authorId:string; authorName:string; bodySha:string; hubEventId?:string} |
   {type:'press'; action:string; ref:string; userId:string; discordThread:string}
 );
 const MAX_AGE = 10 * 60 * 1000;
@@ -13,7 +13,7 @@ function valid(value:any):value is DoorPayload {
   const fields=value.type==='post-open'?['discordThread','title','tag','authorId','authorName','bodySha']:
     value.type==='press'?['action','ref','userId','discordThread']:null;
   return !!fields && fields.every(k=>typeof value[k]==='string'&&value[k].length>0) &&
-    (value.type!=='post-open'||/^[a-f0-9]{64}$/.test(value.bodySha));
+    (value.type!=='post-open'||(/^[a-f0-9]{64}$/.test(value.bodySha)&&(value.hubEventId===undefined||typeof value.hubEventId==='string')));
 }
 export function signDoor(payload:DoorPayload,key:string|Uint8Array):string {
   if (!valid(payload) || !key.length) throw new Error('Invalid door envelope');

@@ -47,7 +47,7 @@ const loop = config.mode==="real"
       async freshReviewer(round){return JSON.parse(await helper(["reviewer",String(round)]));},
       async promotePackage(path){await helper(["promote",path]);}
     },root)
-  : new VisibleLoop(store,api,transport,config);
+  : new VisibleLoop(store,api,transport,config,identities);
 let queue = Promise.resolve();
 let stopping = false;
 const sockets = new Map<string,WebSocket>();
@@ -79,7 +79,7 @@ function connect(room:string) {
 for (const room of [config.clientRoomId,config.studioRoomId]) connect(room);
 const legacyWatchdog=config.mode!=="real"?new Watchdog(store,config.projectId,Date.now,Number((config as any).watchdogMs??1200000)):null;
 const timer = setInterval(()=>{
-  enqueue(async()=>{if(loop instanceof RealStagesLoop)await loop.tick();else if(legacyWatchdog){if(loop instanceof VisibleLoop)await loop.ownerCards.poll();const ticket=loop.latestTicket();if(ticket?.status==="with-lead")legacyWatchdog.assign(ticket.n,"lead",false);else legacyWatchdog.clear();await legacyWatchdog.poll(async(n,role)=>{await api.post(config.studioRoomId,`⚠️ Ticket #${n} · ${role} has made no progress within the configured time. Check the assignment.`);});}});
+  enqueue(async()=>{if(loop instanceof RealStagesLoop)await loop.tick();else if(legacyWatchdog){if(loop instanceof VisibleLoop)await loop.tick();const ticket=loop.latestTicket();if(ticket?.status==="with-lead")legacyWatchdog.assign(ticket.n,"lead",false);else legacyWatchdog.clear();await legacyWatchdog.poll(async(n,role)=>{await api.post(config.studioRoomId,`⚠️ Ticket #${n} · ${role} has made no progress within the configured time. Check the assignment.`);});}});
   health();
   const request=config.simulateRequest ?? join(runtime,"simulate.request");
   if (config.mode!=="real" && existsSync(request) && healthy.size === 2) {

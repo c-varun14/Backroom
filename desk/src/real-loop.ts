@@ -140,7 +140,7 @@ export class RealStagesLoop extends StagesLoop {
     if(this.state.get(this.real.projectId).stage==='brief'&&ticket?.status==='with-lead')await this.brief.remindLead(ticket,text);
     else await this.api.post(this.real.workRoomId,`@${this.real.leadName} ${text}`);
   }
-  async tick(){await this.pollGitHub();await this.brief.ownerCards.poll();await this.brief.talk?.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
+  async tick(){await this.pollGitHub();await this.brief.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡",files:{name:string;bytes:Uint8Array}[]=[]) {
     if(this.real.clientSurface==='forum'&&icon==='🔵')return;
     if(files.length)await this.api.post(this.real.studioRoomId,'Files for your review',files);

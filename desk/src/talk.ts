@@ -1,3 +1,4 @@
+import {hubText,type HubConfig} from './hub';
 import {readFileSync} from 'node:fs';
 import {leakWord} from './cards';
 import {acceptDoor,type DoorPayload} from './door-protocol';
@@ -6,7 +7,7 @@ import type {Store} from './store';
 import type {SwitchEvent} from './visible-loop';
 import type {Identity} from './switch-identities';
 
-export interface ForumConfig {clientSurface?:'forum';doorKeyFile?:string;ownerQuietMs?:number;frontId?:string;frontName?:string;studioThread?:string;discordClientIds?:string[];discordBotId?:string;discordGuildId?:string;talkNudgeMs?:number;talkGiveUpMs?:number}
+export interface ForumConfig {hub?:HubConfig;clientSurface?:'forum';doorKeyFile?:string;ownerQuietMs?:number;frontId?:string;frontName?:string;studioThread?:string;discordClientIds?:string[];discordBotId?:string;discordGuildId?:string;talkNudgeMs?:number;talkGiveUpMs?:number}
 export const CLIENT_LINES={
   greeting:'Hi! What can we help you with?', ai:'Varun will answer that himself.',
   confirm:"We'll confirm that and come back to you here.", bug:"Thanks, we're looking at this.",
@@ -88,13 +89,20 @@ export class TalkLane {
         const mine=(s:any)=>s.sender===payload.authorId||s.sender===payload.authorName;
         // Switch rewrites mentions, so a body hash can miss; the author's own open starter is still theirs.
         const match=starters.find(mine)??(this.store.db.query('SELECT * FROM post_starters ORDER BY rowid DESC').all() as any[]).find(mine);
-        const text=match?.text??payload.title,files=match?.files??'[]';
+        const hub=payload.hubEventId&&this.config.clientSurface==='forum'&&this.config.hub
+          ?this.store.db.query('SELECT * FROM hub_items WHERE id=?').get(payload.hubEventId) as any:null;
+        if(payload.hubEventId&&(!hub||!['help.conversation','roadmap.request'].includes(hub.type)))return true;
+        const data=hub?JSON.parse(hub.data):null;
+        const text=hub?hubText(data.message??data.text??data.description):match?.text??payload.title,files=hub?'[]':match?.files??'[]';
+        if(hub)payload.tag=hub.type==='help.conversation'?'Question':'Feature';
         this.store.db.query('INSERT OR IGNORE INTO posts(switch_thread,discord_thread,title,tag,author_id,text,files) VALUES (?,?,?,?,?,?,?)')
           .run(p.thread_id,payload.discordThread,payload.title,payload.tag,payload.authorId,text,files);
         const post=this.post(p.thread_id)!;if(post.rev)return true;
+        if(hub&&hub.type==='help.conversation')this.store.db.query('INSERT OR IGNORE INTO hub_posts VALUES (?,?)').run(post.switch_thread,hub.id);
         this.store.db.query('UPDATE posts SET rev=1 WHERE switch_thread=?').run(p.thread_id);post.rev=1;
         // Our own Chat post opens quietly; the bot must not answer its own greeting.
-        if(payload.authorId===this.config.discordBotId)return true;
+        if(hub?.type==='roadmap.request')return true;
+        if(!hub&&payload.authorId===this.config.discordBotId)return true;
         if(match?.owner){this.store.db.query('UPDATE posts SET owner_active_at=? WHERE switch_thread=?').run(this.now(),post.switch_thread);return true;}
         if(match)this.store.db.query('DELETE FROM post_starters WHERE event=?').run(match.event);
         if(await this.hooks.onPost?.(post,event,true))return true;

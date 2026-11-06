@@ -1,3 +1,4 @@
+import {hubText,hubDigest,type HubConfig,type HubDigestProject} from './hub';
 import {Database} from 'bun:sqlite';
 import {readFileSync,readdirSync,mkdirSync} from 'node:fs';
 import {resolve,join} from 'node:path';
@@ -7,17 +8,21 @@ import {signDoor,type DoorPayload} from './door-protocol';
 
 export const DOOR_INTENTS=1|512|32768;
 export const KIND_TAGS=['Phase','Feature','Bug/Change','Question','Chat'];
-export type DoorProject={projectId:string;discordForumId:string;discordGuildId:string;discordClientRoleId:string;discordClientIds?:string[];discordBotId:string;doorWebhookId:string;doorWebhookFile:string;doorKeyFile:string;databasePath:string;tagIds:Record<string,string>;guideThread?:string;chatThread?:string;studioThread?:string;studioTagIds?:Record<string,string>;studioForumId?:string;studioDiscordThread?:string;studioBoardThread?:string;studioBoardMessage?:string;studioPriority?:'High'|'Medium'};
+export type DoorProject={hub?:HubConfig;projectId:string;discordForumId:string;discordGuildId:string;discordClientRoleId:string;discordClientIds?:string[];discordBotId:string;doorWebhookId:string;doorWebhookFile:string;doorKeyFile:string;databasePath:string;tagIds:Record<string,string>;guideThread?:string;chatThread?:string;studioThread?:string;studioTagIds?:Record<string,string>;studioForumId?:string;studioDiscordThread?:string;studioBoardThread?:string;studioBoardMessage?:string;studioPriority?:'High'|'Medium'};
 export type CreationConfig={guild:string;channel:string;baseConfig:string;create:(input:{name:string;purpose:string;userId:string;slug:string})=>Promise<{forumId:string}>};
 export type DiscordIO={request:(method:string,path:string,body?:unknown,webhook?:boolean)=>Promise<any>;sleep:(ms:number)=>Promise<void>;now:()=>number;log:(message:string)=>void};
 /** No sockets or credentials at import time. All Discord effects have a fakeable boundary. */
 export class Door {
+  private creatingHub=new Set<string>();
   private anchors=new Map<string,(id:string)=>void>();
   private opening=new Set<string>();
   private typing=new Map<string,{until:number;project:DoorProject;last:number}>();
   private pending=new Set<Promise<unknown>>();
   constructor(readonly db:Database,public projects:DoorProject[],readonly io:DiscordIO,public creation?:CreationConfig){
-    db.exec(`CREATE TABLE IF NOT EXISTS handled_posts(thread TEXT PRIMARY KEY,project TEXT,status TEXT NOT NULL);
+    db.exec(`CREATE TABLE IF NOT EXISTS hub_created(project TEXT,event TEXT,thread TEXT UNIQUE,PRIMARY KEY(project,event));
+      CREATE TABLE IF NOT EXISTS hub_digest_state(role TEXT PRIMARY KEY,day TEXT);
+      CREATE TABLE IF NOT EXISTS hub_digest_cursors(project TEXT PRIMARY KEY,cursor INTEGER);
+      CREATE TABLE IF NOT EXISTS handled_posts(thread TEXT PRIMARY KEY,project TEXT,status TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS applied_outbox(project TEXT,id INTEGER,PRIMARY KEY(project,id));
       CREATE TABLE IF NOT EXISTS handled_interactions(id TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS creations(user TEXT,day TEXT,interaction TEXT UNIQUE,slug TEXT,PRIMARY KEY(user,interaction));
@@ -85,6 +90,7 @@ export class Door {
     if(seen?.status==='done')return;
     this.db.query("INSERT OR IGNORE INTO handled_posts VALUES (?,?,'anchoring')").run(thread.id,project.projectId);
     const first=await this.firstMessage(thread);
+    if(first.author?.id===project.discordBotId&&this.creatingHub.has(project.projectId)&&!this.db.query('SELECT event FROM hub_created WHERE thread=?').get(thread.id))return;
     let resolveAnchor!:(id:string)=>void;const waiting=new Promise<string>(r=>resolveAnchor=r);
     this.anchors.set(thread.id,resolveAnchor);
     let anchor:any;
@@ -95,7 +101,8 @@ export class Door {
       await this.io.request('DELETE',`/channels/${thread.id}/messages/${bot}`);
       this.db.query("UPDATE handled_posts SET status='anchored' WHERE thread=?").run(thread.id);
       const tag=KIND_TAGS.find(t=>thread.applied_tags?.includes(project.tagIds[t]))??'Chat';
-      await this.signal(project,thread.id,{type:'post-open',discordThread:thread.id,title:thread.name,tag,
+      const hub=this.db.query('SELECT event FROM hub_created WHERE project=? AND thread=?').get(project.projectId,thread.id) as any;
+      await this.signal(project,thread.id,{...(hub?{hubEventId:hub.event}:{}),type:'post-open',discordThread:thread.id,title:thread.name,tag,
         authorId:first.author.id,authorName:first.author.username,bodySha:sha256(first.content??'')});
       this.db.query("UPDATE handled_posts SET status='done' WHERE thread=?").run(thread.id);
     }finally{this.anchors.delete(thread.id);}
@@ -114,6 +121,31 @@ export class Door {
         for(const row of rows){
           if(this.db.query('SELECT id FROM applied_outbox WHERE project=? AND id=?').get(project.projectId,row.id))continue;
           const payload=JSON.parse(row.payload);
+          if(row.kind==='hub-post'){
+            if(!project.hub)continue;
+            const event=source.query('SELECT * FROM hub_items WHERE id=?').get(payload.event) as any;
+            if(!event||!['help.conversation','roadmap.request'].includes(event.type))continue;
+            const data=JSON.parse(event.data),tag=event.type==='help.conversation'?'Question':'Feature';
+            if(!project.tagIds[tag])continue;
+            let created=this.db.query('SELECT thread FROM hub_created WHERE project=? AND event=?').get(project.projectId,event.id) as any;
+            if(!created){
+              const content=hubText(data.message??data.text??data.description)||'New request from the app.';
+              // Reserve before creation: a lost response cannot create a second post.
+              this.db.query('INSERT INTO hub_created VALUES (?,?,NULL)').run(project.projectId,event.id);
+              this.creatingHub.add(project.projectId);
+              let result:any;
+              try{result=await this.io.request('POST',`/channels/${project.discordForumId}/threads`,{
+                name:hubText(data.title,90)|| (tag==='Question'?'App help conversation':'App feature request'),
+                applied_tags:[project.tagIds[tag]],message:{content,allowed_mentions:{parse:[]}}});
+              }finally{this.creatingHub.delete(project.projectId);}
+              this.db.query('UPDATE hub_created SET thread=? WHERE project=? AND event=?').run(result.id,project.projectId,event.id);
+              created={thread:result.id};
+            }
+            if(!created.thread){this.io.log('hub post creation uncertain; inspection required');continue;}
+            await this.open(project,{id:created.thread,name:hubText(data.title,90)||(tag==='Question'?'App help conversation':'App feature request'),applied_tags:[project.tagIds[tag]],
+              message:{author:{id:project.discordBotId,username:'door'},content:hubText(data.message??data.text??data.description)}});
+            this.db.query('INSERT OR IGNORE INTO applied_outbox VALUES (?,?)').run(project.projectId,row.id);continue;
+          }
           // Studio screenshots never use a destination supplied by an agent or outbox row.
           if(row.kind==='studio-screenshot'){
             if(!project.studioDiscordThread||!project.studioThread||!this.validStudioScreenshot(source,payload))continue;
@@ -139,6 +171,53 @@ export class Door {
           this.db.query('INSERT OR IGNORE INTO applied_outbox VALUES (?,?)').run(project.projectId,row.id);
         }
       }catch{this.io.log('door outbox deferred; details withheld');}finally{source.close();}
+    }
+  }
+  /** UTC hour, one fixed digest per guild/client role across all its projects. */
+  async pollHubDigests(){
+    const date=new Date(this.io.now()),day=date.toISOString().slice(0,10);
+    const groups=new Map<string,DoorProject[]>();
+    for(const project of this.projects){
+      if(!project.hub)continue;
+      const role=project.discordGuildId+':'+project.discordClientRoleId;
+      const group=groups.get(role)??[];group.push(project);groups.set(role,group);
+    }
+    for(const [role,projects] of groups){
+      const hour=projects[0].hub!.digestHour??9;
+      if(!Number.isInteger(hour)||hour<0||hour>23||date.getUTCHours()<hour)continue;
+      if((this.db.query('SELECT day FROM hub_digest_state WHERE role=?').get(role) as any)?.day===day)continue;
+      const target=projects.find(p=>p.chatThread);if(!target)continue;
+      const summaries:HubDigestProject[]=[],cursors:{project:string;cursor:number}[]=[];
+      let complete=true;
+      for(const project of projects){
+        let source:Database|undefined;
+        try{
+          source=new Database(project.databasePath,{readonly:true});
+          const cursor=(this.db.query('SELECT cursor FROM hub_digest_cursors WHERE project=?').get(project.projectId) as any)?.cursor??0;
+          const rows=source.query('SELECT rowid AS seq,type,data FROM hub_items WHERE rowid>? ORDER BY rowid').all(cursor) as any[];
+          const summary:HubDigestProject={project:hubText(project.projectId,80),help:0,features:0,numbers:{}};
+          for(const row of rows){
+            if(row.type==='help.conversation')summary.help++;
+            if(row.type==='roadmap.request')summary.features++;
+            if(row.type==='daily.summary'){
+              const data=JSON.parse(row.data);
+              for(const [key,value] of Object.entries(data.numbers??{}))if(/^[a-zA-Z][a-zA-Z0-9 _-]{0,39}$/.test(key)&&typeof value==='number'&&Number.isFinite(value))summary.numbers[key]=value;
+            }
+          }
+          summaries.push(summary);cursors.push({project:project.projectId,cursor:rows.at(-1)?.seq??cursor});
+        }catch{complete=false;this.io.log('hub digest deferred; details withheld');}finally{source?.close();}
+      }
+      if(!complete)continue;
+      const content=hubDigest(summaries);if(!content)continue;
+      // Reserve the day before network IO. An interrupted send is uncertain,
+      // never an excuse to post the same daily message twice after restart.
+      this.db.query('INSERT OR REPLACE INTO hub_digest_state VALUES (?,?)').run(role,day);
+      try{await this.io.request('POST',`/channels/${target.chatThread}/messages`,{content:content.slice(0,1900),allowed_mentions:{parse:[]},enforce_nonce:true,nonce:sha256('hub-digest:'+role+':'+day).slice(0,24)});}
+      catch{this.io.log('hub digest send uncertain; inspection required');continue;}
+      this.db.transaction(()=>{
+        this.db.query('INSERT OR REPLACE INTO hub_digest_state VALUES (?,?)').run(role,day);
+        for(const cursor of cursors)this.db.query('INSERT OR REPLACE INTO hub_digest_cursors VALUES (?,?)').run(cursor.project,cursor.cursor);
+      })();
     }
   }
   private validStudioScreenshot(source:Database,payload:any){
@@ -298,7 +377,7 @@ export async function runDoor(){
     ws.onclose=event=>{if(!gateway.closed(event.code)){stopped=true;clearInterval(heartbeat);io.log('door gateway configuration refused');}else reconnect();};ws.onerror=reconnect;
   }
   let polling=false,lastCatchUp=0;
-  const timer=setInterval(()=>{if(polling)return;polling=true;door.projects=loadProjects(join(runtime,'projects'));const due=Date.now()-lastCatchUp>=30000;if(due)lastCatchUp=Date.now();void Promise.all([door.pollOutbox(),door.tickTyping(),door.pollBoard(),...(due?[door.catchUp()]:[])]).catch(()=>io.log('door poll failed; details withheld')).finally(()=>polling=false);},1000);
+  const timer=setInterval(()=>{if(polling)return;polling=true;door.projects=loadProjects(join(runtime,'projects'));const due=Date.now()-lastCatchUp>=30000;if(due)lastCatchUp=Date.now();void Promise.all([door.pollOutbox(),door.tickTyping(),door.pollBoard(),door.pollHubDigests(),...(due?[door.catchUp()]:[])]).catch(()=>io.log('door poll failed; details withheld')).finally(()=>polling=false);},1000);
   const stop=()=>{stopped=true;clearInterval(timer);clearInterval(heartbeat);ws?.close();};process.on('SIGTERM',stop);process.on('SIGINT',stop);
   connect();
 }
