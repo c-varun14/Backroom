@@ -1,6 +1,7 @@
+import disclosureTerms from '../../harness/disclosure-terms.json';
 /** Deliberately conservative: false blocks are safer than internal-text leaks. */
 export const LEAK_GUARD = [
-  ...["lead", "desk", "builder", "reviewer", "agent", "Claude", "Codex", "GPT", "AI", "Switch", "awaiting-owner", "frozen", "draft code", "owner approval", "untrusted"]
+  ...["lead", "desk", "builder", "reviewer", "agent", ...disclosureTerms, "AI", "Switch", "awaiting-owner", "frozen", "draft code", "owner approval", "untrusted"]
     .map(word => ({ word, pattern: new RegExp(`\\b${word.replace(/ /g, "\\s+")}\\b`, "i") })),
   { word: "Stage [0-9]", pattern: /\bstage\s+[0-9]+\b/i },
   { word: "--- protocol marker", pattern: /---/ },
@@ -31,7 +32,7 @@ export function canonicalDeskBody(body:string,name="desk") {
 }
 const clip = (text: string, max: number) => text.length <= max ? text : text.slice(0, max - 1) + "…";
 const oneLine = (text: string) => neutralise(text).replace(/[\r\n\t]+/g, " ");
-export const projectName = (id: string) => id === "morrowcrumb" ? "Morrowcrumb" : clip(oneLine(id), 60);
+export const projectName = (id: string) => clip(oneLine(id), 60).replace(/^./, c => c.toUpperCase());
 export function lineCard(ticket: number, text: string, icon = "🔵") { return clip(`${icon} Ticket #${ticket} · ${oneLine(text)}`, 900); }
 export function blockedCard(ticket: number, reason: string) { return lineCard(ticket, `draft blocked: ${reason}`, "⚠️"); }
 export function approvalCard(input: { ticket: number; project: string; clientText: string; reply: string; code: string; replacement?: boolean; simulated?: boolean; workRoom?: boolean; stage?: import("./types").Stage }) {

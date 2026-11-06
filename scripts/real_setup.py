@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import uuid
+from harness_config import definition as harness_definition, provider_ready as harness_ready
 from block1_setup import ROOT, PUBLIC, SetupError, owner_session, lead_session, call
 os.umask(0o077)
 PRIVATE = ROOT / '.secrets/real-stage-credentials.json'
@@ -24,18 +25,21 @@ def real_instructions(role, c):
         base = base.replace('Stage 1 ONLY in the assigned work room.', 'Work in the assigned work room; stages are assigned by desk.')
         base = base.replace('No architecture, code, deployment, other agents, shell commands, native file reads, or credential reads.', 'No code execution, deployment, subagents, shell commands, native file reads, or credential reads.')
         base += '\n' + (ROOT / 'studio-kit/codex-spec-format.md').read_text()
-        protocol = '''Desk now explicitly authorizes stages 1–6 as they are reached. Stage 1 retains its exact draft N / KIND / CLIENT TEXT / INTERNAL NOTES protocol. For later stages create_room_document then post_message, with NO @desk or targeted mention: architecture document <id>, spec document <id>, or lesson <slug> <version> document <id>. A client-facing answer at ANY stage must use draft N, KIND: reply and the same split/leak rules, never an internal document as client text. AI-involvement questions require empty CLIENT TEXT and a note for Varun. Keep all machine output in work-morrowcrumb. Never infer owner approval. Questions preserve the version; requirements changes reopen affected approvals. Stop after one assigned handoff. Do not start a future stage without desk assignment.'''
+        protocol = '''Desk now explicitly authorizes stages 1–6 as they are reached. Stage 1 retains its exact draft N / KIND / CLIENT TEXT / INTERNAL NOTES protocol. For later stages create_room_document then post_message, with NO @desk or targeted mention: architecture document <id>, spec document <id>, or lesson <slug> <version> document <id>. A client-facing answer at ANY stage must use draft N, KIND: reply and the same split/leak rules, never an internal document as client text. AI-involvement questions require empty CLIENT TEXT and a note for Varun. Keep all machine output in the assigned work room. Never infer owner approval. Questions preserve the version; requirements changes reopen affected approvals. Stop after one assigned handoff. Do not start a future stage without desk assignment.'''
     elif role == 'builder':
         protocol = f'''Work only in {c['workspace']} under the approved filled spec. Bounded local product commits are authorized after checks, without AI attribution; never commit the outer Backroom repository. Return plain post_message: build-ready <report-relative-path>. Return only after the product checkpoint is clean; desk starts fresh independent review after the owner requests it. For an assigned video follow studio-kit/video/SKILL.md and return video <sha256> <relative.mp4>. No deploys/client messages/tunnels/remotes/pushes. Do not recopy another project's state. For a separately authorized backward fix, only its explicit old-shop allowlist applies; prepare PR.md, a local fix branch and bounded local commit without AI attribution; never publish. Never add desk mentions or agent routing of your own.'''
     else:
         protocol = f'''Fresh independent review identity. Product source root is {c['workspace']}; your own report directory is separate. Do not read work-room history, builder conversation, builder reports, or native sessions. Load ONLY the approved brief, architecture, filled spec, assignment and checklist IDs named in desk's assignment; review the exact source SHA independently. Never call read_context to obtain builder conversation. Verify HEAD and use git show <SHA>:path when useful. Run bun test. Write only the assigned review report in your own directory, never product edits or commits. Return plain post_message: review <round> <exact-SHA> pass|fail followed by concise findings. No @desk mention. Review is evidence, never approval or deployment authority.'''
-    return base + '\n\nREAL ROOM PROTOCOL (takes precedence over older example handoffs):\n' + protocol + f'''\nUse gpt-6.1-sol only for Codex work; decline model changes. No credential reads, environment dumps, other projects, other Docker containers, sudo, tunnels, external hosting or client posts. All sample data is fictional. Your room is work-morrowcrumb only. Only builder may make bounded local commits inside its assigned product repository; never commit the outer Backroom repository or add AI attribution. Wait for desk's explicit task. Never replay rehearsal approvals or use rehearsal services.'''
+    return base + '\n\nREAL ROOM PROTOCOL (takes precedence over older example handoffs):\n' + protocol + f'''\nUse the configured harness/model; stop on low limits. No credential reads, environment dumps, other projects, other Docker containers, sudo, tunnels, external hosting or client posts. All sample data is fictional. Your room is {c['workRoomId']} only. Only builder may make bounded local commits inside its assigned product repository; never commit the outer Backroom repository or add AI attribution. Wait for desk's explicit task. Never replay rehearsal approvals or use rehearsal services.'''
 
 
 def create_role(c, role, name, directory, desired='running'):
+    from harness_config import role_config, command_role
+    if role_config(role)['harness']=='command':
+        return command_role(c,role,name,directory,desired)
     s = lead_session(); admin, _ = owner_session()
     Path(directory).mkdir(parents=True, exist_ok=True)
-    definition = {'provider':'codex', 'model':'gpt-6.1-sol', 'instructions':real_instructions(role,c),
+    definition = {**harness_definition(role), 'instructions':real_instructions(role,c),
                   'directory':str(directory), 'isolation':'shared', 'auto_mode':True, 'auto_approve':False,
                   'advanced_config':{'effort':'high' if role=='reviewer' else 'medium', 'verbosity':'low', 'webSearch':'false'}}
     existing = next((a for a in call(s,'GET','/gateway/management/agents') if a['name']==name),None)
@@ -56,7 +60,7 @@ def setup():
     work=call(admin,'GET','/gateway/rooms/'+c['workRoomId'])
     if work.get('bridge_id') or work['name']!='work-morrowcrumb':raise SetupError('Real machine room must be unbridged')
     c.update(mode='real',leadName='lead',builderName='builder-morrowcrumb',reviewerName='reviewer-morrowcrumb-standby',
-             workspace=str(ROOT/'workspaces/morrowcrumb-real'),clientId='verified-client-channel-human',runtimeContractRequired=True)
+             workspace=str(ROOT/'workspaces/morrowcrumb-real'),clientId='verified-client-channel-human',runtimeContractRequired=True,ownerVerificationRequired=True)
     Path(c['workspace']).mkdir(parents=True,exist_ok=True)
     if not c.get('buildControllerId'):
         enrollment=call(s,'POST','/gateway/management/enrollment-codes',{})
@@ -72,9 +76,9 @@ def setup():
         pidfile.write_text(str(p.pid))
     for _ in range(40):
         machine=next(a for a in call(s,'GET','/gateway/management/controllers') if a['id']==c['buildControllerId'])
-        if machine['state']=='online' and any(p.get('provider')=='codex' and p.get('auth')=='ok' for p in (machine.get('status')or{}).get('providers',[])):break
+        if machine['state']=='online' and all(harness_ready(machine, role) for role in ['builder','reviewer']):break
         time.sleep(.5)
-    else:raise SetupError('Real Codex controller/provider not ready')
+    else:raise SetupError('Configured build controller/harness not ready')
     builder=create_role(c,'builder',c['builderName'],c['workspace']);c['builderId']=builder['id']
     reviewer=create_role(c,'reviewer',c['reviewerName'],ROOT/'workspaces/morrowcrumb-review-standby');c['reviewerId']=reviewer['id'];c.setdefault('reviewerIds',[])
     if reviewer['id'] not in c['reviewerIds']:c['reviewerIds'].append(reviewer['id'])
@@ -93,7 +97,7 @@ def setup():
     definition={**lead['definition'],'instructions':real_instructions('lead',c)}
     call(s,'PATCH','/gateway/management/agents/'+c['leadId'],{'definition':definition,'desired_state':'running'})
     save(c)
-    print('Real stages configured: lead plus separate non-admin gpt-6.1-sol builder/reviewer; work room only. No client posts or releases.')
+    print('Real stages configured: lead plus separate non-admin configured builder/reviewer; work room only. No client posts or releases.')
 
 
 def fresh_reviewer(round):

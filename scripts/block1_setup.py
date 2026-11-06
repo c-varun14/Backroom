@@ -6,10 +6,11 @@ import subprocess
 import time
 import requests
 import re
+from harness_config import definition as harness_definition, provider_ready as harness_ready
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'http://127.0.0.1:8000'
-PUBLIC = ROOT / '.switch-runtime/block1.json'
+PUBLIC = Path(os.environ.get('BACKROOM_CLIENT_CONFIG', ROOT / '.switch-runtime/block1.json'))
 PRIVATE = ROOT / '.secrets/block1-credentials.json'
 
 
@@ -122,11 +123,19 @@ def configure_lead():
     public = json.loads(PUBLIC.read_text())
     admin, _ = owner_session()
     lead = lead_session()
+    from harness_config import role_config, command_role
+    if role_config('lead')['harness']=='command':
+        if not public.get('workRoomId'):
+            work=call(admin,'POST','/gateway/rooms',{'name':'work-'+public['projectId'],'internal_only':True,'channel_type':'channel_private','agent_ids':[public['deskId']],'read_visibility':'private','write_visibility':'private'})
+            public['workRoomId']=work['id']
+        agent=command_role(public,'lead','lead',ROOT/'spikes/providers/lead')
+        public['leadId']=agent['id'];PUBLIC.write_text(json.dumps(public,indent=2))
+        print('Configured command lead; work room only; no managed provider required.')
+        return
     for _ in range(30):
         controllers = call(lead, 'GET', '/gateway/management/controllers')
         machine = next(c for c in controllers if c['id'] == public['controllerId'])
-        provider_ready = any(p.get('provider') == 'claude' and p.get('installed') and p.get('auth') == 'ok'
-                             for p in (machine.get('status') or {}).get('providers', []))
+        provider_ready = harness_ready(machine, 'lead')
         if machine['state'] == 'online' and provider_ready:
             break
         time.sleep(1)
@@ -138,7 +147,7 @@ def configure_lead():
     if public.get('mode') == 'real':
         from real_setup import real_instructions
         instructions = real_instructions('lead', public)
-    definition = {'provider':'claude','model':'sonnet','instructions':instructions,'auto_mode':False,'auto_approve':False,
+    definition = {**harness_definition('lead'),'instructions':instructions,'auto_mode':False,'auto_approve':False,
         'directory':str(directory),'isolation':'shared', 'advanced_config':{'effort':'low','maxTurns':8,
         'disallowedTools':['Bash','Read','Write','Edit','Glob','Grep','Agent','WebSearch','WebFetch']}}
     agents = call(lead,'GET','/gateway/management/agents')

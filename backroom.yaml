@@ -1,0 +1,9 @@
+# Runtime role selection. Codex work must use this model and stop on low limits.
+lead: {harness: claude, model: sonnet}
+builder: {harness: codex, model: gpt-6.1-sol}
+reviewer: {harness: codex, model: gpt-6.1-sol}
+# demo.sh overlays only the harness/argv; all roles remain scripted and labelled.
+demo:
+  lead: {harness: command, argv: [sh, /repo/demo/scripted/lead.sh]}
+  builder: {harness: command, argv: [sh, /repo/demo/scripted/builder.sh]}
+  reviewer: {harness: command, argv: [sh, /repo/demo/scripted/reviewer.sh]}

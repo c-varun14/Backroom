@@ -20,7 +20,9 @@ def pid_is_ours(file, marker):
 
 
 def start(name,args,marker):
-    file=ROOT / f'.switch-runtime/block1-{name}.pid'
+    client_config=os.environ.get('BACKROOM_CLIENT_CONFIG')
+    suffix='-'+Path(client_config).stem if client_config and name=='desk' else ''
+    file=ROOT / f'.switch-runtime/block1-{name}{suffix}.pid'
     if pid_is_ours(file,marker):
         print(name+': already running')
         return

@@ -9,7 +9,7 @@
 # Pre-provision plain-code desk under owner A, and lead/builder/reviewer under
 # separate non-admin owner B. Never create all identities under one owner.
 # Load each role playbook from studio-kit/agents/ before provisioning; lead uses
-# Claude plan login; builder/reviewer MUST be Codex gpt-6.1-sol plan logins.
+# Roles use harnesses/models selected in backroom.yaml.
 # Reviewer is a new managed identity/session for EVERY exact-commit review.
 version: 1
 params:
@@ -21,13 +21,16 @@ params:
     label: Existing rehearsal lead (non-admin owner B)
   builder:
     type: agent
-    label: Existing rehearsal builder (Codex gpt-6.1-sol, owner B)
+    label: Existing rehearsal builder (configured harness, owner B)
   reviewer:
     type: agent
     label: Initial reviewer slot (fresh identity per review, owner B)
   client_room:
     type: string
     default: client-rehearsal
+  work_room:
+    type: string
+    default: work-rehearsal
   studio_room:
     type: string
     default: studio-rehearsal
@@ -43,6 +46,12 @@ rooms:
     agents: ['{desk}']
   - name: '{studio_room}'
     description: SIMULATION owner and studio agents; no client membership.
+    channel_type: channel_private
+    read_visibility: private
+    write_visibility: private
+    agents: ['{desk}', '{lead}', '{builder}', '{reviewer}']
+  - name: '{work_room}'
+    description: SIMULATION private machine handoffs; no client membership.
     channel_type: channel_private
     read_visibility: private
     write_visibility: private
