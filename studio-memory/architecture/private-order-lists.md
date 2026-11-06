@@ -2,6 +2,7 @@ SAMPLE SIMULATION approved promotion
 
 Lesson ID: private-order-lists / version 1
 Status: approved (SIMULATION only)
+Stack scope: all
 SIMULATION owner promotion: proposal SHA-256 6c3b14eafe6c1702a88815f8ffc2b8a555b75f46d5f69550598967ae51340f12; verified native owner event sw_775d634069184087bda8833c603fd0ac. No real client/Varun approval is claimed.
 
 ## Reviewed proposal (verbatim historical pending text)

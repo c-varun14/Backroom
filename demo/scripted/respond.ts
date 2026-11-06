@@ -39,6 +39,8 @@ if(role==='lead'){
     writeFileSync(`/out/build-${n}-checks.txt`,output);
     if(check.exitCode)throw new Error('SAMPLE bakery checks failed');
     writeFileSync(join(workspace,'build-report.md'),`SAMPLE scripted fixture build ${n}\nCommand: bun test\nExit: ${check.exitCode}\n\n${output}`);
+    run(['ffmpeg','-v','error','-y','-f','lavfi','-i','color=c=beige:s=640x360','-vf',"drawtext=text='SAMPLE screenshot fixture - not browser capture':fontcolor=black:fontsize=20:x=12:y=160",'-frames:v','1',join(workspace,'owner-check.png')]);
+    writeFileSync(join(workspace,'build-verification.json'),JSON.stringify({url:'http://127.0.0.1:49163',screenshot:'owner-check.png',sample:true}));
     // Fixture history exists only in /state; the mounted source is read-only.
     run(['git','add','.']);run(['git','commit','-qm',`SAMPLE scripted product fixture ${n}`]);
     writeFileSync('/state/build-count',String(n));
