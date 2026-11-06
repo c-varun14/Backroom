@@ -50,5 +50,30 @@
       "approvals": "simulated",
       "rejected_or_revised": "Promotion and the older-project fix required separate authorization. The result is a local branch and PR description; no hosted PR was opened."
     }
-  ]
+  ],
+  "public_proof": {
+    "native_run": "reports/block-2.md",
+    "request": "Please include the order reference in the saved-order heading. Keep the menu, pickup rules, capacity and storage unchanged. This is a fictional SIMULATION revision.",
+    "brief": "document v4",
+    "architecture": "document v5",
+    "review": {
+      "round": 4,
+      "scope": "F1 correction only",
+      "commit": "2825b61fa63f42554f6c4f132ed1c0059b1b2c3b"
+    },
+    "reply": "Update from Varun: (SIMULATION)\n\nPlease review the fictional local app at [local deployment URL]. Deployed commit 2825b61fa63f42554f6c4f132ed1c0059b1b2c3b. Reply approve 2825b61fa63f42554f6c4f132ed1c0059b1b2c3b or request a change.",
+    "reply_export_note": "Local URL replaced; no raw room identity or private receipt capability exported.",
+    "screenshot": "Historical native deployment desktop browser capture, embedded in both HTML entry points.",
+    "blocked_probe": {
+      "source": "reports/block-1.md",
+      "reason": "agent sender",
+      "client_message_count_unchanged": true,
+      "human_approvals": 0
+    },
+    "older_project_fix": {
+      "commit": "1c5331d0747c49a641e6ce58d21d9a03196ba785",
+      "source": "sample-projects/old-shop/PR.md",
+      "result": "Removed public GET /api/orders; local branch/description only; no hosted PR."
+    }
+  }
 }

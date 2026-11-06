@@ -1,6 +1,6 @@
 # Backroom
 
-**A client revision becomes a reviewed local bakery app, with exact-version release gates in Switch.** The six-stage workflow has been exercised using clearly labelled simulation accounts; the core checks run without an AI login. [Rehearsal evidence](reports/block-2.md) · [no-account/clean-copy results](reports/lane-repro.md) · [sample receipt](receipt/sample.html) · [fresh bakery demo](rehearsal/bakery/README.md).
+**A client revision becomes a reviewed local bakery app, with exact-version release gates in Switch.** The six-stage workflow has been exercised using clearly labelled simulation accounts; the core checks run without an AI login. [Rehearsal evidence](reports/block-2.md) · [no-account/clean-copy results](reports/lane-repro.md) · [public proof page](receipt/public.html) · [GitHub Pages entry](docs/index.html) · [sample receipt](receipt/sample.html) · [fresh bakery demo](rehearsal/bakery/README.md).
 
 ![Simulated rehearsal montage: brief and review evidence from the public receipt, then a separate fresh fictional bakery app saving a sample pre-order.](docs/media/backroom-demo.gif)
 
@@ -66,5 +66,9 @@ Git holds source, [studio playbooks](studio-kit/agents/), [sample lessons](studi
 - Same-machine CLI agents are **not a strong sandbox**. Separate Switch owners/private rooms mitigate the demonstrated room breach, but do not isolate an OS user. Block0 also records a credential-output incident and required login rotation; a later clean scan does not retract it. [Block0](reports/block-0.md).
 - Deployments are **localhost-only**, with downtime and incomplete crash/migration rollback. A passing health check alone does not prove configured readiness or durability. [Deployer](reports/lane-deployer.md).
 - The final reviewer identity/session was fresh, but the final review was bounded to its stated finding and historical room context could remain visible. A local fix branch/description is not a submitted PR. [Block2](reports/block-2.md).
-- Generated videos, the accepted live workspace, raw rehearsal room histories/HTML and private runtime state are ignored, so some old report links cannot resolve in a public clone. The bundled sample receipt is a fixture, not the full native rehearsal export. The reported video had technical QC, but no human listening/ASR pass. [Block2](reports/block-2.md).
+- Generated videos, the accepted live workspace, raw room histories and runtime state stay local. The [public proof page](receipt/public.html) exports the fictional request, approved versions/reply, exact reviewed deployment, embedded bakery screenshot, blocked-send reason and older-project diff without requiring those files. The bundled sample receipt remains a separate fixture. The reported video had technical QC, but no human listening/ASR pass. [Block2](reports/block-2.md).
 - The registry can lag the later local fix; use the exact evidence/code under test rather than treating its original fixture status as current release authority. No clean-copy test establishes a complete real-client deployment or universal prompt-injection resistance.
+
+## Public proof without an account
+
+Open [receipt/public.html](receipt/public.html) directly. [docs/index.html](docs/index.html) embeds the same self-contained page so GitHub Pages can publish from the `/docs` folder, with no build or backend. Pages hosting has not been enabled by this task. All evidence uses fictional data and labels simulated approvals; source-run notes keep the native rehearsal, gate probe and hand rehearsal separate.
