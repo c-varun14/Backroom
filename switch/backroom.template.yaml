@@ -1,0 +1,55 @@
+# Tested Switch server 0.31.0; Console 0.40.1; template language version 1.
+# Reproduction manifest only; no kickoff, agent creation or releases.
+# Use ONLY a fresh Switch instance with NO default bridge. Version 1 room
+# templates inherit the server default bridge when bridge is omitted.
+# Do not import on an existing bridged server. See docs/LIVE-SETUP.md.
+# Pin metadata is in switch/versions.json; it does not enforce installed versions.
+# Pre-provision plain-code desk under owner A, and lead/builder/reviewer under
+# separate non-admin owner B. Never create all identities under one owner.
+# Load each role playbook from studio-kit/agents/ before provisioning; lead uses
+# Claude plan login; builder/reviewer MUST be Codex gpt-6.1-sol plan logins.
+# Reviewer is a new managed identity/session for EVERY exact-commit review.
+version: 1
+params:
+  desk:
+    type: agent
+    label: Existing plain-code rehearsal desk (owner A)
+  lead:
+    type: agent
+    label: Existing rehearsal lead (non-admin owner B)
+  builder:
+    type: agent
+    label: Existing rehearsal builder (Codex gpt-6.1-sol, owner B)
+  reviewer:
+    type: agent
+    label: Initial reviewer slot (fresh identity per review, owner B)
+  owner:
+    type: user
+    label: SIMULATION owner
+  client:
+    type: user
+    label: SIMULATION client
+  client_room:
+    type: string
+    default: client-rehearsal
+  studio_room:
+    type: string
+    default: studio-rehearsal
+group:
+  name: Backroom SIMULATION
+  description: Fictional isolated six-stage rehearsal; no real approvals.
+rooms:
+  - name: '{client_room}'
+    description: SIMULATION client and plain-code desk only; no bridge.
+    channel_type: channel_private
+    read_visibility: private
+    write_visibility: private
+    agents: ['{desk}']
+    users: ['{owner}', '{client}']
+  - name: '{studio_room}'
+    description: SIMULATION owner and studio agents; no client membership.
+    channel_type: channel_private
+    read_visibility: private
+    write_visibility: private
+    agents: ['{desk}', '{lead}', '{builder}', '{reviewer}']
+    users: ['{owner}']
