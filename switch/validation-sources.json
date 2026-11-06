@@ -1,0 +1,18 @@
+{
+  "server": "0.31.0",
+  "commit": "7e57cd433a922bc91a00150c106e6ef1f15b1057",
+  "sources": {
+    "rooms_yaml.py": {
+      "url": "https://raw.githubusercontent.com/sandbox-quantum/switch/7e57cd433a922bc91a00150c106e6ef1f15b1057/core/switch_core/rooms_yaml.py",
+      "sha256": "cc946691e9de4b7458c60488a9c184b3e7fe0b8dc42c433d9816f988d3f6ee3a"
+    },
+    "template_lint.py": {
+      "url": "https://raw.githubusercontent.com/sandbox-quantum/switch/7e57cd433a922bc91a00150c106e6ef1f15b1057/core/switch_core/template_lint.py",
+      "sha256": "3ac5838154ca6ea28a4784a165865f5f69ad46918373fe49ae35b890c878e2cf"
+    },
+    "template_v2.py": {
+      "url": "https://raw.githubusercontent.com/sandbox-quantum/switch/7e57cd433a922bc91a00150c106e6ef1f15b1057/core/switch_core/template_v2.py",
+      "sha256": "338ae5adf3f12c6888232a00dbe7d9a69cf5794ebfd7917feee42a8a508fdb9e"
+    }
+  }
+}
