@@ -5,12 +5,24 @@ import {SwitchAPI,SwitchTransport} from '../../desk/src/switch-transport';
 import {RealStagesLoop,type RealConfig} from '../../desk/src/real-loop';
 import {LocalComposeDeployer} from '../../deploy/local-compose';
 import type {Identity} from '../../desk/src/switch-identities';
+import {Database} from 'bun:sqlite';
 process.umask(0o077);
 const root=resolve(import.meta.dir,'../..'),state=join(root,'.switch-runtime/dryrun');
 const load=()=>JSON.parse(readFileSync(join(root,'.switch-runtime/dryrun.json'),'utf8'));
 const config:RealConfig=load();
 if(config.projectId!=='dryrun'||![config.clientRoomId,config.studioRoomId,config.workRoomId].every(id=>typeof id==='string'))throw new Error('Dryrun configuration required');
 const deployer=new LocalComposeDeployer({dryrun:{repoPath:config.workspace,containerPort:3210,healthPath:'/health',persistData:true,ownerPasswordFile:join(root,'.secrets/dryrun-product-owner')}},join(state,'deploy'));
+if(process.argv.includes('--restore')){
+  const db=new Database(join(root,'.secrets/desk-dryrun.sqlite'),{readonly:true});
+  const candidate=JSON.parse((db.query("SELECT value FROM stage_kv WHERE key='candidate'").get() as any).value);
+  const intent=db.query("SELECT id FROM intents WHERE project='dryrun' AND kind='deploy' AND target=? AND status='confirmed' ORDER BY rowid DESC LIMIT 1").get(candidate) as any;
+  const review=db.query("SELECT verdict FROM reviews WHERE project='dryrun' AND sha=? ORDER BY seq DESC LIMIT 1").get(candidate) as any;
+  db.close();
+  if(!intent||review?.verdict!=='pass')throw new Error('Previously authorized reviewed deployment required');
+  const mask=process.umask(0o022);
+  try{await deployer.deploy({project:'dryrun',commitSha:candidate,intentId:intent.id});}finally{process.umask(mask);}
+  console.log('Restored previously authorized dryrun commit '+candidate+'; no new approval or persistence claim.');process.exit(0);
+}
 if(process.argv.includes('--cleanup')){
   if(!await deployer.current('dryrun')){console.log('No dryrun deployment state; no deployed services to retire.');process.exit(0);}
   await deployer.stop('dryrun');
@@ -43,7 +55,8 @@ const deploy=deployer.deploy.bind(deployer);
 deployer.deploy=async input=>{const mask=process.umask(0o022);try{await deploy(input);}finally{process.umask(mask);}};
 const loop=new RealStagesLoop(store,api,new SwitchTransport(api,join(root,'.secrets/dryrun-files')),config,deployer,identities,{
  async freshReviewer(round){return JSON.parse(await helper(['reviewer',String(round)]));},
- async promotePackage(path){await helper(['promote',path]);}
+ async promotePackage(path){await helper(['promote',path]);},
+ async prepareFix(){return JSON.parse(await helper(['fix-builder']));}
 },join(state,'project-root'));
 let queue=Promise.resolve(),stopping=false,errors=0;
 const lifecycle:Record<string,unknown>={};
@@ -62,7 +75,7 @@ function connect(room:string){
   if(f.event==='connection_state'){connected.add(room);health();return;}
   if(f.event==='refused'){connected.delete(room);lifecycle[room]={event:'refused'};health();return;}
   if(f.event==='message')queue=queue.then(async()=>{await loop.handle(f.data);if(Number.isSafeInteger(f.id))store.db.query('UPDATE room_cursors SET cursor=? WHERE room=?').run(f.id,room);}).catch((e:any)=>{
-   errors++;const msg=String(e?.message??'');const safe=/^(Switch HTTP [0-9]{3}; response withheld|Owner must commit a clean exact checkpoint before review|Changed document|Changed video|Reviewed exact candidate required|Dryrun helper failed; output withheld)$/.test(msg)?msg:'Operation failed; raw details withheld';
+   errors++;const msg=String(e?.message??'');const safe=/^(Switch HTTP [0-9]{3}; response withheld|Clean exact product checkpoint required before review|Changed document|Changed video|Reviewed exact candidate required|Dryrun helper failed; output withheld|Stale independent review assignment|Missing or corrupt document snapshot; request a new version)$/.test(msg)?msg:'Operation failed; raw details withheld';
    writeFileSync(join(state,'error.json'),JSON.stringify({at:new Date().toISOString(),reason:safe,type:e?.name}));
   }).finally(health);
  };
@@ -72,4 +85,4 @@ for(const room of [config.clientRoomId,config.studioRoomId])connect(room);
 const timer=setInterval(health,1000);
 async function stop(){stopping=true;clearInterval(timer);for(const ws of sockets.values())ws.close();await queue;store.close();process.exit(0);}
 process.on('SIGTERM',stop);process.on('SIGINT',stop);
-await loop.afterBrief();
+await loop.resume();
