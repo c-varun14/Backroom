@@ -5,7 +5,14 @@ from common import *
 def health():return json.loads((STATE/'health.json').read_text())
 def send(role,room,body):
     c=config();s,_=login(role)
-    call(s,'POST',f'/gateway/chats/{c[room]}/messages',{'requestId':str(uuid.uuid4()),'body':body})
+    request_id=str(uuid.uuid4())
+    call(s,'POST',f'/gateway/chats/{c[room]}/messages',{'requestId':request_id,'body':body})
+    import hashlib
+    decision=body if body.startswith('@desk-dryrun ') else None
+    with (STATE/'actor-ledger.jsonl').open('a') as f:
+        f.write(json.dumps({'actor':'SAMPLE native '+role,'drivenBy':'orchestrating session','realHumanApproval':False,
+            'room':'client-dryrun' if room=='clientRoomId' else 'studio-dryrun','requestId':request_id,
+            'command':decision,'bodySha256':hashlib.sha256(body.encode()).hexdigest()})+'\n')
     print('SAMPLE native '+role+' posted to '+('client-dryrun' if room=='clientRoomId' else 'studio-dryrun'))
 def main():
     action=sys.argv[1]
