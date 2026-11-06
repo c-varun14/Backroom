@@ -21,6 +21,14 @@ export function parseLeadDraft(body: string): LeadDraft | undefined {
 }
 /** Display-only quoting; never use to construct release bytes. */
 export const neutralise = (text: string) => text.replace(/@/g, "＠");
+export function deskAddress(text:string,name="desk") {
+  if(!/^[a-z0-9-]+$/.test(name))throw new Error("Invalid desk name");
+  return text.replace(/@desk(?=\s|$)/g,"@"+name);
+}
+export function canonicalDeskBody(body:string,name="desk") {
+  if(!/^[a-z0-9-]+$/.test(name))throw new Error("Invalid desk name");
+  return body.startsWith("@"+name+" ")?"@desk "+body.slice(name.length+2):body;
+}
 const clip = (text: string, max: number) => text.length <= max ? text : text.slice(0, max - 1) + "…";
 const oneLine = (text: string) => neutralise(text).replace(/[\r\n\t]+/g, " ");
 export const projectName = (id: string) => id === "morrowcrumb" ? "Morrowcrumb" : clip(oneLine(id), 60);

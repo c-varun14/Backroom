@@ -12,7 +12,7 @@ import type { Artifact, Stage } from "./types";
 import type { Identity } from "./switch-identities";
 import { LocalComposeDeployer } from "../../deploy/local-compose";
 
-export interface RehearsalConfig { mode?:"real";workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
+export interface RehearsalConfig { mode?:"real";deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
 export type Control = { freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void> };
 const COMMIT=/^[a-f0-9]{40}$/;
 const HASH=/^[a-f0-9]{64}$/;
