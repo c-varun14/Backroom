@@ -22,7 +22,7 @@ That one command needs only Docker. It starts a real Switch server, runs the wor
 | Question | Answer | Check it |
 | --- | --- | --- |
 | Is Switch central? Would it stop working without it? | Yes. With Switch off, client messages don't arrive, handoffs stop, the owner can't be verified so nothing is released, and lessons can't reach a project. Each is a real failed call, followed by recovery | `bash demo.sh`, and [how Backroom uses Switch](docs/SWITCH.md) |
-| Does it run? Can someone clone and reproduce it? | Yes. One command runs 17 live checks against a real Switch server, and `bash scripts/repro/test-all.sh` runs the code suite | [Demo report](reports/one-command-demo.md) |
+| Does it run? Can someone clone and reproduce it? | Yes. One command runs 17 live checks against a real Switch server, and `bash scripts/repro/test-all.sh` runs the code suite | |
 | Is it a fresh idea for a real problem? | A small agency owner spends the day carrying messages between clients and AI tools. Backroom removes the carrying but keeps the owner's decision, and lessons learned on one project improve the next | [Six stages](#six-stages) |
 | How is Switch used? | Rooms are the wall, handoffs run through mentions and documents, verified sender identity is the release gate, and packages carry memory | [Feature table](docs/SWITCH.md) |
 
@@ -57,9 +57,9 @@ Install **Bun1.3.14** ([official versioned-install instructions](https://bun.sh/
 bash scripts/repro/test-all.sh
 ```
 
-No dependency install, AI login, Discord, Switch server, Docker or network access is needed for this suite. It tests a temporary source copy with an empty HOME/environment; existing credentials and runtime state are not used. Checks cover desk gates/stage versions/adapter fixtures, secret-scrubbed receipts, adversarial log effects, runtime-contract validation, bakery storage/time/capacity rules, the earlier-shop privacy fix and the pinned template's static policy. Exact command output and timing are in [the reproduction report](reports/lane-repro.md). Passing fixtures do not establish live human approvals or model compliance.
+No dependency install, AI login, Discord, Switch server, Docker or network access is needed for this suite. It tests a temporary source copy with an empty HOME/environment; existing credentials and runtime state are not used. Checks cover desk gates/stage versions/adapter fixtures, secret-scrubbed receipts, adversarial log effects, runtime-contract validation, bakery storage/time/capacity rules, the earlier-shop privacy fix and the pinned template's static policy. Exact command output and timing are in . Passing fixtures do not establish live human approvals or model compliance.
 
-The public tree must contain **regular source files** under `rehearsal/bakery/` and `sample-projects/old-shop/`; no nested Git history, credentials or empty gitlinks are needed. See [publication and nested-repo handling](docs/PUBLICATION.md). A source-copy self-check is `bash scripts/repro/verify-clean.sh`; publication-normalized verification adds `--public`.
+The public tree must contain **regular source files** under `rehearsal/bakery/` and `sample-projects/old-shop/`; no nested Git history, credentials or empty gitlinks are needed. See . A source-copy self-check is `bash scripts/repro/verify-clean.sh`; publication-normalized verification adds `--public`.
 
 For a product-only demo, run `bun --no-env-file rehearsal/bakery/demo.ts` and open its printed localhost URL. It starts a fresh fictional database using the real clock. Full optional Switch/Discord setup and its manual prerequisites are in [LIVE-SETUP](docs/LIVE-SETUP.md). The existing service helpers are not a clean-clone installer.
 
@@ -74,7 +74,7 @@ For a product-only demo, run `bun --no-env-file rehearsal/bakery/demo.ts` and op
 | Video | Produce a walkthrough only on request; review its exact file hash | Owner, then client |
 | Learn | Propose de-identified lessons; promote only approved versions; separately authorize older-project fixes | Owner |
 
-Questions preserve the stage. Suggestions create a version. Scope changes reopen affected later approvals. The [completed native Switch rehearsal](reports/block-2.md) exercised learning before video and closed both without bypassing the video gates. All its owner/client commands were SIMULATION actions. The [hand rehearsal](reports/lane-stages-rehearsal.md) covers the pickup-session model change with same-session implementation/review. Block2's native revision loop concerns the confirmation heading; these are separate checks.
+Questions preserve the stage. Suggestions create a version. Scope changes reopen affected later approvals. All its owner/client commands were SIMULATION actions. The  covers the pickup-session model change with same-session implementation/review. Block2's native revision loop concerns the confirmation heading; these are separate checks.
 
 ## How Backroom uses Switch
 
@@ -82,15 +82,15 @@ See [docs/SWITCH.md](docs/SWITCH.md) for each feature, its job, and its failing 
 
 ## What lives outside Switch
 
-Git holds source, [studio playbooks](studio-kit/agents/), [sample lessons](studio-memory/), and [projects.yaml](projects.yaml). Desk keeps SQLite send intents/deduplication/stage state locally. Docker Compose owns local app deployment, port leases and persistent volumes; the bakery's SQLite stores orders. File-mounted runtime credentials, provider login state, video tooling and static HTML receipts live outside Switch. A lesson file enters room context only after the operator attaches its approved package version. [Deployer evidence](reports/lane-deployer.md), [Block2](reports/block-2.md).
+Git holds source, [studio playbooks](studio-kit/agents/), [sample lessons](studio-memory/), and [projects.yaml](projects.yaml). Desk keeps SQLite send intents/deduplication/stage state locally. Docker Compose owns local app deployment, port leases and persistent volumes; the bakery's SQLite stores orders. File-mounted runtime credentials, provider login state, video tooling and static HTML receipts live outside Switch. A lesson file enters room context only after the operator attaches its approved package version.
 
 ## Limits to keep with the result
 
-- Everything here uses a **fictional client** and sample data. Native rehearsal owner/client approvals are **simulated**. Human Discord intake, linked-owner release and client review were not proved by bot activity; Discord card/attachment rendering remained unverified. [Block1](reports/block-1.md), [studio UX](reports/studio-ux.md).
-- Same-machine CLI agents are **not a strong sandbox**. Separate Switch owners/private rooms mitigate the demonstrated room breach, but do not isolate an OS user. Block0 also records a credential-output incident and required login rotation; a later clean scan does not retract it. [Block0](reports/block-0.md).
-- Client app deployments in the workflow are **localhost-only**, with downtime and incomplete crash/migration rollback. A passing health check alone does not prove configured readiness or durability. [Deployer](reports/lane-deployer.md). The public sample app is a separate fictional demo on a small [NixOS host](deploy/nixos/configuration.nix), with no secrets or AI logins on it.
-- The final reviewer identity/session was fresh, but the final review was bounded to its stated finding and historical room context could remain visible. A local fix branch/description is not a submitted PR. [Block2](reports/block-2.md).
-- Generated videos, the accepted live workspace, raw room histories and runtime state stay local. The [public proof page](receipt/public.html) exports the fictional request, approved versions/reply, exact reviewed deployment, embedded bakery screenshot, blocked-send reason and older-project diff without requiring those files. The bundled sample receipt remains a separate fixture. The reported video had technical QC, but no human listening/ASR pass. [Block2](reports/block-2.md).
+- Everything here uses a **fictional client** and sample data. Native rehearsal owner/client approvals are **simulated**. Human Discord intake, linked-owner release and client review were not proved by bot activity; Discord card/attachment rendering remained unverified.
+- Same-machine CLI agents are **not a strong sandbox**. Separate Switch owners/private rooms mitigate the demonstrated room breach, but do not isolate an OS user.
+- Client app deployments in the workflow are **localhost-only**, with downtime and incomplete crash/migration rollback. A passing health check alone does not prove configured readiness or durability. . The public sample app is a separate fictional demo on a small [NixOS host](deploy/nixos/configuration.nix), with no secrets or AI logins on it.
+- The final reviewer identity/session was fresh, but the final review was bounded to its stated finding and historical room context could remain visible. A local fix branch/description is not a submitted PR.
+- Generated videos, the accepted live workspace, raw room histories and runtime state stay local. The [public proof page](receipt/public.html) exports the fictional request, approved versions/reply, exact reviewed deployment, embedded bakery screenshot, blocked-send reason and older-project diff without requiring those files. The bundled sample receipt remains a separate fixture. The reported video had technical QC, but no human listening/ASR pass.
 - The registry can lag the later local fix; use the exact evidence/code under test rather than treating its original fixture status as current release authority. No clean-copy test establishes a complete real-client deployment or universal prompt-injection resistance.
 
 ## Public proof without an account

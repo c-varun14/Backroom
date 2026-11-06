@@ -28,5 +28,5 @@ export function validateTemplate(text:string,pins:any){
 if(import.meta.main){
  validateTemplate(readFileSync(resolve("switch/backroom.template.yaml"),"utf8"),JSON.parse(readFileSync(resolve("switch/versions.json"),"utf8")));
  console.log("Template static checks: PASS; server 0.31.0 / Console 0.40.1 / controller 0.31.0; two private rooms, existing identities, no kickoff.");
- console.log("Provisioning evidence: reports/submission-pack.md. Requires no default bridge and verified separate owners; human client membership is a separate setup step.");
+ console.log("Requires no default bridge and verified separate owners; human client membership is a separate setup step.");
 }

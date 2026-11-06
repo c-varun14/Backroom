@@ -4,7 +4,7 @@ SAMPLE DATA — fictional earlier-project lesson with a simulated approval, not 
 
 - Lesson ID / version: `server-owned-prices` / 1
 - What we learned: The server must look up each product's price and calculate the order total itself. Never accept a browser-sent unit price, discount or total as authoritative. Use integer minor currency units and validate product IDs and quantities.
-- Evidence: `sample-projects/old-shop/server.js`, `createApp`, accepts `unitPriceCents` from POST `/api/orders` and multiplies it by quantity. The server catalog lists `tea-tin` at 1200 cents, but a request with quantity 2 and unit price 1 is accepted at 2 cents. Reproduction is documented in that project's README and captured in `reports/lane-content.md`. Its single happy-path test does not detect this error.
+- Evidence: `sample-projects/old-shop/server.js`, `createApp`, accepts `unitPriceCents` from POST `/api/orders` and multiplies it by quantity. The server catalog lists `tea-tin` at 1200 cents, but a request with quantity 2 and unit price 1 is accepted at 2 cents. Its single happy-path test does not detect this error.
 - Source project: `old-shop` in `projects.yaml`, a fictional USD gift-shop teaching app.
 - Date: 2026-11-05
 - Status: approved (SAMPLE fixture only)

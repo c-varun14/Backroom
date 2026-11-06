@@ -1,6 +1,5 @@
 {
   "simulation": true,
-  "source": "reports/block-2.md; persisted rehearsal stage summary",
   "events": [
     {
       "stage": "Brief",
@@ -52,7 +51,6 @@
     }
   ],
   "public_proof": {
-    "native_run": "reports/block-2.md",
     "request": "Please include the order reference in the saved-order heading. Keep the menu, pickup rules, capacity and storage unchanged. This is a fictional SIMULATION revision.",
     "brief": "document v4",
     "architecture": "document v5",
@@ -65,7 +63,6 @@
     "reply_export_note": "Local URL replaced; no raw room identity or private receipt capability exported.",
     "screenshot": "Historical native deployment desktop browser capture, embedded in both HTML entry points.",
     "blocked_probe": {
-      "source": "reports/block-1.md",
       "reason": "agent sender",
       "client_message_count_unchanged": true,
       "human_approvals": 0
