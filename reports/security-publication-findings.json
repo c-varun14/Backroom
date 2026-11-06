@@ -1,0 +1,3653 @@
+{
+  "note": "Initial coordinates, value-free. Reports now use stable SAMPLE aliases; ignored artifacts are not publication inputs. Embedded view is anticipatory, not outer Git contents.",
+  "findings": [
+    {
+      "file": "deploy/check-public.py",
+      "line": 14,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "deploy/quota-output.txt",
+      "line": 1,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "desk/reports/lane-desk-core.md",
+      "line": 22,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/build.test.ts",
+      "line": 28,
+      "kind": "capability-url",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/phone.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 1,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 13,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 57,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 107,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 152,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 187,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 224,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 224,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 228,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 253,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 257,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 257,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 258,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 259,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 260,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 261,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 262,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 263,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 267,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 269,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 273,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 279,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 307,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 326,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 333,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 352,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 366,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 384,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 384,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 385,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 386,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 387,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 388,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 392,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 394,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 395,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 395,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 396,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 400,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "receipt/rehearsal.html",
+      "line": 402,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery-final-desktop.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery-final-phone.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery-initial-desktop.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery-initial-phone.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery-revision-desktop.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery-revision-phone.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery-ui-confirmation.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/bakery/",
+      "line": 0,
+      "kind": "embedded-repository-gitlink-risk",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/deploy-v1-first-failure.txt",
+      "line": 9,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/deploy-v1-mount-failure.txt",
+      "line": 9,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "rehearsal/owner-private-list.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 26,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 27,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 815,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 816,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 817,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 832,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 833,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 834,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 836,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 839,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 841,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 851,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 852,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 853,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 854,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 855,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 857,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 860,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 861,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 862,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 864,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 870,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 883,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 884,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 885,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 886,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 888,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 891,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 892,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 894,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 900,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 906,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 918,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 919,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 923,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 924,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 925,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 926,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 927,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 928,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 929,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 932,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 933,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 935,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 936,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 941,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 942,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 947,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 948,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 952,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 953,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 954,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 955,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 956,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 957,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 958,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 959,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 960,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 961,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 989,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 990,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1003,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1007,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1008,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1009,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1010,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1011,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1024,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1026,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1159,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1160,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1161,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1174,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1175,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1175,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1176,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1187,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1188,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1192,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1195,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1207,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1209,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1221,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1222,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1222,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1223,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1248,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1250,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1252,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1255,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1267,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1268,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1274,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1284,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1285,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1285,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1286,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1294,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1297,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1298,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1301,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1302,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1307,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1308,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1350,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1351,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1353,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1354,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1355,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1356,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1357,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1359,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1361,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1364,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1366,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1373,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1376,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1377,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1379,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1390,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1391,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1391,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1392,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1397,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1398,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1405,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1406,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1408,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1414,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1416,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1417,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1418,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1419,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1420,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1421,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1428,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1429,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1432,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1434,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1446,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1447,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1447,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1448,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1448,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1449,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1460,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1461,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1462,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1479,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1480,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1481,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1483,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1484,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1491,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1492,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1495,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1499,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1536,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1537,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1539,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1541,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1542,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1543,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1550,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1555,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1555,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1570,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1583,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1584,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1623,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 66,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 72,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 144,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 145,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 146,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 147,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 148,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 149,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 152,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 154,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 155,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 157,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 158,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 159,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 160,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 161,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 162,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 163,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 164,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 165,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 332,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0.md",
+      "line": 332,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 7,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 21,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 24,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 43,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 46,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 65,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 68,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 87,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 101,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 115,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 118,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 129,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 143,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 146,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 157,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 171,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 174,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 185,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 199,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 213,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 216,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 227,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 241,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 244,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 255,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 277,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 280,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 291,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 305,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 319,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 333,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 347,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 350,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 361,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 375,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 380,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 380,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 389,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 394,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 394,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 403,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 417,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 422,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 422,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 431,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 445,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 459,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 473,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 476,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 478,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 487,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 501,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 506,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 515,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 529,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 543,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 548,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 557,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 571,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 585,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 599,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 613,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 627,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 641,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 655,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 658,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 660,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 669,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 683,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 697,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 711,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 725,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 739,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 753,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 758,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 767,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 781,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 795,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 809,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 823,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 837,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 851,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 865,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 868,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 879,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 893,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 907,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 910,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 921,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 935,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 949,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 952,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 963,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 977,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 991,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 994,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1005,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1019,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1033,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1036,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1047,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1061,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1075,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1080,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1089,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1103,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1106,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1117,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1131,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1145,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1159,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1173,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1178,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1187,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1201,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1206,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1215,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1218,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1229,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1243,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1257,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1271,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1276,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1285,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1299,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1313,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1327,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1349,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1363,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1377,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1391,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1405,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1419,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1422,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1433,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1447,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1461,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1475,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1480,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1489,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1503,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1508,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1517,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1520,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1522,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1531,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1536,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1545,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1559,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1564,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1573,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1587,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1590,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1601,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1615,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1629,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1632,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1643,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1657,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1662,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1671,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1685,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1690,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1699,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1713,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1718,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1727,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1741,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1746,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1755,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1769,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1774,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1783,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1797,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1800,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1811,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1825,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1839,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1842,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1853,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1867,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1881,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1886,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1895,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1909,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1914,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1923,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1937,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1942,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1942,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1951,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1965,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1979,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 1993,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2007,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2012,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2021,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2035,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2049,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2063,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2077,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2091,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2105,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2119,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2133,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2147,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2150,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2161,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2175,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2189,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2203,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2208,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2217,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2231,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2245,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2259,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2273,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2287,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2290,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2301,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2315,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2329,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2332,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2343,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2357,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2371,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2376,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2385,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2399,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2402,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2413,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2427,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2441,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2455,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2458,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2469,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2483,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2497,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2502,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2511,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2525,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2539,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2542,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2553,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2567,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2581,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2586,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2595,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2609,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2623,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2628,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2637,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2651,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2656,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2665,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2679,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2693,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2707,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2710,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2721,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2735,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2749,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2763,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2766,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2777,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2791,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2796,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2805,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2819,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2822,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2833,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2847,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2861,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2875,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2878,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2889,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2903,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2908,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2917,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2931,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2945,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2959,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2973,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2976,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 2987,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3001,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3015,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3020,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3029,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3043,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3046,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3057,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3071,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3085,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3099,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3113,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3127,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3141,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3155,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3169,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3183,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3197,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3202,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3219,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3241,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3263,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3277,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3291,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3296,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3305,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3319,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3333,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3336,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3347,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3361,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3375,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3389,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-2-room-log.json",
+      "line": 3394,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 39,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 61,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 79,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 105,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 165,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 195,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 248,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 274,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 311,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 342,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-content.md",
+      "line": 372,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-deploy-video-receipt.md",
+      "line": 85,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/lane-deploy-video-receipt.md",
+      "line": 88,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/try-it.md",
+      "line": 12,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "sample-client/adversarial/cross-project-data.md",
+      "line": 7,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "sample-client/adversarial/cross-project-data.md",
+      "line": 7,
+      "kind": "private-project-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "sample-projects/old-shop/",
+      "line": 0,
+      "kind": "embedded-repository-gitlink-risk",
+      "view": "worktree"
+    },
+    {
+      "file": "scripts/lead_sessions.py",
+      "line": 38,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "scripts/prepare-block1-reports.py",
+      "line": 24,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "scripts/security/publication_review.py",
+      "line": 16,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "scripts/security/publication_review.py",
+      "line": 17,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "scripts/security/publication_review.py",
+      "line": 18,
+      "kind": "private-project-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "specs/lane-content.md",
+      "line": 3,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "specs/lane-content.md",
+      "line": 17,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "spikes/desk/archive_sessions.py",
+      "line": 9,
+      "kind": "runtime-uuid-or-identity",
+      "view": "worktree"
+    },
+    {
+      "file": "spikes/desk/archive_sessions.py",
+      "line": 16,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "spikes/desk/claude_usage.py",
+      "line": 9,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "spikes/desk/seal-codex.mjs",
+      "line": 7,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "spikes/finish_report.py",
+      "line": 105,
+      "kind": "personal-absolute-path",
+      "view": "worktree"
+    },
+    {
+      "file": "tests/adversarial/audit.test.ts",
+      "line": 10,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "tests/adversarial/audit.test.ts",
+      "line": 10,
+      "kind": "private-project-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "tests/adversarial/audit.ts",
+      "line": 12,
+      "kind": "private-project-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "AGENTS.md",
+      "line": 8,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "AGENTS.md",
+      "line": 8,
+      "kind": "private-project-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "docs/PLAN.md",
+      "line": 85,
+      "kind": "private-agency-reference",
+      "view": "worktree"
+    },
+    {
+      "file": "AGENTS.md",
+      "line": 8,
+      "kind": "private-agency-reference",
+      "view": "index"
+    },
+    {
+      "file": "AGENTS.md",
+      "line": 8,
+      "kind": "private-project-reference",
+      "view": "index"
+    },
+    {
+      "file": "docs/PLAN.md",
+      "line": 85,
+      "kind": "private-agency-reference",
+      "view": "index"
+    },
+    {
+      "file": "rehearsal/bakery/fresh-demo-desktop.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "embedded-worktree"
+    },
+    {
+      "file": "rehearsal/bakery/fresh-demo-phone.png",
+      "line": 0,
+      "kind": "binary-or-generated-file",
+      "view": "embedded-worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1583,
+      "kind": "credential-shaped-private-store-identifier",
+      "view": "worktree"
+    },
+    {
+      "file": "reports/block-0-evidence.txt",
+      "line": 1584,
+      "kind": "credential-shaped-private-store-identifier",
+      "view": "worktree"
+    }
+  ]
+}
