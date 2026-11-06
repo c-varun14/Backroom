@@ -24,12 +24,17 @@ if(import.meta.main){
   try{
    const page=await browser.newPage({viewport:{width:1280,height:1100}});await page.goto(server.url.href);
    await page.getByLabel("Quantity — Seed loaf",{exact:true}).waitFor();
+   const logo=page.getByAltText("Morrowcrumb Bakery — sunrise over a loaf of bread");
+   await logo.waitFor();
+   await logo.evaluate(async(image:HTMLImageElement)=>{await image.decode();if(!image.naturalWidth)throw new Error("Logo did not load");});
    const count=await page.locator('#pickup option:enabled').count();
    if(count<1||!await page.locator('#pickup').inputValue()||await page.getByRole('button',{name:'Confirm pre-order',exact:true}).isDisabled())throw new Error("Fresh form has no selectable pickup");
    await page.screenshot({path:resolve(import.meta.dir,"fresh-demo-desktop.png"),fullPage:true});
    await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(import.meta.dir,"fresh-demo-phone.png"),fullPage:true});
+   const bounds=await logo.boundingBox();if(!bounds||bounds.width>300||bounds.height>100||bounds.x<0||bounds.x+bounds.width>390)throw new Error("Phone logo does not fit");
    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);if(overflow)throw new Error("Phone overflow");
    console.log(`Fresh browser: ${count} selectable slots, non-empty selection, confirmation enabled; desktop/phone screenshots captured`);
+   console.log(`Logo loaded with alt text; phone size ${bounds.width} × ${bounds.height}; no horizontal overflow`);
   }finally{await browser.close();server.stop(true);app.close();}
  }else{
   const close=()=>{server.stop(true);app.close();process.exit(0)};process.on('SIGINT',close);process.on('SIGTERM',close);
