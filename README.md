@@ -50,7 +50,7 @@ Questions preserve the stage. Suggestions create a version. Scope changes reopen
 - **Packages through Gateway:** operator-mediated attachment after exact-version simulated owner promotion. [Block2](reports/block-2.md).
 - **Native tool approval:** one real request and verified-owner decline was observed; visual rendering/reliability were not established. It does not replace desk's release gate. [Block0](reports/block-0.md).
 
-The [template](switch/backroom.template.yaml) is pinned to server/controller0.31.0 and Console0.40.1 and statically validated; it has **not been imported**. Template provisioning, room groups as a product dependency and a reference-library feature are not claimed as demonstrated merely because YAML or a probe mentions them. [Validation details](switch/README.md).
+The [template](switch/backroom.template.yaml) is pinned to server/controller0.31.0 and Console0.40.1 and statically validated. Its corrected private-room scaffolding was imported into a fresh disposable 0.31.0 stack and checked, then removed. Human membership requires separate setup: unbridged v1 templates cannot attach human users. [Import evidence](reports/submission-pack.md#job-5--disposable-import-follow-up). Room groups as a workflow dependency and a reference-library feature remain unproven. [Validation details](switch/README.md).
 
 ## What lives outside Switch
 

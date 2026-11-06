@@ -56,4 +56,4 @@ Give someone who has not seen the project 60 seconds of the finished video, 60 s
 | Real client account cannot see studio | not done | Separate-owner protocol checks are documented in [Block0](../../reports/block-0.md); real Discord visibility [CONFIRM AFTER REAL RUN]. |
 | Product video listened to and exact artifact approved | not done | Technical QC exists, human listening absent; human decisions [CONFIRM AFTER REAL RUN]. [Block2](../../reports/block-2.md). |
 | Older-project hosted fix PR | not done | Only local branch and [PR description](../../sample-projects/old-shop/PR.md) exist. No push or remote creation authorized by this spec. |
-| Disposable template import | not done | Static template validation exists; optional job result is in [submission report](../../reports/submission-pack.md). |
+| Disposable template import | done | Corrected private-room scaffolding imported and verified, then disposable stack removed. Human membership and live workflow are separate. [Submission report](../../reports/submission-pack.md#job-5--disposable-import-follow-up). |

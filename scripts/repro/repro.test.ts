@@ -12,3 +12,7 @@ test("reject an active kickoff or unsupported v1 bridge override",()=>{
  expect(()=>validateTemplate(source+'kickoff: run now\n',pins)).toThrow();
  expect(()=>validateTemplate(source.replace('    read_visibility: private','    internal_only: true\n    read_visibility: private'),pins)).toThrow();
 });
+
+test("reject human users in unbridged v1 room scaffolding",()=>{
+ expect(()=>validateTemplate(source.replace("    agents: ['{desk}']", "    agents: ['{desk}']\n    users: ['Sample client']"),pins)).toThrow();
+});

@@ -1,5 +1,7 @@
 # Tested Switch server 0.31.0; Console 0.40.1; template language version 1.
-# Reproduction manifest only; no kickoff, agent creation or releases.
+# Reproduction room scaffolding only; no kickoff, agent creation or releases.
+# Native v1 user parameters require a messaging bridge and cannot be used here.
+# Human client membership is NOT provisioned; configure and verify separately.
 # Use ONLY a fresh Switch instance with NO default bridge. Version 1 room
 # templates inherit the server default bridge when bridge is omitted.
 # Do not import on an existing bridged server. See docs/LIVE-SETUP.md.
@@ -23,12 +25,6 @@ params:
   reviewer:
     type: agent
     label: Initial reviewer slot (fresh identity per review, owner B)
-  owner:
-    type: user
-    label: SIMULATION owner
-  client:
-    type: user
-    label: SIMULATION client
   client_room:
     type: string
     default: client-rehearsal
@@ -45,11 +41,9 @@ rooms:
     read_visibility: private
     write_visibility: private
     agents: ['{desk}']
-    users: ['{owner}', '{client}']
   - name: '{studio_room}'
     description: SIMULATION owner and studio agents; no client membership.
     channel_type: channel_private
     read_visibility: private
     write_visibility: private
     agents: ['{desk}', '{lead}', '{builder}', '{reviewer}']
-    users: ['{owner}']
