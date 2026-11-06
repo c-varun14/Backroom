@@ -83,7 +83,7 @@ export function createApp(options:{database:string;ownerPassword:string;now?:()=
    }
    if(path==="/api/orders"&&request.method==="POST") {
     const origin=request.headers.get("origin");
-    if(origin && origin!==u.origin)return json({error:"Cross-origin order rejected"},403);
+    if(origin && origin!==(process.env.PUBLIC_ORIGIN??u.origin))return json({error:"Cross-origin order rejected"},403);
     if(!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))return json({error:"JSON content type required"},415);
     let raw:any;
     try {const text=await request.text();if(text.length>4096)return json({error:"Request too large"},413);raw=JSON.parse(text);}catch{return json({error:"Invalid JSON"},400);}
