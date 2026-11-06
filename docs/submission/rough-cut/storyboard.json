@@ -1,0 +1,211 @@
+[
+  {
+    "id": "opening",
+    "start": 0,
+    "end": 10,
+    "stage": "OPENING",
+    "title": "At eleven at night…",
+    "subtitle": "Varun’s opening goes here",
+    "body": "<div class=\"opening\"><div class=\"camera\">00:00 — 00:10</div><h2>CAMERA + ORIGINAL AUDIO<br>PLACEHOLDER</h2><p>I run a small software agency. At eleven at night, another client document can contradict the first. I wanted to stop carrying every change between people and agents.</p></div>",
+    "source": "video-script.md · opening reserved for Varun",
+    "replace": "Record Varun speaking the opening, with original camera and audio."
+  },
+  {
+    "id": "overview",
+    "start": 10,
+    "end": 20,
+    "stage": "BACKROOM",
+    "title": "One client conversation. A whole studio behind it.",
+    "subtitle": "Switch carries the work between rooms",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">CLIENT ROOM · SUMMARY</div><h2>Client ↔ desk</h2><p>One point of contact.<br>Only approved content leaves the studio.</p><div class=\"chip\">Fictional bakery client</div></article><article><div class=\"tag\">SWITCH STUDIO · SUMMARY</div><h2>Owner → lead → builder → reviewer</h2><p>Brief → architecture → build → review.<br>The owner keeps release decisions.</p><div class=\"chip\">Separate rooms · exact-version gates</div></article></div>",
+    "source": "docs/PLAN.md · reports/block-2.md · diagram, not a room capture",
+    "replace": "Capture the real client/studio split-screen and mention handoff."
+  },
+  {
+    "id": "payoff",
+    "start": 20,
+    "end": 30,
+    "stage": "PRODUCT PAYOFF",
+    "title": "A working bakery pre-order",
+    "subtitle": "Existing native rehearsal footage",
+    "native": 21,
+    "source": "Existing bakery product video · isolated fictional order · original speed",
+    "replace": "Capture the real-run bakery with the revised product and saved order before 0:30."
+  },
+  {
+    "id": "revision-native",
+    "start": 30,
+    "end": 39,
+    "stage": "1 / BRIEF → 4 / CLIENT REVIEW",
+    "title": "A revision reopens the decisions it affects.",
+    "subtitle": "Native Switch rehearsal · heading change",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">CLIENT REQUEST · SUMMARY</div><h2>Change the confirmation heading</h2><p>The completed native rehearsal changed the confirmation heading.</p><div class=\"chip\">Brief v4 · replacement document</div></article><article><div class=\"tag\">AFFECTED APPROVALS</div><h2>Reopened</h2><p>A new version needs new decisions.<br>Earlier acceptance cannot release the changed work.</p><div class=\"chip\">Rehearsal deployment 2825b61fa63f</div></article></div>",
+    "source": "receipt/public-events.json · reports/block-2.md · generated summary",
+    "replace": "Capture the actual client revision, old brief, new brief, and later approvals reopening."
+  },
+  {
+    "id": "revision-hand",
+    "start": 39,
+    "end": 50,
+    "stage": "1 / BRIEF · SEPARATE HAND REHEARSAL",
+    "title": "A separate rehearsal changed pickup sessions.",
+    "subtitle": "These are two different runs",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">HAND BRIEF v1</div><h2>Morning only</h2><p>09:00–11:00<br>40 menu units per pickup date.</p><div class=\"chip\">Question → same version stays open</div></article><article><div class=\"tag\">HAND BRIEF v2</div><h2>Morning + evening</h2><p>09:00–11:00 · 24 units<br>16:00–18:00 · 16 units</p><div class=\"chip\">Suggestion → new version + reopened gates</div></article></div>",
+    "source": "rehearsal/brief-v1.md · rehearsal/brief-v2.md · generated summary",
+    "replace": "Use the real-run revision only. Remove this separate comparison if its scope differs."
+  },
+  {
+    "id": "architecture-question",
+    "start": 50,
+    "end": 60,
+    "stage": "2 / ARCHITECTURE",
+    "title": "A question leaves the stage open.",
+    "subtitle": "Owner decision · exact document version",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">QUESTION</div><h2>Discuss the architecture</h2><p>The question does not approve the document.<br>The current version stays current.</p><div class=\"chip\">Awaiting owner decision</div></article><article><div class=\"tag\">CHANGE</div><h2>Publish a replacement</h2><p>A change creates a new target.<br>The previous approval no longer applies.</p><div class=\"chip\">New document · new approval code</div></article></div>",
+    "source": "receipt/public-events.json · Architecture event · generated summary",
+    "replace": "Capture the architecture question and unchanged version in Switch."
+  },
+  {
+    "id": "architecture-stale",
+    "start": 60,
+    "end": 70,
+    "stage": "2 / ARCHITECTURE",
+    "title": "An old code cannot release a replacement.",
+    "subtitle": "Native rehearsal state summary",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">OLD TARGET</div><h2>Rejected</h2><p>The superseded approval code was rejected.</p><div class=\"result rejected\">STALE APPROVAL</div></article><article><div class=\"tag\">CURRENT TARGET</div><h2>Architecture v5</h2><p>Owner approval refers to this identified document.</p><div class=\"result\">EXACT VERSION</div></article></div>",
+    "source": "receipt/public-events.json · Architecture v5 · generated summary",
+    "replace": "Capture old-code rejection and valid approval without skipping the version transition."
+  },
+  {
+    "id": "handoff",
+    "start": 70,
+    "end": 80,
+    "stage": "3 / BUILD + REVIEW",
+    "title": "The handoff runs through Switch.",
+    "subtitle": "Brief → spec → build → independent review",
+    "body": "<div class=\"rail\"><span>lead</span><b>→</b><span>builder</span><b>→</b><span>reviewer</span></div><div class=\"grid\"><article><div class=\"tag\">BUILD</div><h2>A mentioned handoff</h2><p>The approved specification reaches the builder through the room.</p></article><article><div class=\"tag\">REVIEW</div><h2>Corrections return to the build</h2><p>Review findings have a specific round and commit.</p></article></div>",
+    "source": "reports/block-2.md · generated handoff diagram",
+    "replace": "Capture actual lead/builder/reviewer mentions and the returned review round."
+  },
+  {
+    "id": "review",
+    "start": 80,
+    "end": 90,
+    "stage": "3 / BUILD + REVIEW",
+    "title": "Review required corrections.",
+    "subtitle": "The final fresh review was bounded to F1",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">REVIEW 3</div><h2>F1 correction required</h2><p>The earlier candidate did not complete this review round.</p><div class=\"result rejected\">RETURN TO BUILDER</div></article><article><div class=\"tag\">FRESH REVIEW 4</div><h2>Recorded verdict: pass</h2><p>Accepted the recorded commit for the stated F1 finding.</p><code>2825b61fa63f42554f6c4f132ed1c0059b1b2c3b</code></article></div>",
+    "source": "reports/block-2.md · exact recorded verdict · no broader review claim",
+    "replace": "Capture all real-run failed reviews and final fresh verdict with the full SHA."
+  },
+  {
+    "id": "release",
+    "start": 90,
+    "end": 96,
+    "stage": "3 / RELEASE → 4 / CLIENT REVIEW",
+    "title": "Release the commit that was reviewed.",
+    "subtitle": "Owner release and client acceptance are separate",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">OWNER</div><h2>Approve delivery</h2><p>Release is bound to the reviewed deployment.</p><code>2825b61fa63f…</code></article><article><div class=\"tag\">CLIENT</div><h2>Accept that deployment</h2><p>The client decision names the delivered version.</p><div class=\"chip\">Native rehearsal · workflow v4</div></article></div>",
+    "source": "receipt/public-events.json · reports/block-2.md · generated summary",
+    "replace": "Capture exact-SHA deploy approval, deployment, delivery and client acceptance."
+  },
+  {
+    "id": "order",
+    "start": 96,
+    "end": 106,
+    "stage": "4 / WORKING PRODUCT",
+    "title": "Saved, with a visible receipt.",
+    "subtitle": "Existing real app recording · fictional order",
+    "native": 20.5,
+    "source": "Existing bakery video · saved order · original speed · not a new deploy test",
+    "replace": "Record the real-run order, receipt reopen, and persistence proof."
+  },
+  {
+    "id": "product-proof",
+    "start": 106,
+    "end": 110,
+    "stage": "4 / CLIENT REVIEW",
+    "title": "A health response is only the beginning.",
+    "subtitle": "Check the product behaviour",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">OBSERVABLE RESULT</div><h2>Order + private receipt</h2><p>The rehearsal checked a real saved pre-order and receipt reopen.</p></article><article><div class=\"tag\">APPROVAL</div><h2>Exact deployment accepted</h2><p>Owner/client approvals in this cut are simulated.</p></article></div>",
+    "source": "reports/block-2.md · generated summary of existing checks",
+    "replace": "Capture client acceptance of the exact delivered deployment."
+  },
+  {
+    "id": "blocked-send",
+    "start": 110,
+    "end": 121,
+    "stage": "GATE / VERIFIED SENDER",
+    "title": "An agent’s send command was rejected.",
+    "subtitle": "Earlier live transport test · recorded evidence",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">TRANSPORT</div><h2>HTTP 200</h2><p>Switch accepted the agent-authored post.<br>This is not authorization to send.</p></article><article><div class=\"tag\">PLAIN-CODE desk</div><h2>Rejected: agent sender</h2><p>Client message count unchanged: true.</p><div class=\"result rejected\">NO CLIENT DELIVERY</div></article></div>",
+    "source": "reports/block-1.md · recorded probe result · generated evidence card",
+    "replace": "Capture an agent-authored send rejection and unchanged client message count."
+  },
+  {
+    "id": "video",
+    "start": 121,
+    "end": 135,
+    "stage": "5 / PRODUCT VIDEO",
+    "title": "The file has its own approval gate.",
+    "subtitle": "Owner approval → delivery → client acceptance",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">EXACT PRODUCT VIDEO</div><h2>36-second bakery walkthrough</h2><p>The approved file is identified by its SHA-256.</p><code>9a1629af384c2acbaf18ec3f28990389d20776f2595a98f4236d9308c1a2f6a0</code></article><article><div class=\"tag\">SEPARATE DECISIONS</div><h2>Owner, then client</h2><p>The rehearsal released an attachment and accepted the exact file.<br>Human listening / ASR were not performed.</p><div class=\"chip\">SIMULATION native accounts</div></article></div>",
+    "source": "reports/block-2.md · receipt/public-events.json · generated summary",
+    "replace": "Capture video request, exact file hash, owner release, delivered attachment, and client acceptance."
+  },
+  {
+    "id": "prices",
+    "start": 135,
+    "end": 145,
+    "stage": "6 / MEMORY → ARCHITECTURE",
+    "title": "A lesson changes the next design.",
+    "subtitle": "server-owned-prices · v1 · SAMPLE fixture",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">ARCHITECTURE CITATION</div><h2>Prices belong on the server</h2><p>Integer paise in the catalog.<br>Browser-supplied prices are not authoritative.</p><div class=\"chip\">rehearsal architecture v1 + v2</div></article><article><div class=\"tag\">CHECK EVIDENCE</div><h2>Trusted totals</h2><p>The hand-rehearsal report records forged-price validation and a trusted ₹360.00 UI total.</p><div class=\"chip\">Existing report · not rerun for this cut</div></article></div>",
+    "source": "rehearsal/architecture-v1.md · reports/lane-stages-rehearsal.md",
+    "replace": "Capture the cited lesson and the real forged-price check with its exact result."
+  },
+  {
+    "id": "privacy",
+    "start": 145,
+    "end": 155,
+    "stage": "6 / LESSON PROMOTION",
+    "title": "Promote a reviewed lesson, then share it.",
+    "subtitle": "private-order-lists · v1",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">OWNER PROMOTION</div><h2>Exact proposal hash</h2><p>The native rehearsal approved the privacy lesson.</p><code>6c3b14eafe6c1702a88815f8ffc2b8a555b75f46d5f69550598967ae51340f12</code></article><article><div class=\"tag\">SWITCH PACKAGE</div><h2>Attached through the Gateway</h2><p>Operator-mediated package attachment made the lesson available to the room.</p><div class=\"chip\">Simulated owner approval</div></article></div>",
+    "source": "reports/block-2.md · studio-memory/architecture/private-order-lists.md",
+    "replace": "Capture the new human lesson approval and Gateway package attachment."
+  },
+  {
+    "id": "backward-fix",
+    "start": 155,
+    "end": 165,
+    "stage": "6 / BACKWARD FIX",
+    "title": "The earlier sample shop gets a local fix.",
+    "subtitle": "Separate authorization · local branch and PR description",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">PRIVACY-ONLY CHANGE</div><h2>Remove public order listing</h2><p><div class=\"diff\">− GET /api/orders → all contacts<br>+ GET /api/orders → 404</div>POST behaviour remains in scope as before.</p></article><article><div class=\"tag\">LOCAL ARTIFACT</div><h2>fix/private-order-lists</h2><p>Fix: 1c5331d0747c…<br>No hosted pull request was opened.<br>No independent review/deploy claimed.</p><div class=\"chip\">Earlier price flaw remains outside this fix</div></article></div>",
+    "source": "sample-projects/old-shop/PR.md · reports/block-2.md · summary diff",
+    "replace": "Capture separately authorized older-project fix, actual diff, and local PR description. Claim a hosted PR only if opened later."
+  },
+  {
+    "id": "receipt",
+    "start": 165,
+    "end": 171,
+    "stage": "PUBLIC RECEIPT",
+    "title": "What was tested. What still needs a real run.",
+    "subtitle": "Self-contained rehearsal receipt",
+    "receipt": true,
+    "source": "receipt/public.html · actual rendered page",
+    "replace": "Rebuild and capture the scrubbed receipt after the real run."
+  },
+  {
+    "id": "outro",
+    "start": 171,
+    "end": 178,
+    "stage": "BACKROOM",
+    "title": "The owner decides. Switch carries the handoffs.",
+    "subtitle": "A local demo with explicit limits",
+    "body": "<div class=\"grid\"><article><div class=\"tag\">OWNER CONTROL</div><h2>Exact-version decisions</h2><p>One client conversation.<br>Versioned handoffs.<br>Reviewed lessons.</p><div class=\"chip\">Fictional client · Varun plays both people</div></article><article><div class=\"tag\">CURRENT LIMIT</div><h2>Same-machine agents</h2><p>This local demo is not a strong sandbox.<br>The receipt separates rehearsal evidence from the remaining real-run checks.</p><div class=\"chip\">Real Discord decisions still need recording</div></article></div>",
+    "source": "docs/submission/video-script.md · receipt/public.html",
+    "replace": "Replace the summary with final real client/owner split-screen; retain local-demo and sandbox limits."
+  }
+]
