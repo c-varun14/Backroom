@@ -289,3 +289,10 @@ Model note: Luna handled contained tasks well, but stopped early twice on cross-
 **Not proven:** a press from a real client account, the Start a project button, an owner press inside a forum post, the GitHub layer against real GitHub, and `NixDeployer` run by desk. The deploys used a manual relay through the laptop.
 
 **Needs Varun:** allow pushing to private WebbyWasp repos, allow the dev server to reach the deployment server, apply the AGENTS.md rule change, approve lessons, and log in on `backroom-dev`.
+
+## Go-live update (Nov 7)
+
+The owner ran `scripts/go-live-setup.sh`. `app-base`, `fleet` and `studio-lessons` are private `WebbyWasp` repos, and `backroom-dev` can now reach the deployment server. GitHub now records agreed work only: a Phase gets a milestone with one issue, and a client's request creates nothing until it reaches a build. The Discord test channels and roles were removed before the real run.
+
+Still not proven: the items listed under **Not proven** above. No real-account journey has run yet.
+

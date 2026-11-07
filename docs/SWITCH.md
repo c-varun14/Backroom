@@ -26,9 +26,21 @@ After Switch restarts, the same handoff path succeeds. The client's message coun
 | Clients are walled off | A second client's agents and login get real refusals on the first client's rooms and documents, and its lesson arrives only as an approved package | `bash demo.sh` records each refusal: HTTP 403 on rooms, and Switch's `Documents not attached to room` error on documents, while the same call succeeds on the shared lesson |
 | Approved memory crosses projects | A cited price lesson shapes the build; an approved privacy lesson enters a Gateway package and drives an older-shop fix | Pending/derived text cannot self-authorize promotion in offline checks; live poisoned-package rejection is **not proven**. Backward result is a local branch/PR description, not a hosted PR. , , [adversarial checklist](../tests/adversarial/checklist.md) |
 
+## Switch carries the client conversation
+
+Clients live in Discord, and Switch's Discord bridge is how their words reach the studio.
+
+- **Each project's forum is bridged to a Switch room.** A client's post reaches `desk` as a verified Switch event, and every reply goes back the same way. With Switch off, nothing moves.
+- **Follow-ups stay in their post.** Backroom plants an anchor message so Switch maps the post, and later messages in that post become one Switch thread.
+- **The door is a thin input layer, not a second path.** Discord buttons, forms, tags and typing indicators need Discord's own gateway, so a small plain-code process called the door handles them. It decides nothing. It turns a press into an HMAC-signed `door1` message that travels through Switch to `desk`, which verifies the signature, the project and the sender before anything changes.
+- **Agents never touch Discord.** `front`, `lead`, `builder` and `reviewer` work in private Switch rooms. Client words reach them as data, and only checked text reaches the client.
+- **New projects are made through Switch.** Pressing Start a project creates the rooms, agents, documents and memory package through Switch's Gateway.
+
 ## Features used
 
 - **Agent protocol:** plain-code desk receives messages/files and posts controlled outputs.
+- **Discord bridge:** one private forum per project and a private owner forum, with posts mapped to Switch threads.
+- **Rooms per project:** a client room, a private work room and a shared studio room, with agent identities that cannot reach the client room.
 - **Attachments and room documents:** exact bytes/hash forwarding, persistent source/brief/review documents and frozen outgoing files.
 - **Mentions and addressing:** provider handoff and private-studio routing; participation policy is not a release approval.
 - **read_context:** working-room context/reply checks after a scoped lead restart.

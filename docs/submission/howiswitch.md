@@ -2,20 +2,18 @@
 
 ## Short post
 
-I built Backroom on Switch for a fictional bakery: brief, build, review, video and lessons, with exact-version release gates. Rehearsal approvals were simulated. I play both people. Real Discord run: [CONFIRM AFTER REAL RUN]. #HowISwitch
+I built Backroom on Switch: a client talks to a team in Discord, and real agents find the conflicts, build, independently review and ship a live app. I only press the buttons that bind the business. Fictional client, real agents. #HowISwitch
 
 ## Longer post
 
-I run a small agency. Moving changed requirements between people and agents takes attention I want to spend on decisions.
+I run a small agency, and moving changing requirements between people and agents takes attention I want to spend on decisions.
 
-Backroom uses Switch rooms, documents, mentions and approved memory packages to carry that work. Plain-code desk checks the owner identity and exact content before release.
+Backroom gives each client a private Discord forum, bridged through Switch to agents they never have to think about. Rooms are the wall between clients. Verified identity is the release gate. Approved lessons travel to the next project as packages.
 
-The tests changed the design. Shared admin ownership let an agent enter the client room. A stale reply could attach to a newer request. The reports show the failures and the narrower checks that followed.
+In rehearsal, agents took two conflicting documents to a live app on NixOS, and a fresh reviewer caught bugs the builder missed. Turn Switch off and nothing moves.
 
-The bakery is fictional. I play both people. Rehearsal approvals were simulated. Deployment is local. The older-project result is a local fix branch and PR description, not a hosted PR. Same-machine agents are not a strong sandbox.
-
-Real Discord intake, owner release and client acceptance: [CONFIRM AFTER REAL RUN].
+The client is fictional, and rehearsal presses were labelled sample actions. [CONFIRM AFTER REAL RUN: add the real-account result.]
 
 #HowISwitch
 
-Evidence: [README](../../README.md), [rehearsal](../../reports/block-2.md), [receipt](../../receipt/public.html). Add public links only after checking signed-out access.
+[Code](https://github.com/c-varun14/Backroom) · [Live app](https://base-demo.98-91-25-101.sslip.io/request-a-quote) · [Proof page](https://98-91-25-101.sslip.io/proof/)

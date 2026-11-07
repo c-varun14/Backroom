@@ -6,8 +6,8 @@ Status reflects repository evidence, not a completed submission. “Varun only�
 
 | Item | Status | Evidence / remaining work |
 | --- | --- | --- |
-| Repository | not done | Local source exists; no public repository or signed-out access established here. [Publication steps](../PUBLICATION.md). |
-| Demo video | not done | [2:55 script](video-script.md) exists; final submission recording/export/upload still needed. The rehearsal product walkthrough is a different artifact: [report](../../reports/block-2.md). |
+| Repository | done | [Public repository](https://github.com/c-varun14/Backroom). Check signed-out access before submitting. |
+| Demo video | not done | [2:55 script](video-script.md) is written for the client-studio story; recording needs the real run. |
 | README | done | [README](../../README.md) explains result, reproduction, Switch dependencies and limits. |
 | Registration and any required star/Discord join | Varun only | Approved plan assigns these personal actions to Varun. Completion is not evidenced. |
 | Submit through the event form | Varun only | Repo, video and README links must be checked before Varun submits. No bot entry. |
@@ -36,7 +36,7 @@ Give someone who has not seen the project 60 seconds of the finished video, 60 s
 | Payoff by 0:30; no setup footage before it | not done | Planned at 0:10–0:30 in [script](video-script.md); verify final edit. |
 | Every rubric line has a timestamp or evidence link | not done | Planned Switch/technical evidence 0:30–2:15; memory/impact 2:15–2:45; presentation 0:00–0:30. Replace with final video timestamps. [README evidence](../../README.md). |
 | README first five lines are result-first and include a GIF above the fold | done | [README](../../README.md) leads with the result, then a 10-second simulated-rehearsal GIF. [Media evidence](../../reports/submission-pack.md#readme-gif-and-bakery-logo-follow-up). |
-| Signed-out live link works with no login for the core result | not done | Receipt opens locally without accounts. Public hosting/access is not established. [Receipt](../../receipt/public.html). |
+| Signed-out live link works with no login for the core result | done | [Live app](https://base-demo.98-91-25-101.sslip.io/request-a-quote), [bakery](https://98-91-25-101.sslip.io/) and [proof page](https://98-91-25-101.sslip.io/proof/) return 200. |
 | Numbers have fair baselines and stated methods | not done | No invented gains in drafts. [Rehearsal timing limits](../../reports/lane-stages-rehearsal.md); audit final video and public copy. |
 | Clear first screen; specific limitations at bottom | done | [README](../../README.md) starts with the result and ends with specific limits. Keep the simulated-approval disclosure visible. |
 | Side prizes: blog, bounties and categories entered | Varun only | [Blog](blog.md), [#HowISwitch](howiswitch.md) are drafts. Submission comes first; plan skips other tracks. No entry claimed. |
@@ -51,7 +51,7 @@ Give someone who has not seen the project 60 seconds of the finished video, 60 s
 | Public six-stage receipt | done | [HTML](../../receipt/public.html), [structured events](../../receipt/public-events.json); simulated approvals labelled; desktop/phone checked in [submission report](../../reports/submission-pack.md). |
 | No-account reproduction evidence | done | Recorded commands/results in [reproduction report](../../reports/lane-repro.md). Historical failure and later results must be read separately; this task did not rerun the suite. |
 | Fresh live reproduction with own accounts | not done | [LIVE-SETUP](../LIVE-SETUP.md); real Discord intake/release/acceptance [CONFIRM AFTER REAL RUN]. |
-| Publication scan and final secret review | not done | Receipt files have no scanner findings; repository-wide findings remain. See [submission report](../../reports/submission-pack.md) and [publication guide](../PUBLICATION.md). |
+| Publication scan and final secret review | done | Every object pushed on Nov 7 was scanned: no private names or personal paths, and the only secret-pattern hits are the scanners' own patterns. Rerun before any further push. |
 | Code/security review evidence | done | Existing [security review](../../reports/security-review.md) and bounded fresh review in [Block2](../../reports/block-2.md). Not a new final all-source review. |
 | Real client account cannot see studio | not done | Separate-owner protocol checks are documented in [Block0](../../reports/block-0.md); real Discord visibility [CONFIRM AFTER REAL RUN]. |
 | Product video listened to and exact artifact approved | not done | Technical QC exists, human listening absent; human decisions [CONFIRM AFTER REAL RUN]. [Block2](../../reports/block-2.md). |
