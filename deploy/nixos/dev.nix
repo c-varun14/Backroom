@@ -13,7 +13,7 @@ let
     wants = [ "backroom-switch.service" ] ++ after;
     unitConfig.ConditionPathExists = [ "/var/lib/backroom-agent/${name}/controller.db" "/srv/backroom/.switch-runtime/studio-move-ready" ];
     environment = {
-      PATH = servicePath; HOME = "/var/lib/backroom-agent";
+      PATH = lib.mkForce servicePath; HOME = "/var/lib/backroom-agent";
       BROWSER_PATH = "${pkgs.chromium}/bin/chromium";
       # review-env detects Docker by PATH. This wrapper forces its local backend.
       BACKROOM_REVIEW_BACKEND = "local";
@@ -114,7 +114,7 @@ in {
     after = [ "backroom-controller-lead.service" "backroom-controller-build.service" ];
     wants = [ "backroom-controller-lead.service" "backroom-controller-build.service" ];
     unitConfig.ConditionPathExists = "/srv/backroom/.switch-runtime/studio-move-ready";
-    environment = { PATH = "/opt/backroom/studio-bin:" + servicePath; HOME = "/home/studio"; BACKROOM_SUPERVISED = "1"; };
+    environment = { PATH = lib.mkForce ("/opt/backroom/studio-bin:" + servicePath); HOME = "/home/studio"; BACKROOM_SUPERVISED = "1"; };
     serviceConfig = {
       User = "studio"; Group = "backroom"; UMask = "0007";
       WorkingDirectory = "/srv/backroom";

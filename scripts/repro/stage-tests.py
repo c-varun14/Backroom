@@ -16,5 +16,5 @@ for name in roots:
    target=dest/name/rel;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
 
 # Read-only bot diagnostics are tested offline with injected HTTP responses.
-for name in ['scripts/discord_status.py','scripts/new_project.py','scripts/studio_move.py','scripts/studio-move.sh','scripts/studio_supervise.py','scripts/studio-supervise.sh','scripts/run-door.sh','scripts/run-desk.sh','scripts/studio-verify.py','scripts/studio-ssh.py','scripts/studio-install-tools.sh','scripts/studio-switch-watch.sh','studio-kit/stacks/better-t-stack.json','studio-kit/stacks/bun-sqlite.json']:
+for name in ['scripts/discord_status.py','scripts/new_project.py','scripts/studio_move.py','scripts/studio-move.sh','scripts/studio_supervise.py','scripts/studio-supervise.sh','scripts/run-door.sh','scripts/run-desk.sh','scripts/studio-up.sh','scripts/studio-verify.py','scripts/studio-ssh.py','scripts/studio-install-tools.sh','scripts/studio-switch-watch.sh','studio-kit/stacks/better-t-stack.json','studio-kit/stacks/bun-sqlite.json']:
  target=dest/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source/name,target)

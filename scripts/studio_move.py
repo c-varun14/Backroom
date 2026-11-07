@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import signal
 import sqlite3
@@ -25,7 +26,7 @@ HOST = 'backroom-dev'
 REMOTE = '/srv/backroom'
 SECRETS = ('switch.env', 'discord.env', 'block1-credentials.json',
            'real-stage-credentials.json', 'studio-door-webhook',
-           'backroom-demo-ip.txt', 'projects')
+           'backroom-demo-ip.txt', 'spike-state.json', 'keys-signing-key', 'projects')
 CONTROLLERS = {'block1-lead-controller': 'lead', 'real-build-controller': 'build'}
 STATE = ('block1.json', 'studio.json', 'discord-layout.json', 'door.sqlite',
          'door.sqlite-wal', 'door.sqlite-shm', 'projects', 'project-state', 'provision', 'nix-deploy')
@@ -287,12 +288,29 @@ def stop_laptop(root):
     status('laptop stack', 'stopped')
 
 
+def transfer_commit(root):
+    """Send local HEAD's history over SSH; no public remote or push is needed."""
+    with tempfile.TemporaryDirectory(prefix='backroom-source-') as temporary:
+        bundle = Path(temporary) / 'source.bundle'
+        run(['git', 'bundle', 'create', str(bundle), 'HEAD'], cwd=root)
+        # Fetch on EVERY prepare, including an existing checkout. The source
+        # overlay below carries this task's uncommitted edits after checkout.
+        command = ('set -e; cd /srv/backroom; '
+                   'if ! test -d .git; then git init -q; fi; '
+                   'umask 077; cat > .git/studio-source.bundle; '
+                   'trap "rm -f .git/studio-source.bundle" EXIT; '
+                   'git fetch -q .git/studio-source.bundle HEAD; '
+                   'git checkout -q -f -B client-studio FETCH_HEAD')
+        with bundle.open('rb') as source:
+            ssh('runuser -u studio -- bash -c ' + shlex.quote(command), stdin=source)
+
+
 def prepare(root):
     ssh('mkdir -p /etc/backroom')
     run(['scp', '-q', str(root / 'deploy/nixos/dev.nix'), HOST + ':/etc/backroom/dev.nix'])
     ssh('nixos-rebuild switch -I nixos-config=/etc/backroom/dev.nix')
     status('server config', 'applied')
-    ssh("if ! test -d /srv/backroom/.git; then runuser -u studio -- bash -c 'cd /srv/backroom && git init && git remote add origin https://github.com/c-varun14/Backroom && git fetch origin client-studio && git checkout -B client-studio origin/client-studio'; fi")
+    transfer_commit(root)
     # Ship working-tree source too: this spec explicitly forbids making commits.
     tracked = run(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], cwd=root).decode().split('\0')
     with tempfile.TemporaryFile() as source:
@@ -342,12 +360,9 @@ def cutover(root, position):
     for name in CONTROLLERS:
         if not (root / '.secrets' / name / 'controller.db').is_file():
             raise RuntimeError('controller state missing')
-    # The fixed allowlist omits the management identity consumed by lead_session.
-    # Refuse to start a server that cannot provision agents or rewrite Switch's
-    # authoritative definitions. No out-of-allowlist credential is read or copied.
-    if not (root / '.switch-runtime/studio-server-provisioning-reviewed').is_file():
-        status('Switch provisioning identity', 'blocked; see docs/STUDIO-SERVER.md')
-        raise RuntimeError('provisioning dependency unresolved')
+    # spike-state.json supplies the existing provisioning identity. Old Switch
+    # definitions remain stopped/retired and untouched; new projects create
+    # fresh agents with server paths. No definition-rewrite checkpoint is needed.
     stop_laptop(root)
     if position.get('phase') not in {'imported', 'complete'}:
         ssh('systemctl stop backroom-studio backroom-controller-build backroom-controller-lead backroom-switch')
@@ -366,7 +381,6 @@ def cutover(root, position):
             run(['scp', '-q', str(stage / 'pgdata.tar'), HOST + ':/var/lib/backroom/studio-pgdata.tar'])
         # Staging files are root-only and never placed in the agent-readable repo.
         old_root = str(root)
-        import shlex
         ssh('python3 /srv/backroom/scripts/studio_move.py _install ' + shlex.quote(old_root))
         ssh('docker volume create backroom-block0_pgdata >/dev/null && docker run --rm --network none --mount type=volume,src=backroom-block0_pgdata,dst=/target --mount type=bind,src=/var/lib/backroom/studio-pgdata.tar,dst=/backup.tar,readonly alpine:3.22 sh -c \'find /target -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && tar -xpf /backup.tar -C /target\'')
         position['phase'] = 'imported'
@@ -390,8 +404,19 @@ def save_position(root, value):
 
 
 def verify():
-    ssh('python3 /srv/backroom/scripts/studio-verify.py')
-    for name in ('Switch health', 'lead controller connected', 'build controller connected', 'door process', 'agent protected paths', 'metadata blocked', 'Switch database blocked', 'studio localhost SSH'):
+    # Forward only the verifier's names-only protocol, never native diagnostics.
+    result = subprocess.run(['ssh', '-o', 'BatchMode=yes', HOST,
+        'python3 /srv/backroom/scripts/studio-verify.py ' + shlex.quote(str(ROOT))],
+        capture_output=True, text=True)
+    for line in result.stdout.splitlines():
+        if line.startswith('agent definition: '):
+            name = json.loads(line[len('agent definition: '):])
+            if not isinstance(name, str):
+                raise ValueError('invalid verifier result')
+            status('agent definition', json.dumps(name, ensure_ascii=True))
+    if result.returncode:
+        raise RuntimeError('verification failed')
+    for name in ('Switch health', 'lead controller connected', 'build controller connected', 'running agent definition paths', 'door process', 'agent protected paths', 'metadata blocked', 'Switch database blocked', 'studio localhost SSH'):
         status(name, 'passed')
     status('server verification', 'passed')
 

@@ -8,6 +8,44 @@ import subprocess
 import sys
 import urllib.request
 
+# Switch 0.31.0 has running/stopped desired states, not a retired column.
+# Retired definitions stay stopped. Never update any definition in this check.
+LAPTOP_PATH_SQL = """SELECT to_json(a.name)::text
+    FROM agent_definitions d
+    JOIN agents a ON a.tenant_id = d.tenant_id AND a.id = d.agent_id
+    WHERE d.desired_state = 'running'
+      AND (strpos(CAST(d.definition AS TEXT), :'laptop_root') > 0
+           OR strpos(CAST(d.definition AS TEXT), :'laptop_home') > 0)
+    ORDER BY a.name;"""
+
+
+def definitions_with_laptop_paths(laptop_root, runner=subprocess.run):
+    if not laptop_root.startswith('/') or laptop_root == '/':
+        raise ValueError('laptop root required')
+    # Also catch laptop tool/skill paths outside the checkout. The Fedora
+    # laptop uses /home/<owner>; server /home/studio is a different identity.
+    parts = Path(laptop_root).parts
+    laptop_home = str(Path(*parts[:3])) + '/' if len(parts) > 3 and parts[1] == 'home' else laptop_root
+    args = ['docker', 'compose', '-p', 'backroom-block0', '--env-file', '/srv/backroom/.secrets/switch.env',
+            '-f', '/srv/backroom/.switch-runtime/compose.yml', '--profile', 'gateway',
+            'exec', '-T', 'postgres', 'sh', '-c',
+            'exec psql -X -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -v ON_ERROR_STOP=1 -v laptop_root="$1" -v laptop_home="$2"',
+            'sh', laptop_root, laptop_home]
+    result = runner(args, input=LAPTOP_PATH_SQL, capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError('definition check failed')
+    names = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+    if any(not isinstance(name, str) for name in names):
+        raise ValueError('invalid definition result')
+    return names
+
+
+def check_definition_paths(laptop_root, runner=subprocess.run):
+    names = definitions_with_laptop_paths(laptop_root, runner)
+    for name in names:
+        print('agent definition: ' + json.dumps(name, ensure_ascii=True), flush=True)
+    check('running agent definition paths', not names)
+
 
 def command(args):
     return subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
@@ -38,6 +76,8 @@ def controller_connected(controller_id, runner=subprocess.run):
 
 
 def main():
+    if len(sys.argv) != 2:
+        raise ValueError('laptop root required')
     check('root verifier', os.getuid() == 0)
     for name in ('backroom-switch', 'backroom-controller-lead', 'backroom-controller-build', 'backroom-studio'):
         check(name, command(['systemctl', 'is-active', '--quiet', name]))
@@ -45,10 +85,11 @@ def main():
         check('Switch health', response.status == 200)
     # The management API lists only its caller's controllers, even for an
     # administrator. Root checks the same socket ledger + live process lease
-    # as Switch's controller_state(), without needing the excluded owner login.
+    # as Switch's controller_state(), without a management login or mutation.
     config = json.loads(Path('/srv/backroom/.switch-runtime/block1.json').read_text())
     for key, name in [('controllerId', 'lead controller connected'), ('buildControllerId', 'build controller connected')]:
         check(name, controller_connected(config[key]))
+    check_definition_paths(sys.argv[1])
     # Check the actual descendant, not merely systemd's supervisor process.
     processes = []
     for entry in Path('/proc').iterdir():
