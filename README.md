@@ -17,7 +17,7 @@ The work around each project was the hard part. Every new project meant environm
 
 ## What it does
 
-A client starts a project in Discord with one button and posts their documents. An AI lead finds contradictions and asks about them, writes the brief, and writes a technical plan that only I see. A builder works on a branch. A separate reviewer, who never saw the builder's conversation, tests the running app and sends bugs back. The exact reviewed commit deploys on NixOS. Safe small changes ship themselves; anything touching login, payments, data or configuration waits for me.
+A client starts a project in Discord with one button and posts their documents. An AI lead finds contradictions and asks about them, writes the brief, and writes a technical plan that only I see. A builder works on a branch. A separate reviewer, who never saw the builder's conversation, tests the running app and sends bugs back. The exact reviewed commit deploys on NixOS. Small safe changes are built to ship themselves; anything touching login, payments, data or configuration waits for me.
 
 In a real run on real accounts, the lead caught two conflicts between client documents, including one nobody planted, and turned a one-line answer into the final brief. I am rolling Backroom out to production for a real client.
 
@@ -66,4 +66,4 @@ Verify the gates with `cd desk && bun test`, deployment boundaries with `bun tes
 
 ## Limits
 
-The filmed project, Cedar Studio, is a demo client. The account-free `demo.sh` uses scripted roles to prove the transport and gates. Environment keys are still added by a person, by design. Agents run on one server under a separate user, inside Codex's sandbox and systemd limits, not in a separate VM per agent. The narration in the video is AI-voiced.
+The filmed project, Cedar Studio, is a demo client. The zero-tap change path is covered by tests and has not yet run on real accounts. The account-free `demo.sh` uses scripted roles to prove the transport and gates. Environment keys are still added by a person, by design. Agents run on one server under a separate user, inside Codex's sandbox and systemd limits, not in a separate VM per agent. The narration in the video is AI-voiced.
