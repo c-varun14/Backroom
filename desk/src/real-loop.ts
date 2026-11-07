@@ -618,10 +618,16 @@ export class RealStagesLoop extends StagesLoop {
       const review=this.get("reviewer"),m=(this.real.clientSurface==='forum'?/^review ([1-9][0-9]*) ([a-f0-9]{40}) (pass|fail|blocked)(?:\n[\s\S]*)?$/:/^review ([1-9][0-9]*) ([a-f0-9]{40}) (pass|fail)(?:\n[\s\S]*)?$/).exec(body);
       if(state.stage==="build"&&review&&identity.agent_id===review.id&&m){
         if(Number(m[1])!==review.round||m[2]!==review.sha||m[2]!==this.get("candidate")){
-          if(this.github)return;
+          // A verdict on an older commit approves nothing. A builder can move on during a
+          // review, so ignore it rather than stop the loop.
+          if(this.real.clientSurface==='forum'){this.store.log('stale independent review ignored',undefined,this.real.projectId);return;}
           throw new Error("Stale independent review");
         }
-        if(review.sources!==await this.buildSources()||review.generation!==this.get("assignmentGeneration"))throw new Error("Stale independent review assignment");
+        if(review.sources!==await this.buildSources()||review.generation!==this.get("assignmentGeneration")){
+          // The sources moved under this review, so the current commit needs a fresh one.
+          if(this.real.clientSurface==='forum'){this.store.log('stale independent review assignment ignored',undefined,this.real.projectId);await this.candidate(this.get('candidate'));return;}
+          throw new Error("Stale independent review assignment");
+        }
         if(m[3]==='blocked'){
           if(this.real.clientSurface!=='forum')return;
           if(this.get('reviewResultRound')===review.round||this.get('reviewVerdict')==='blocked')return;

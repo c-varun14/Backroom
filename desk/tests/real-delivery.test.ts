@@ -332,9 +332,12 @@ test('a changed plan-owner clarification makes an in-flight and a passing review
  const result=()=>f.event('reviewer-1',`review 1 ${'b'.repeat(40)} pass\nAC-1: PASS - independently saved the form`);
  const original=f.loop.get('approvedClarifications');
  (f.loop as any).set('approvedClarifications',[{...original[0],answer:'Include the shared API type as well.'}]);
- await expect(f.loop.handle(result())).rejects.toThrow('Stale independent review assignment');
+ // The stale verdict counts for nothing, and a review of the current sources starts.
+ const before=f.loop.get('reviewer').sources;
+ await f.loop.handle(result());
  expect(f.loop.get('reviewVerdict')).toBeNull();
- (f.loop as any).set('approvedClarifications',original);await f.loop.handle(result());
+ const fresh=f.loop.get('reviewer');expect(fresh.sources).not.toBe(before);
+ await f.loop.handle(f.event(fresh.name,`review ${fresh.round} ${'b'.repeat(40)} pass\nAC-1: PASS - independently saved the form`));
  expect(f.loop.get('reviewVerdict')).toBe('pass');
  await f.loop.handle(f.event('builder','ask: May I include a migration?'));
  await f.loop.handle(f.event('lead','tell builder: Include the form migration only.'));
@@ -363,3 +366,12 @@ test('environment-blocked reviews reach the owner without consuming a round or r
  await f.loop.handle(f.event('reviewer-1',`review 1 ${'b'.repeat(40)} fail\nAC-1: FAIL - running form does not save`));
  expect(f.loop.get('reviewRound')).toBe(1);expect(f.loop.get('reviewFailures')).toBe(1);
 });
+
+test('a review of an older commit is ignored, approves nothing and does not stop the loop',async()=>{
+ const f=fixture();await f.enterBuild();
+ (f.loop as any).set('reviewer',{id:'reviewer',name:'reviewer',round:4,sha:'b'.repeat(40),sources:'{}',generation:0});
+ (f.loop as any).set('candidate','b'.repeat(40));
+ await f.loop.handle(f.event('reviewer',`review 4 ${'a'.repeat(40)} pass`));
+ expect((f.loop as any).get('reviewVerdict')??null).toBeNull();
+});
+
