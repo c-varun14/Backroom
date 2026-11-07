@@ -142,12 +142,12 @@ Agent turns count result-bearing Switch messages, deduplicated by event ID. Sess
 | 3. SAMPLE owner release and client Looks right | complete | 6.3 | {"lead": 0} |
 | 4. Stack plan and SAMPLE owner approval | complete | 33.3 | {"lead": 1} |
 | 5. Spec, builder and build-ready evidence | complete | 7639.8 | {"builder": 1, "lead": 1} |
-| 6. Fresh independent review and automatic fix loop | running | 3073.2 | {"builder": 3, "lead": 0, "reviewer": 3} |
-| 7. SAMPLE Deploy, Send to client and accept | pending | 0 | {"builder": 4, "lead": 4, "reviewer": 3} |
+| 6. Fresh independent review and automatic fix loop | running | 5149.3 | {} |
+| 7. SAMPLE Deploy, Send to client and accept | pending | 0 | {} |
 
 Current position: 6 of 7 (8 means all seven steps completed).
 
-Safe failure: SAMPLE review paused after three blockers; inspect findings and owner decision card, no automatic approval
+Safe failure: Switch PATCH /gateway/management/agents/eed2df98-9151-48be-81b9-315164236248 HTTP 409; error code provider_not_installed; response withheld
 
 ```json
 {
@@ -545,55 +545,27 @@ Safe failure: SAMPLE review paused after three blockers; inspect findings and ow
         "route": "gateway answer",
         "realHumanApproval": false
       }
+    },
+    "owner-keep-going": {
+      "id": "1acfa28b-5c99-4010-969a-cdd4b71ee952",
+      "status": "sent",
+      "actor": "SAMPLE native owner button",
+      "at": 1794009645.6532323,
+      "intent": {
+        "request": "82af4120-84c8-415f-b853-6983e8feffdc",
+        "button": "Keep going",
+        "command": "@desk review-continue"
+      },
+      "evidence": {
+        "request": "82af4120-84c8-415f-b853-6983e8feffdc",
+        "button": "Keep going",
+        "command": "@desk review-continue",
+        "route": "gateway answer",
+        "realHumanApproval": false
+      }
     }
   },
-  "agentActivity": [
-    {
-      "role": "builder",
-      "kind": "message",
-      "count": 9
-    },
-    {
-      "role": "builder",
-      "kind": "result",
-      "count": 4
-    },
-    {
-      "role": "builder",
-      "kind": "session-start",
-      "count": 1
-    },
-    {
-      "role": "lead",
-      "kind": "message",
-      "count": 4
-    },
-    {
-      "role": "lead",
-      "kind": "result",
-      "count": 4
-    },
-    {
-      "role": "lead",
-      "kind": "session-start",
-      "count": 1
-    },
-    {
-      "role": "reviewer",
-      "kind": "message",
-      "count": 8
-    },
-    {
-      "role": "reviewer",
-      "kind": "result",
-      "count": 3
-    },
-    {
-      "role": "reviewer",
-      "kind": "session-start",
-      "count": 3
-    }
-  ],
+  "agentActivity": null,
   "deployment": null
 }
 ```
