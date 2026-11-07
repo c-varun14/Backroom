@@ -1,4 +1,1 @@
-{
-  "primary": {"projectId": "judge", "workspace": "/state/product", "databasePath": "/state/desk.sqlite"},
-  "second": {"projectId": "fernline", "workspace": "/state/fernline-product", "databasePath": "/state/fernline-desk.sqlite"}
-}
+{"primary":{"projectId":"client-a","workspace":"/state/fixture","databasePath":"/state/desk.sqlite"},"second":{"projectId":"client-b","workspace":"/state/client-b","databasePath":"/state/client-b.sqlite"}}

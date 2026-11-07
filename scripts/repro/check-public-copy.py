@@ -14,8 +14,8 @@ for p in root.rglob('*'):
  if private.search(text):raise SystemExit('Private machine path remains: '+str(p.relative_to(root)))
  if p.suffix=='.py':ast.parse(text,filename=str(p.relative_to(root)));python+=1
  if p.suffix=='.json':json.loads(text);documents+=1
-for relative in ['rehearsal/bakery/app.ts','rehearsal/bakery/app.test.ts','rehearsal/bakery/demo.ts','sample-projects/old-shop/server.js','sample-projects/old-shop/server.test.js']:
- if not (root/relative).is_file():raise SystemExit('Missing nested input: '+relative)
+for relative in ['desk/src/gate.ts','demo/fixture.ts','desk/tests/adversarial/audit.test.ts']:
+ if not (root/relative).is_file():raise SystemExit('Missing product input: '+relative)
 # README navigation must be local/public; media/workspace links belong to historical reports only.
 missing=[]
 for target in re.findall(r'\]\(([^)]+)\)',(root/'README.md').read_text()):
@@ -23,4 +23,4 @@ for target in re.findall(r'\]\(([^)]+)\)',(root/'README.md').read_text()):
  if not (root/target.split('#')[0]).exists():missing.append(target)
 if missing:raise SystemExit('Broken README links: '+', '.join(missing))
 print(f'Publication audit: {checked} text files; {python} Python files parsed; {documents} JSON files parsed; private machine paths=0.')
-print('Runtime/account/cache/Git metadata absent; nested test sources present; README local links resolve.')
+print('Runtime/account/cache/Git metadata absent; product test sources present; README local links resolve.')

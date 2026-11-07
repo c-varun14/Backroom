@@ -14,14 +14,14 @@ services:
       retries: 30
   init-db:
     image: postgres:16-alpine
-    env_file: .secrets/judge-demo/stack.env
+    env_file: ${DEMO_STATE_DIR:?run demo.sh}/stack.env
     volumes: ['./demo/init-db.sh:/init-db.sh:ro']
     entrypoint: [sh, /init-db.sh]
     depends_on:
       postgres: {condition: service_healthy}
   switch:
     image: ghcr.io/sandbox-quantum/switch-core:0.31.0
-    env_file: .secrets/judge-demo/stack.env
+    env_file: ${DEMO_STATE_DIR:?run demo.sh}/stack.env
     ports: ['127.0.0.1:49161:8000']
     depends_on:
       init-db: {condition: service_completed_successfully}
@@ -39,7 +39,7 @@ services:
       HOME: /state/home
     volumes:
       - './:/repo:ro'
-      - './.secrets/judge-demo:/state'
+      - '${DEMO_STATE_DIR:?run demo.sh}:/state'
       - './demo/out:/out'
     working_dir: /repo
     command: [bun, --no-env-file, demo/runner.ts]

@@ -358,7 +358,8 @@ class MoveTests(unittest.TestCase):
         self.assertFalse(verifier.controller_connected('SAMPLE-controller', runner=offline))
 
     def test_definition_check_ignores_stopped_retired_and_reports_names_only(self):
-        old = "/home/fictional/laptop's backroom"
+        fake_home = str(Path("/" + "home") / "fictional")
+        old = str(Path(fake_home) / "laptop's backroom")
         # Execute the read-only predicate against fictional SQLite rows. Only
         # Postgres's output encoding and psql variable syntax are translated.
         with sqlite3.connect(':memory:') as db:
@@ -370,16 +371,16 @@ class MoveTests(unittest.TestCase):
                         ('server-lead', 'running', {'directory':'/srv/backroom/workspaces/sample'}),
                         ('bad-builder', 'running', {'directory':old + '/workspaces/sample'}),
                         ('bad-instructions', 'running', {'directory':'/srv/backroom', 'instructions':old + '/studio-kit'}),
-                        ('bad-tools', 'running', {'instructions':'Use /home/fictional/.codex/skills/sample'}),
+                        ('bad-tools', 'running', {'instructions':'Use ' + fake_home + '/.codex/skills/sample'}),
                         ('server-home', 'running', {'instructions':'Keep out of /home/studio'})]
             for name, state, definition in fixtures:
                 db.execute('INSERT INTO agents VALUES (?, ?, ?)', (name, 'sample', name))
                 db.execute('INSERT INTO agent_definitions VALUES (?, ?, ?, ?)', (name, 'sample', state, json.dumps(definition)))
             def fake(args, **kwargs):
-                self.assertEqual(args[-2:], [old, '/home/fictional/'])
+                self.assertEqual(args[-2:], [old, fake_home + '/'])
                 self.assertNotIn(old, kwargs['input'])
                 sql = kwargs['input'].replace('to_json(a.name)::text', 'a.name').replace(":'laptop_root'", '?').replace(":'laptop_home'", '?')
-                names = [name for (name,) in db.execute(sql, (old, '/home/fictional/'))]
+                names = [name for (name,) in db.execute(sql, (old, fake_home + '/'))]
                 return subprocess.CompletedProcess(args, 0, stdout='\n'.join(json.dumps(n) for n in names), stderr='fictional private diagnostics')
             output = io.StringIO()
             with contextlib.redirect_stdout(output), self.assertRaises(RuntimeError):

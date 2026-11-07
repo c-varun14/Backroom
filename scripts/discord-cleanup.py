@@ -18,11 +18,11 @@ sys.path.insert(0, 'scripts')
 from block1_setup import BASE, call, lead_session, owner_session
 
 API = 'https://discord.com/api/v10'
-PROJECT = Path('.switch-runtime/projects/morrowcrumb-orders.json')
-OLD_ROOMS = ('general', 'client-morrowcrumb', 'studio-morrowcrumb', 'client-morrowcrumb-orders')
-OLD_AGENTS = ('builder-morrowcrumb', 'front-morrowcrumb-orders', 'lead', 'lead-morrowcrumb-orders',
-              'reviewer-morrowcrumb-standby')
-OLD_CHANNELS = ('client-morrowcrumb', 'studio-morrowcrumb', 'morrowcrumb-orders', 'general', 'General',
+PROJECT = Path('.switch-runtime/projects/client-a-orders.json')
+OLD_ROOMS = ('general', 'client-client-a', 'studio-client-a', 'client-client-a-orders')
+OLD_AGENTS = ('builder-client-a', 'front-client-a-orders', 'lead', 'lead-client-a-orders',
+              'reviewer-client-a-standby')
+OLD_CHANNELS = ('client-client-a', 'studio-client-a', 'client-a-orders', 'general', 'General',
                 'Text Channels', 'Voice Channels')
 KEEP_ROLES = {'@everyone', 'Backroom', 'Lead', 'Team', 'Client', 'desk'}
 BOARD_COLUMNS = ('New', 'Ready for Dev', 'In progress', 'Waiting on client', 'Done', 'Paused')

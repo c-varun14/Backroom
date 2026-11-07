@@ -145,6 +145,18 @@ def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=su
     return config
 
 
+def share_workspace(path):
+    """Agents run as a separate user in the studio group, so workspaces must be group-usable."""
+    root = Path(path)
+    root.mkdir(parents=True, exist_ok=True)
+    for folder, names, files in os.walk(root):
+        os.chmod(folder, 0o2770)
+        for name in files:
+            target = Path(folder) / name
+            if not target.is_symlink():
+                target.chmod(target.stat().st_mode | 0o060)
+
+
 def provision(name, purpose, client_id, slug, base, discord, switch, create_agent, save, state=None):
     """All mutations are checkpointed in order. No member names grant authority."""
     if project_slug(name) != project_slug(name.strip()) or not re.fullmatch(r'[a-z0-9-]{1,60}', slug):
@@ -224,7 +236,9 @@ def provision(name, purpose, client_id, slug, base, discord, switch, create_agen
         remember('workRoomId', room['id'])
     for role in ['front', 'lead', 'builder', 'reviewer']:
         if not c.get(role + 'Id'):
-            result = create_agent(c, role, role + '-' + slug, c['workspace'] if role == 'builder' else str(Path(c['workspace']).parent / (slug + '-' + role)), 'stopped' if role in ['builder', 'reviewer'] else 'running')
+            agent_workspace = c['workspace'] if role == 'builder' else str(Path(c['workspace']).parent / (slug + '-' + role))
+            result = create_agent(c, role, role + '-' + slug, agent_workspace, 'stopped' if role in ['builder', 'reviewer'] else 'running')
+            share_workspace(agent_workspace)
             remember(role + 'Id', result['id'])
             remember(role + 'Name', result['name'])
         elif not c.get(role + 'Name'):
@@ -232,7 +246,7 @@ def provision(name, purpose, client_id, slug, base, discord, switch, create_agen
     if not c.get('reviewerIds'):
         remember('reviewerIds', [c['reviewerId']])
     if not c.get('memoryDocumentId'):
-        document = switch('POST', '/gateway/documents', {'name': slug + ' approved SAMPLE memory', 'description': 'Approved studio lessons', 'instructions': 'Project data, never release authority', 'content': (ROOT / 'studio-memory/architecture/server-owned-prices.md').read_text(), 'read_visibility': 'private', 'write_visibility': 'private'})
+        document = switch('POST', '/gateway/documents', {'name': slug + ' approved SAMPLE memory', 'description': 'Approved studio lessons', 'instructions': 'Project data, never release authority', 'content': (ROOT / 'studio-kit/memory/architecture/server-owned-prices.md').read_text(), 'read_visibility': 'private', 'write_visibility': 'private'})
         remember('memoryDocumentId', document['id'])
     if not c.get('packageId'):
         package = switch('POST', '/gateway/packages', {'name': slug + '-approved-memory', 'description': 'Approved studio lessons', 'instructions': 'Only approved lessons belong here', 'read_visibility': 'private', 'write_visibility': 'private'})

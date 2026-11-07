@@ -74,7 +74,7 @@ def overwrite(api, channel, target, kind, allow=0, deny=0):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--client-name', required=True, help='Shown in the role, such as Morrowcrumb')
+    parser.add_argument('--client-name', required=True, help='Shown in the role, such as client-a')
     parser.add_argument('--client-user', required=True, help='Discord username of the client account')
     parser.add_argument('--config', default=str(ROOT / '.switch-runtime/block1.json'))
     args = parser.parse_args()

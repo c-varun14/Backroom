@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def role_config(role):
     path = os.environ.get('BACKROOM_HARNESS_CONFIG', str(ROOT / 'backroom.yaml'))
-    result = subprocess.run(['bun', '--no-env-file', str(ROOT / 'harness/config.ts'), path, role], capture_output=True, text=True)
+    result = subprocess.run(['bun', '--no-env-file', str(ROOT / 'desk/harness/config.ts'), path, role], capture_output=True, text=True)
     if result.returncode:
         raise ValueError('Invalid harness configuration; raw output withheld')
     return json.loads(result.stdout)
@@ -57,6 +57,6 @@ def command_role(c, role, name, directory, desired='running'):
     from block1_runtime import pid_is_ours
     pidfile=state/'agent.pid'
     if desired=='running' and not pid_is_ours(pidfile,str(state/'config.json')):
-        p=subprocess.Popen(['bun','--no-env-file',str(ROOT/'harness/command-agent.ts'),str(state/'config.json')],cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        p=subprocess.Popen(['bun','--no-env-file',str(ROOT/'desk/harness/command-agent.ts'),str(state/'config.json')],cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
         pidfile.write_text(str(p.pid))
     return {'id':agent['id'],'name':name}

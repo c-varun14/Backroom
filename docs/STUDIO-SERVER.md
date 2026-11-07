@@ -49,7 +49,7 @@ These are the commands to run after reviewing the local report. This implementat
    test -f .secrets/keys-signing-key
    ```
 
-   The signing key is the raw file named in [the app-env handoff](../reports/app-env.md), shared with the deployment server's encrypted signing key. If it has not been bootstrapped, complete that handoff first. The migration transfers the existing file; it does not generate or rotate it. No provisioning/path-rewrite marker is required.
+   The signing key is the raw file named in the app-env handoff (local operator evidence), shared with the deployment server's encrypted signing key. If it has not been bootstrapped, complete that handoff first. The migration transfers the existing file; it does not generate or rotate it. No provisioning/path-rewrite marker is required.
 
 4. Run from the laptop:
 

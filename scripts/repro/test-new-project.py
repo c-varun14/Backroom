@@ -77,7 +77,7 @@ class ProvisionTests(unittest.TestCase):
     def test_order_permissions_and_rerun(self):
         with tempfile.TemporaryDirectory(prefix='backroom-provision-') as directory:
             root = Path(directory)
-            lesson = root / 'studio-memory/architecture/server-owned-prices.md'
+            lesson = root / 'studio-kit/memory/architecture/server-owned-prices.md'
             lesson.parent.mkdir(parents=True)
             lesson.write_text('SAMPLE approved lesson')
             original = module.ROOT

@@ -146,7 +146,14 @@ export class RealStagesLoop extends StagesLoop {
     if(this.state.get(this.real.projectId).stage==='brief'&&ticket?.status==='with-lead')await this.brief.remindLead(ticket,text);
     else await this.api.post(this.real.workRoomId,`@${this.real.leadName} ${text}`);
   }
-  async tick(){await this.pollGitHub();await this.tickKeys();await this.brief.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
+  private githubPolledAt=0;
+  /** GitHub allows 5,000 calls an hour, so a once-a-second tick must not poll it every time. */
+  private async pollGitHubPaced(){
+    if(this.realControl.github)return this.pollGitHub();
+    const now=Date.now();if(now-this.githubPolledAt<60000)return;this.githubPolledAt=now;
+    try{await this.pollGitHub();}catch{this.store.log('GitHub poll deferred; details withheld',undefined,this.real.projectId);}
+  }
+  async tick(){await this.pollGitHubPaced();await this.tickKeys();await this.brief.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡",files:{name:string;bytes:Uint8Array}[]=[]) {
     if(this.real.clientSurface==='forum'&&icon==='🔵')return;
     if(files.length)await this.api.post(this.real.studioRoomId,'Files for your review',files);
@@ -167,7 +174,7 @@ export class RealStagesLoop extends StagesLoop {
     const build=this.activeArtifact("build"),learn=this.activeArtifact("learn"),lesson=this.get("promoted");
     if(build&&command===`@desk deploy ${JSON.parse(build.artifact).sha}`)return `@desk deploy ${build.code}`;
     if(learn&&/^@desk promote /.test(command))return command.replace(/[a-f0-9]{64}$/,learn.code);
-    if(lesson&&command===`@desk fix old-shop ${lesson.hash}`)return `@desk fix old-shop ${lesson.hash.slice(0,12)}`;
+    if(lesson&&command===`@desk fix earlier-client ${lesson.hash}`)return `@desk fix earlier-client ${lesson.hash.slice(0,12)}`;
     return command;
   }
   async document(name:string,content:string){
@@ -201,7 +208,7 @@ export class RealStagesLoop extends StagesLoop {
         if(this.real.studioThread)this.store.db.query('INSERT INTO door_outbox(kind,payload) VALUES (?,?)').run('studio-screenshot',JSON.stringify({code,hash:verification.hash,png:Buffer.from(files.attachments[0].bytes).toString('base64')}));
         else await this.api.post(this.real.studioRoomId,'Checked product screenshot',files.attachments);
       }
-      await this.brief.ownerCards.offer('Review passed',long?'Full review and criterion results are above.\n'+content.slice(0,3000):content,[{label:'Deploy',command},{label:'Change',command:'__change'}]);
+      await this.brief.ownerCards.offer('Review passed',long?'Full review and criterion results are above.':content,[{label:'Deploy',command},{label:'Change',command:'__change'}]);
     }else await this.card(stage,`${stageLabel(stage).split(": ")[1]} v${version} ready for your review. ${long?"Full text is above.":content}`,command);
     return code;
   }
@@ -843,7 +850,7 @@ export class RealStagesLoop extends StagesLoop {
     const build=this.activeArtifact("build"),learn=this.activeArtifact("learn"),lesson=this.get("lesson"),promoted=this.get("promoted");
     if(build&&body===`deploy ${build.code}`){body=`deploy ${JSON.parse(build.artifact).sha}`;event={...event,payload:{...event.payload,body:"@desk "+body}};}
     if(learn&&lesson&&body===`promote ${lesson.slug} ${lesson.version} ${learn.code}`)body=`promote ${lesson.slug} ${lesson.version} ${lesson.hash}`;
-    if(promoted&&body===`fix old-shop ${promoted.hash.slice(0,12)}`)body=`fix old-shop ${promoted.hash}`;
+    if(promoted&&body===`fix earlier-client ${promoted.hash.slice(0,12)}`)body=`fix earlier-client ${promoted.hash}`;
     let m;
     if(this.real.clientSurface==='forum'&&stage==='build'&&['review-continue','review-stop'].includes(body)){
       if(!this.get('reviewPaused'))return;
@@ -927,19 +934,20 @@ export class RealStagesLoop extends StagesLoop {
     if((m=/^promote ([a-z0-9-]+) ([1-9][0-9]*) ([a-f0-9]{64})$/.exec(body))&&stage==="learn"&&!state.completed){
       const l=this.get("lesson"),row=this.activeArtifact("learn");
       if(!l||!row||l.slug!==m[1]||l.version!==Number(m[2])||l.hash!==m[3]||sha256(await this.loadDocument(l.artifact.id))!==l.hash)throw new Error("Changed or wrong lesson");
-      const path=join(this.projectRoot,"studio-memory/architecture",l.slug+".md");mkdirSync(join(this.projectRoot,"studio-memory/architecture"),{recursive:true});
+      const path=join(this.projectRoot,"studio-kit/memory/architecture",l.slug+".md");mkdirSync(join(this.projectRoot,"studio-kit/memory/architecture"),{recursive:true});
       writeFileSync(path,`Lesson ID: ${l.slug}\nVersion: ${l.version}\nStatus: approved\nOwner decision event: ${event.payload.message_id}\nProposal SHA-256: ${l.hash}\n\n${l.text}\n`);
       await this.realControl.promotePackage(path);this.set("promoted",l);
       this.state.approve(this.real.projectId,"learn",row.version,l.artifact,this.ownerActor());
       this.store.db.query("UPDATE stage_artifacts SET status='approved' WHERE code=?").run(row.code);
-      await this.card("learn","Lesson approved and promoted. A backward fix needs a separate decision.",`@desk fix old-shop ${l.hash}`,"✅");return;
+      await this.card("learn","Lesson approved and promoted. A backward fix needs a separate decision.",`@desk fix earlier-client ${l.hash}`,"✅");return;
     }
-    if((m=/^fix old-shop ([a-f0-9]{64})$/.exec(body))){
+    if((m=/^fix earlier-client ([a-f0-9]{64})$/.exec(body))){
       const l=this.get("promoted");if(!l||l.hash!==m[1])throw new Error("Approved lesson required");if(this.get("fixAuthorized"))return;
+      const target=this.fixWorkspace();
       const builder=await this.realControl.prepareFix?.();
       if(builder){this.real.builderId=builder.id;this.real.builderName=builder.name;}
       this.set("fixAuthorized",l.hash);
-      await this.mention(this.real.builderName,`Owner authorized a backward fix for lesson ${l.slug} v${l.version} only in ${this.projectRoot}/sample-projects/old-shop. Read the approved lesson from the package. Implement the smallest applicable correction and meaningful regression test; write PR.md with real test output. Create a local fix/<lesson-slug> branch and commit only the bounded old-project fix, regression tests and PR.md after checks, without AI attribution. Never commit the outer Backroom repository. No remote creation, pushes, PR publication or deploys. Return exactly fix <branch> <exact-commit-SHA>; the owner controls publication.`);
+      await this.mention(this.real.builderName,`Owner authorized a backward fix for lesson ${l.slug} v${l.version} only in ${target}. Read the approved lesson from the package. Implement the smallest applicable correction and meaningful regression test; write PR.md with real test output. Create a local fix/<lesson-slug> branch and commit only the bounded old-project fix, regression tests and PR.md after checks, without AI attribution. Never commit the outer Backroom repository. No remote creation, pushes, PR publication or deploys. Return exactly fix <branch> <exact-commit-SHA>; the owner controls publication.`);
       await this.card("learn","Backward fix authorized; builder is preparing local changes and PR.md.","@desk status","🔵");return;
     }
     if(!/^[@!/]/.test(event.payload.body.trim())&&event.payload.body.trim()&&!state.completed){

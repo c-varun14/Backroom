@@ -366,7 +366,7 @@ def prepare(root):
         with tarfile.open(fileobj=source, mode='w') as archive:
             for name in sorted(set(filter(None, tracked)) | set(NEW_SOURCE)):
                 path = Path(name)
-                if path.is_absolute() or '..' in path.parts or path.parts[0] in {'.secrets', '.switch-runtime', '.git', 'workspaces'}:
+                if path.is_absolute() or '..' in path.parts or path.parts[0] in {'.secrets', '.switch-runtime', '.git', 'workspaces', 'reports', 'specs', 'spikes'}:
                     continue
                 file = root / path
                 if file.is_file() and not file.is_symlink():
@@ -385,12 +385,12 @@ def prepare(root):
         package.seek(0)
         ssh('install -d -m 755 /opt/backroom/controller')
         run(['ssh', '-o', 'BatchMode=yes', HOST, 'tar --no-same-owner -xf - -C /opt/backroom/controller && chown -R root:root /opt/backroom/controller && chmod -R a+rX,go-w /opt/backroom/controller'], stdin=package)
-    ssh('chmod -R g+rX,go-w /srv/backroom/desk /srv/backroom/deploy /srv/backroom/harness /srv/backroom/studio-kit /srv/backroom/scripts')
+    ssh('chmod -R g+rX,go-w /srv/backroom/desk /srv/backroom/deploy /srv/backroom/desk/harness /srv/backroom/studio-kit /srv/backroom/scripts')
     # Root owns code, helpers and all Compose inputs. Studio owns only state.
-    ssh('chown root:backroom /srv/backroom && chmod 750 /srv/backroom; chown -R root:backroom /srv/backroom/desk /srv/backroom/deploy /srv/backroom/harness /srv/backroom/studio-kit /srv/backroom/scripts; chown -R root:root /var/lib/backroom/fleet && chmod -R go-w /var/lib/backroom/fleet')
+    ssh('chown root:backroom /srv/backroom && chmod 750 /srv/backroom; chown -R root:backroom /srv/backroom/desk /srv/backroom/deploy /srv/backroom/desk/harness /srv/backroom/studio-kit /srv/backroom/scripts; chown -R root:root /var/lib/backroom/fleet && chmod -R go-w /var/lib/backroom/fleet')
     ssh('bash /etc/backroom/studio-install-tools.sh')
     # Repo source is read-only to agent; workspaces alone are shared writable.
-    ssh('chmod -R g+rX,go-w /srv/backroom/desk /srv/backroom/harness /srv/backroom/studio-kit /srv/backroom/scripts; chmod 700 /srv/backroom/.secrets /srv/backroom/.switch-runtime; install -d -m 700 /var/lib/backroom')
+    ssh('chmod -R g+rX,go-w /srv/backroom/desk /srv/backroom/desk/harness /srv/backroom/studio-kit /srv/backroom/scripts; chmod 700 /srv/backroom/.secrets /srv/backroom/.switch-runtime; install -d -m 700 /var/lib/backroom')
     status('server source and tools', 'prepared')
 
 

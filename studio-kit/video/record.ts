@@ -1,39 +1,6 @@
-import { chromium } from "playwright";
-import { mkdir, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { createApp } from "../../sample-projects/old-shop/server.js";
-const out=resolve("studio-kit/video/artifacts"); await mkdir(out,{recursive:true});
-const server=Bun.serve({hostname:"127.0.0.1",port:0,fetch:createApp()});
-const base=server.url.origin;
-const env=Object.fromEntries(["PATH","HOME","LANG","DISPLAY","PLAYWRIGHT_BROWSERS_PATH"].flatMap(k=>process.env[k]?[[k,process.env[k]!]]:[]));
-const browser=await chromium.launch({headless:true,env,executablePath:process.env.CHROMIUM_EXECUTABLE});
-let context;
-const bumper=(closing=false)=>`<html><style>body{margin:0;background:#142f2c;color:#fbf3dc;font:30px system-ui;display:grid;place-content:center;height:100vh}h1{font-size:78px;letter-spacing:-3px;margin:12px 0}p{max-width:960px;line-height:1.6}.tag{color:#a7c4b3;font-size:22px;letter-spacing:4px}</style><body><div class="tag">BACKROOM · FICTIONAL SAMPLE</div><h1>Lantern Crate</h1><p>${closing?"A sample order, confirmed.<br>Local demo · No payment · Invented details":"From a tea tin to a confirmed sample order.<br>A short walkthrough of the earlier shop."}</p></body></html>`;
-try {
- context=await browser.newContext({viewport:{width:1920,height:1080},recordVideo:{dir:out,size:{width:1920,height:1080}}});
- await context.route("**/*",route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
- const page=await context.newPage(); const video=page.video()!;
- await page.setContent(bumper());
- const start=performance.now(); const markers:Record<string,number>={intro:0};
- const hold=async(t:number)=>{const wait=t*1000-(performance.now()-start); if(wait>0)await page.waitForTimeout(wait);};
- const mark=(id:string)=>{markers[id]=(performance.now()-start)/1000;};
- await page.screenshot({path:out+"/intro.png"});
- await hold(5); await page.goto(base); await page.getByRole("heading",{name:"Lantern Crate",exact:true}).waitFor(); mark("shop");
- await page.screenshot({path:out+"/shop.png"});
- await hold(11); await page.getByRole("textbox",{name:"Name",exact:true}).pressSequentially("Sample Rowan",{delay:75}); mark("name");
- await hold(15); await page.getByRole("textbox",{name:"Email",exact:true}).pressSequentially("rowan@example.test",{delay:65}); mark("email");
- await hold(19); await page.getByRole("spinbutton",{name:"Quantity",exact:true}).fill("2"); mark("quantity");
- await hold(23);
- const response=page.waitForResponse(r=>r.url()===base+"/api/orders" && r.request().method()==="POST");
- await page.getByRole("button",{name:"Place sample order",exact:true}).click();
- const r=await response; if(r.status()!==201)throw new Error("Order failed");
- await page.getByText("Sample order #1: USD $24.00",{exact:true}).waitFor(); mark("success");
- const orders=await (await fetch(base+"/api/orders")).json();
- if(orders.orders.length!==1 || orders.orders[0].email!=="rowan@example.test")throw new Error("In-memory order missing");
- await page.screenshot({path:out+"/success.png"});
- await hold(31); await page.setContent(bumper(true)); mark("outro"); await page.screenshot({path:out+"/outro.png"}); await hold(36.5);
- await context.close(); context=undefined; await video.saveAs(out+"/capture.webm");
- await writeFile(out+"/markers.json",JSON.stringify(markers,null,2));
- await writeFile(out+"/results.json",JSON.stringify({sample:true,orderId:1,totalCents:2400,storage:"in-memory only"},null,2));
- console.log("Recorded real old-shop UI: order #1, total USD $24.00, 1920x1080; fictional data; loopback only");
-} finally { await context?.close(); await browser.close(); server.stop(true); }
+// Each independent product supplies its own observed UI actions and timing markers.
+import {resolve} from 'node:path';
+import {existsSync} from 'node:fs';
+const capture=process.env.BACKROOM_VIDEO_CAPTURE;
+if(!capture||!existsSync(resolve(capture)))throw new Error('Set BACKROOM_VIDEO_CAPTURE to the authorized product capture module; follow studio-kit/video/references/capture.md.');
+await import(resolve(capture));

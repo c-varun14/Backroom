@@ -90,18 +90,18 @@ def bootstrap():
     rooms = call(admin, 'GET', '/gateway/rooms')
     if isinstance(rooms, dict):
         rooms = rooms.get('rooms', [])
-    for key, name in [('clientRoomId','client-morrowcrumb'),('studioRoomId','studio-morrowcrumb')]:
+    for key, name in [('clientRoomId','client-client-a'),('studioRoomId','studio-client-a')]:
         if key not in public:
             room = next((r for r in rooms if r['name'] == name and r.get('bridge_id') == public['bridgeId']), None)
             if room is None:
-                room = call(admin, 'POST', '/gateway/rooms', {'name': name, 'description': 'FICTIONAL SAMPLE — Morrowcrumb Bakery, Stage 1 only',
+                room = call(admin, 'POST', '/gateway/rooms', {'name': name, 'description': 'FICTIONAL SAMPLE — client-a Bakery, Stage 1 only',
                     'bridge_id': public['bridgeId'], 'channel_type': 'channel_private',
                     'agent_ids': [private['desk']['id']], 'read_visibility': 'private', 'write_visibility': 'private'})
             public[key] = room['id']
             public[key.replace('RoomId','ChannelId')] = room['external_channel_id']
             print('Private room provisioned: #' + name)
         call(admin, 'POST', f'/gateway/chats/{public[key]}/members', {'userId':owner_id})
-    public.update(projectId='morrowcrumb', ownerId=owner_id, deskId=private['desk']['id'], probeId=private['probe']['id'])
+    public.update(projectId='client-a', ownerId=owner_id, deskId=private['desk']['id'], probeId=private['probe']['id'])
     lead = lead_session()
     if 'controllerId' not in public:
         enrollment = call(lead, 'POST', '/gateway/management/enrollment-codes', {})
@@ -128,7 +128,7 @@ def configure_lead():
         if not public.get('workRoomId'):
             work=call(admin,'POST','/gateway/rooms',{'name':'work-'+public['projectId'],'internal_only':True,'channel_type':'channel_private','agent_ids':[public['deskId']],'read_visibility':'private','write_visibility':'private'})
             public['workRoomId']=work['id']
-        agent=command_role(public,'lead','lead',ROOT/'spikes/providers/lead')
+        agent=command_role(public,'lead','lead',ROOT/'.switch-runtime/providers/lead')
         public['leadId']=agent['id'];PUBLIC.write_text(json.dumps(public,indent=2))
         print('Configured command lead; work room only; no managed provider required.')
         return
@@ -141,7 +141,7 @@ def configure_lead():
         time.sleep(1)
     else:
         raise SetupError('Lead controller/provider did not become ready; rerun scripts/up.sh after checking plan login')
-    directory = ROOT / 'spikes/providers/lead'
+    directory = ROOT / '.switch-runtime/providers/lead'
     directory.mkdir(parents=True, exist_ok=True)
     instructions = (ROOT / 'studio-kit/agents/lead.md').read_text().split('\n<!-- STAGE 1 END -->', 1)[0]
     if public.get('mode') == 'real':
@@ -163,10 +163,10 @@ def configure_lead():
     rooms = call(admin, 'GET', '/gateway/rooms')
     if isinstance(rooms, dict):
         rooms = rooms.get('rooms', [])
-    work = next((r for r in rooms if r['name'] == 'work-morrowcrumb' and not r.get('bridge_id')), None)
+    work = next((r for r in rooms if r['name'] == 'work-client-a' and not r.get('bridge_id')), None)
     if work is None:
         work = call(admin, 'POST', '/gateway/rooms', {
-            'name': 'work-morrowcrumb', 'description': 'Private internal Stage 1 machine traffic; fictional SAMPLE only',
+            'name': 'work-client-a', 'description': 'Private internal Stage 1 machine traffic; fictional SAMPLE only',
             'internal_only': True, 'channel_type': 'channel_private',
             'agent_ids': [public['deskId'], public['leadId']],
             'read_visibility': 'private', 'write_visibility': 'private'})
@@ -182,7 +182,7 @@ def configure_lead():
     PUBLIC.write_text(json.dumps(public,indent=2))
     from lead_sessions import repair
     repair()
-    print('lead configured with strict client-text protocol; unbridged work-morrowcrumb only; studio receives desk cards.')
+    print('lead configured with strict client-text protocol; unbridged work-client-a only; studio receives desk cards.')
 
 
 if __name__ == '__main__':

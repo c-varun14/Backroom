@@ -2,7 +2,7 @@ import {expect,test} from 'bun:test';
 import {fixture,protocol} from './switch.test';
 import {approvalCard,ownerCommand} from '../src/cards';
 
-const commands=['send 0123456789','deploy '+'a'.repeat(40),'status','ticket','intro','approve architecture 0123456789ab','promote sample 1 '+'b'.repeat(64),'fix old-shop '+'c'.repeat(64),'review','video'];
+const commands=['send 0123456789','deploy '+'a'.repeat(40),'status','ticket','intro','approve architecture 0123456789ab','promote sample 1 '+'b'.repeat(64),'fix earlier-client '+'c'.repeat(64),'review','video'];
 for(const command of commands)test('owner command normalization: '+command.split(' ')[0],()=>{
  expect(ownerCommand(command,true)).toBe('@desk '+command);
  expect(ownerCommand('@desk '+command,true)).toBe('@desk '+command);

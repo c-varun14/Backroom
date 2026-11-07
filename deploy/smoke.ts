@@ -6,7 +6,8 @@ const root = resolve("deploy/.runtime/smoke-" + project);
 await mkdir(root, { recursive: true });
 const repo = root + "/repo";
 await rm(repo, { recursive: true, force: true });
-await cp("sample-projects/old-shop", repo, { recursive: true });
+await mkdir(repo, {recursive:true});
+await writeFile(repo+"/server.js", "export function createApp(){return r=>new URL(r.url).pathname===\"/missing\"?new Response(\"missing\",{status:404}):new Response(\"Backroom demo fixture\");}");
 // Container loopback differs from host loopback: use a fixture-only launcher.
 await writeFile(repo + "/container.ts", 'import { createApp } from "./server.js"; Bun.serve({hostname:"0.0.0.0",port:3210,fetch:createApp()});');
 await writeFile(repo + "/Dockerfile", 'FROM oven/bun:1.3.14\nWORKDIR /app\nCOPY server.js container.ts ./\nUSER bun\nCMD ["bun","container.ts"]\n');

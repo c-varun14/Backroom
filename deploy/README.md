@@ -47,7 +47,7 @@ Only generated prefixed projects are addressed, without global Docker inventory/
 ## Checks
 
 ```sh
-bun test deploy/local-compose.test.ts deploy/runtime-contract.test.ts rehearsal/bakery
+bun test deploy
 BACKROOM_DOCKER_TEST=1 bun test deploy/runtime-smoke.test.ts
 bun --no-env-file deploy/smoke.ts
 ```
@@ -63,3 +63,5 @@ Before a candidate can affect the old writer, a private transition journal recor
 ## NixOS fleet adapter
 
 Set `deployTarget:"nix"` and `nixDeploy` in a per-client desk config to select `NixDeployer`; Compose remains the default and `demo.sh` is unchanged. The separate Fleet working tree is `~/hackathonprojects/fleet`; its README documents public host configuration, encrypted environments and the server verification procedure. No fleet commits are made under this task's no-commit instruction. Run `bun --no-env-file test deploy/nix-deployer.test.ts` for the offline adapter checks.
+
+The legacy public-app host is managed outside this repository. `nixos/configuration.nix` imports `/etc/backroom/public-app.nix`, supplied by the operator; the retired public-host deploy helper refuses execution. This cleanup does not apply any configuration to the running server. Use `nixos/dev.nix` for the Backroom studio and NixDeployer for independent client apps.

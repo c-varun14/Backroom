@@ -20,15 +20,10 @@ studio-kit/video/artifacts/
 /desk/reports/
 # Raw room histories and machine-generated diagnostics stay local.
 /reports/*-room-log.json
-/receipt/rehearsal.html
 /receipt/*.png
 /receipt/*-output.txt
 /deploy/*-output.txt
 /deploy/check-public.py
-/rehearsal/*-output.txt
-/rehearsal/*-failure.txt
-/rehearsal/*.png
-/rehearsal/timing.json
 # Credentials, databases, archives and generated media are not publication inputs.
 .env.*
 !.env.example
@@ -60,4 +55,11 @@ cookies.txt
 # Generated diagnostics from any lane, including reproduction drills.
 **/*-output.txt
 **/*-output.json
-/rehearsal/bakery/fresh-demo-*.png
+
+# Private planning and experiment history stays on disk.
+/reports/
+/specs/
+/spikes/
+reports/
+specs/
+spikes/

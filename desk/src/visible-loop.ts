@@ -302,7 +302,7 @@ export class VisibleLoop {
     this.store.db.query('DELETE FROM client_buttons WHERE post=?').run(post.switch_thread);
     this.rememberDecision(draft.code);
     await this.api.publishApprovalText(this.config.studioRoomId,ticket.n,parsed.clientText,'brief');
-    await this.ownerCards.offer('Final brief',`Review the final document above before releasing it to the client.\n\n${parsed.clientText.slice(0,3000)}`,[{label:'Release to client',command:'@desk send '+draft.code},{label:'Change',command:'__change'}]);
+    await this.ownerCards.offer('Final brief','Review the final document above before releasing it to the client.',[{label:'Release to client',command:'@desk send '+draft.code},{label:'Change',command:'__change'}]);
   }
 
   clientButtons(post:Post,binding:{stage:string;version:number;hash:string;artifact:unknown}){

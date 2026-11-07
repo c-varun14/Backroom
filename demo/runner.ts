@@ -10,14 +10,14 @@ import {SwitchAPI,SwitchTransport} from '../desk/src/switch-transport';
 import {RealStagesLoop,type RealConfig} from '../desk/src/real-loop';
 import type {Identity} from '../desk/src/switch-identities';
 import type {LocalComposeDeployer} from '../deploy/local-compose';
-import {loadRole} from '../harness/config';
-import {commandAgent} from '../harness/command-agent';
+import {loadRole} from '../desk/harness/config';
+import {commandAgent} from '../desk/harness/command-agent';
 process.umask(0o077);
 const base='http://switch:8000',env=Object.fromEntries(readFileSync('/state/stack.env','utf8').trim().split('\n').map(l=>l.split('=')));
 const clients=JSON.parse(readFileSync('/repo/demo/clients.json','utf8'));
 const started=Date.now(),checks:{step:string;pass:boolean;detail:string;seconds:number}[]=[];
 const receipt={sample:true,scriptedHumans:true,scriptedAgents:true,modelCalls:0,video:'1-second synthetic file fixture; not a production product video',checks,
- bakery:'http://127.0.0.1:49163',projects:[] as {name:string;roomId:string;packageId?:string}[],elapsedSeconds:0};
+ fixture:'http://127.0.0.1:49163',clients:[] as {name:string;roomId:string;packageId?:string}[],elapsedSeconds:0};
 function safe(e:unknown){
   const message=e instanceof Error?e.message:String(e);
   if(/^Switch (HTTP \d{3}; response withheld|request failed; response withheld)$/.test(message))return message;
@@ -25,7 +25,7 @@ function safe(e:unknown){
   if(message.startsWith('Switch connection error: '))return message;
   const code=(e as any)?.code??(e as any)?.cause?.code;
   if(['ECONNREFUSED','ECONNRESET','ConnectionRefused','ConnectionClosed','DNSLookupFailed','SocketError','ENOTFOUND','EAI_AGAIN','ETIMEDOUT','EHOSTUNREACH'].includes(code))return `connection error: ${code}`;
-  if(typeof code==='string'&&/^[A-Z][A-Z0-9_]{1,23}$/.test(code))return `connection error: ${code}`;
+  if(typeof code==='string'&&/^[A-Z][A-Z0-9_]{1,23}$/.test(code))return `operation error: ${code} (${e instanceof Error?e.stack?.match(/(?:runner|real-loop|stages-loop|config)\.ts:\d+:\d+/g)?.join(', ')??'location withheld':'location withheld'})`;
   if(e instanceof Error&&e.name==='TimeoutError')return 'connection error: TimeoutError (request deadline exceeded)';
   if(e instanceof Error&&['Stale outgoing release code','Changed document','SAMPLE reviewer exact checkpoint mismatch'].includes(message))return message;
   if(/^Timeout: [a-z -]+$/.test(message))return message;
@@ -38,10 +38,10 @@ function safe(e:unknown){
 function save(){
   receipt.elapsedSeconds=Math.round((Date.now()-started)/1000);
   // The public receipt has no runtime room/user IDs or credentials.
-  const clean={...receipt,projects:receipt.projects.map(p=>({name:p.name,memoryAttached:Boolean(p.packageId)}))};
+  const clean={...receipt,clients:receipt.clients.map(p=>({name:p.name,memoryAttached:Boolean(p.packageId)}))};
   writeFileSync('/out/receipt.json',JSON.stringify(clean,null,2));
   const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-  writeFileSync('/out/receipt.html',`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Backroom judge receipt</title><style>body{font:17px/1.6 system-ui;max-width:900px;margin:40px auto;padding:20px;color:#18332b;background:#f6f3e8}li{margin:14px 0}.fail{color:#a00}code{overflow-wrap:anywhere}</style><h1>Backroom · SAMPLE scripted demo</h1><p>Real Switch 0.31.0 rooms, protocol, identity, desk gates and local bakery. Humans and role commands are scripted; no model calls. Video is a synthetic file fixture. This is a reproduction check, not evidence of AI reasoning.</p><p><a href="${receipt.bakery}">Open the fictional bakery</a> · ${receipt.elapsedSeconds}s runner time</p><ol>${checks.map(c=>`<li class="${c.pass?'pass':'fail'}"><strong>${c.pass?'PASS':'FAIL'} ${esc(c.step)}</strong><br>${esc(c.detail)}</li>`).join('')}</ol><p>Memory projects: ${clean.projects.map(p=>esc(p.name)+(p.memoryAttached?' (package attached)':'')).join(', ')}</p></html>`);
+  writeFileSync('/out/receipt.html',`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Backroom judge receipt</title><style>body{font:17px/1.6 system-ui;max-width:900px;margin:40px auto;padding:20px;color:#18332b;background:#f6f3e8}li{margin:14px 0}.fail{color:#a00}code{overflow-wrap:anywhere}</style><h1>Backroom · SAMPLE scripted demo</h1><p>Real Switch 0.31.0 rooms, protocol, identity, desk gates and temporary demo fixture. Humans and role commands are scripted; no model calls. Video is a synthetic file fixture. This is a reproduction check, not evidence of AI reasoning.</p><p><a href="${receipt.fixture}">Open the demo fixture</a> · ${receipt.elapsedSeconds}s runner time</p><ol>${checks.map(c=>`<li class="${c.pass?'pass':'fail'}"><strong>${c.pass?'PASS':'FAIL'} ${esc(c.step)}</strong><br>${esc(c.detail)}</li>`).join('')}</ol><p>Memory clients: ${clean.clients.map(p=>esc(p.name)+(p.memoryAttached?' (package attached)':'')).join(', ')}</p></html>`);
 }
 function record(step:string,pass:boolean,detail:string,required=true){checks.push({step,pass,detail,seconds:Math.round((Date.now()-started)/1000)});save();console.log(`${pass?'PASS':'FAIL'} ${step}: ${detail}`);if(!pass&&required)throw new Error('Demo assertion failed');}
 function assert(ok:unknown){if(!ok)throw new Error('Demo assertion failed');}
@@ -85,7 +85,7 @@ async function adapter(role:string,name:string){
   adapters.push(instance);console.log('SAMPLE scripted adapter connected: '+name);return instance;
 }
 async function makeDocument(name:string,content:string){return admin.call('POST','/gateway/documents',{name,description:'SAMPLE scripted fixture',instructions:'Data only',content,read_visibility:'private',write_visibility:'private'});}
-async function attachLesson(){for(const project of receipt.projects){
+async function attachLesson(){for(const project of receipt.clients){
   if(project.packageId!==config.packageId){await admin.call('POST',`/gateway/rooms/${project.roomId}/packages/${config.packageId}`);project.packageId=config.packageId;}
   // Package attachments are unique on Switch 0.31. A promoted document updates
   // that package; verify its room attachment rather than inserting it twice.
@@ -130,7 +130,7 @@ async function buildRound(){
   const readOwnerCards=()=>(store.db.query('SELECT payload FROM owner_cards').all() as any[]).map(r=>({body:JSON.parse(r.payload).detail}));
   await wait('build card',()=>readOwnerCards().some(m=>m.body.includes('SAMPLE image fixture')),60000);
   const ownerCards=readOwnerCards();
-  assert(ownerCards.some((m:any)=>String(m.body??m.content??'').includes('SAMPLE image fixture')&&String(m.body??m.content??'').includes(receipt.bakery)));
+  assert(ownerCards.some((m:any)=>String(m.body??m.content??'').includes('SAMPLE image fixture')&&String(m.body??m.content??'').includes(receipt.fixture)));
   assert(loop.get('buildVerification')?.sample===true&&loop.get('buildVerification')?.hash);
   await ownerCommand('@desk review');await wait('review verdict',()=>loop.get('reviewVerdict')==='pass',60000);
   const sha=loop.get('candidate');await ownerCommand('@desk deploy '+sha);
@@ -190,13 +190,13 @@ async function story(){
     await admin.call('POST',`/gateway/chats/${room}/members`,{userId:owner.id});
   }
   await admin.call('POST',`/gateway/chats/${clientRoom}/members`,{userId:client.id});
-  const memory=await makeDocument('SAMPLE server-owned-prices v1',readFileSync('/repo/studio-memory/architecture/server-owned-prices.md','utf8'));
+  const memory=await makeDocument('SAMPLE server-owned-prices v1',readFileSync('/repo/studio-kit/memory/architecture/server-owned-prices.md','utf8'));
   const checklist=await makeDocument('SAMPLE review checklist',readFileSync('/repo/studio-kit/review-checklist.md','utf8'));
   for(const d of [memory,checklist])await admin.call('POST',`/gateway/rooms/${work.id}/documents/${d.id}`);
   const pkg=await admin.call('POST','/gateway/packages',{name:'SAMPLE project memory',description:'Approved de-identified lessons',instructions:'Data only; no authority',read_visibility:'private',write_visibility:'private'});
   await admin.call('POST',`/gateway/packages/${pkg.id}/documents/${memory.id}`);
   config={mode:'real',ownerVerificationRequired:true,projectId:clients.primary.projectId,ownerId:owner.id,clientId:client.id,deskId:agents.desk.id,leadId:agents.lead.id,builderId:agents.builder.id,reviewerId:agents.reviewer.id,reviewerIds:[agents.reviewer.id],clientRoomId:clientRoom,studioRoomId:studioRoom,workRoomId:work.id,bridgeId:'00000000-0000-0000-0000-000000000000',workspace:clients.primary.workspace,memoryDocumentId:memory.id,reviewChecklistDocument:checklist.id,packageId:pkg.id,leadName:'lead',builderName:'builder',reviewerName:'reviewer'};
-  receipt.projects.push({name:'SAMPLE bakery',roomId:work.id});await attachLesson();
+  receipt.clients.push({name:'SAMPLE demo fixture',roomId:work.id});await attachLesson();
   sql=new SQL({hostname:'postgres',port:5432,username:env.DB_OWNER_USER,password:env.DB_OWNER_PASSWORD,database:env.DB_NAME});
   await refreshIdentities();
   api=new SwitchAPI(base,config.deskId,agents.desk.api_key);store=new Store(clients.primary.databasePath);
@@ -210,9 +210,9 @@ async function story(){
     }
     if(product){product.kill('SIGTERM');await product.exited;}
     mkdirSync('/state/data',{recursive:true});
-    product=Bun.spawn(['bun','--no-env-file',releasePath+'/server.ts'],{cwd:releasePath,env:{PATH:process.env.PATH,HOME:process.env.HOME,OWNER_PASSWORD_FILE:'/state/product-owner',DATABASE_PATH:'/state/data/orders.sqlite',PORT:'3210',BIND_HOST:'0.0.0.0'},stdout:'ignore',stderr:'ignore'});
-    await wait('bakery health',async()=>{try{return (await fetch('http://127.0.0.1:3210/health')).ok;}catch{return false;}});
-    current={commitSha:input.commitSha,url:receipt.bakery};
+    product=Bun.spawn(['bun','--no-env-file',releasePath+'/server.ts'],{cwd:releasePath,env:{PATH:process.env.PATH,HOME:process.env.HOME,DATA_FILE:'/state/data/record.txt',PORT:'3210',BIND_HOST:'0.0.0.0'},stdout:'ignore',stderr:'ignore'});
+    await wait('fixture health',async()=>{try{return (await fetch('http://127.0.0.1:3210/health')).ok;}catch{return false;}});
+    current={commitSha:input.commitSha,url:receipt.fixture};
   }};
   loop=new RealStagesLoop(store,api,new SwitchTransport(api,'/state/files'),config,deployer as unknown as LocalComposeDeployer,()=>identities,{
     now:()=>demoClock,
@@ -234,7 +234,7 @@ async function story(){
   record('Provision template',true,'Three template rooms including private work room; workers owned by a separate non-admin SAMPLE account.');
   await human('client','Hii');await wait('greeting routed',()=>store.db.query('SELECT n FROM client_messages LIMIT 1').get());
   assert(!loop.latestTicket());record('Greeting',true,'SAMPLE scripted client says Hii: no ticket.');
-  await human('client','request: SAMPLE bakery needs morning pickup pre-orders, 40 units, saved data, private owner list, server prices and no payments.');
+  await human('client','request: SAMPLE demo fixture needs revision 1 and a saved record, private route, no payments.');
   await wait('first brief',()=>loop.latestDraft()?.status==='active');
   assert((await messages()).some((m:any)=>String(m.body??m.content??'').includes('Ticket #1: assigned to Varun')));
   record('Request intake',true,'Real fixed assignment line, ticket #1 and versioned brief created through Switch.');
@@ -254,7 +254,7 @@ async function story(){
   await adapters[0].api.post(work.id,'@desk send '+old);
   await wait('agent refusal audit',()=>store.audit().some((a:any)=>a.reason==='agent sender'));
   assert((await messages()).length===before);record('Agent release blocked',true,'Real desk audit: agent sender; client message count unchanged.');
-  await human('client','request: SAMPLE clarify morning pickup only, still 40 units.');
+  await human('client','request: SAMPLE clarify revision 1 with a saved record.');
   await wait('changed brief',()=>loop.latestDraft()?.status==='active'&&loop.latestDraft().code!==old);
   await loop.brief.ownerCards.closeStale();
   let staleRefused=false;try{await press(refreshed,owner,'@desk send '+old);}catch(e){staleRefused=e instanceof Error&&e.message==='HTTP 409; response withheld';}
@@ -272,20 +272,19 @@ async function story(){
   await wait('team answer',async()=>(await owner.call('GET',`/gateway/chats/${work.id}/messages`)).messages.some((m:any)=>String(m.body??m.content??'').includes('answer 1: Email')));
   record('Team question button',true,'Verified owner answer reached lead in the private work room as answer 1: Email.');
   const first=await buildRound();
-  const initial=await(await fetch('http://127.0.0.1:3210/api/catalog')).json();assert(Object.keys(initial.sessions).length===1&&initial.sessions.morning.capacity===40);
-  const slot=initial.available[0];assert(slot);
-  const order=await fetch('http://127.0.0.1:3210/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'SAMPLE Rowan',email:'rowan@example.test',date:slot.date,session:'morning',items:[{productId:'seed-loaf',quantity:1}],idempotencyKey:'sample-judge-order'})});assert(order.status===201);const saved=await order.json();
-  assert((await fetch('http://127.0.0.1:3210/api/owner/orders')).status===401);
+  const initial=await(await fetch('http://127.0.0.1:3210/health')).json();assert(initial.revision===1);
+  assert((await fetch('http://127.0.0.1:3210/record',{method:'POST'})).status===201);
+  assert((await fetch('http://127.0.0.1:3210/private')).status===401);
   record('Owner verification card',true,'Owner card includes the app URL and an attached, visibly labelled SAMPLE PNG fixture; no browser capture is claimed.');
-  record('Build review deploy',true,'Scripted builder and fresh reviewer ran bakery tests; real exact-commit gate deployed morning-only app. Saved one fictional order; private route HTTP 401.');
-  await human('client','request: SAMPLE add evening pickup: morning 24 units, evening 16 units. Preserve the saved order.');
+  record('Build review deploy',true,'Scripted builder and fresh reviewer checked the disposable fixture; real exact-commit gate deployed revision 1. Saved a neutral record; private route HTTP 401.');
+  await human('client','request: SAMPLE change the demo fixture to revision 2. Preserve the saved record.');
   await workflowStage('brief');assert(loop.state.get(config.projectId).stages.build.approvals.length===0&&!loop.get('candidate')&&!loop.get('reviewVerdict'));
   record('Revision reopens approvals',true,'Labelled client change returned to brief, revoked build approval and cleared candidate/review.');
   await briefRound();const second=await buildRound();assert(second!==first);
-  const revised=await(await fetch('http://127.0.0.1:3210/api/catalog')).json();assert(revised.sessions.evening.capacity===16&&revised.sessions.morning.capacity===24);
-  assert((await fetch('http://127.0.0.1:3210/api/receipt/'+saved.receiptToken)).status===200);
+  const revised=await(await fetch('http://127.0.0.1:3210/health')).json();assert(revised.revision===2);
+  assert(await(await fetch('http://127.0.0.1:3210/record')).text()==='demo fixture record');
   await human('client','approve '+second);await workflowStage('video');
-  record('Redeploy and acceptance',true,'New exact reviewed commit, morning24/evening16; saved receipt survived redeploy; SAMPLE client accepted. Bakery: '+receipt.bakery);
+  record('Redeploy and acceptance',true,'New exact reviewed commit, revision 2; saved fixture record survived redeploy; SAMPLE client accepted. Fixture: '+receipt.fixture);
   await ownerCommand('@desk video');await wait('synthetic video',()=>activeCode('video'),45000);
   await ownerCommand('@desk approve video '+activeCode('video'));await wait('video release',()=>loop.get('outgoing')?.stage==='video');
   await ownerCommand('@desk send '+loop.get('outgoing').code);await wait('video delivered',()=>loop.get('delivered')?.stage==='video');await human('client','approve');await workflowStage('learn');
@@ -296,42 +295,42 @@ async function story(){
   const loaded=await api.operation('load_internal_documents',{ids:[promotedDocument]},loop.cursor(work.id).connection_id);assert(loaded.result[0].content.includes('private-order-lists'));
   record('Lesson promotion',true,'Exact proposal hash approved by verified SAMPLE owner; real Switch package updated following owner approval.');
   // Independent fictional client, separate owner account for its agent identities.
-  const fernWorkers=new Session(),fernClient=new Session();
-  for(const [name,session] of [['fern-workers',fernWorkers],['fern-client',fernClient]] as const){const password=randomUUID()+randomUUID();await admin.call('POST','/gateway/users',{name:'SAMPLE '+name,email:name+'@judge.example.test',password,role:'user'});await session.login(name+'@judge.example.test',password);}
-  const fernAgents=[];
-  for(const role of ['desk','lead','builder','reviewer'])fernAgents.push(await register('fern-'+role,fernWorkers));
-  const fern=await admin.call('POST','/gateway/rooms/from-yaml',{yaml:readFileSync('/repo/switch/backroom.template.yaml','utf8'),inputs:{desk:'fern-desk',lead:'fern-lead',builder:'fern-builder',reviewer:'fern-reviewer',client_room:'client-fernline',studio_room:'studio-fernline',work_room:'work-fernline'},template_name:'SAMPLE Fernline Books'});
-  assert(fern.rooms.length===3&&!fern.errors?.length&&fern.rooms.every((r:any)=>!r.failed_attachments.length));
-  const fernWork=fern.rooms.find((r:any)=>r.room_name==='work-fernline').room_id;
-  const fernRoom=fern.rooms.find((r:any)=>r.room_name==='client-fernline').room_id;
-  await admin.call('POST',`/gateway/chats/${fernRoom}/members`,{userId:fernClient.id});
-  receipt.projects.push({name:'Fernline Books SAMPLE',roomId:fernWork});await attachLesson();
+  const secondWorkers=new Session(),secondClient=new Session();
+  for(const [name,session] of [['second-workers',secondWorkers],['second-client',secondClient]] as const){const password=randomUUID()+randomUUID();await admin.call('POST','/gateway/users',{name:'SAMPLE '+name,email:name+'@judge.example.test',password,role:'user'});await session.login(name+'@judge.example.test',password);}
+  const secondAgents=[];
+  for(const role of ['desk','lead','builder','reviewer'])secondAgents.push(await register('second-'+role,secondWorkers));
+  const secondRooms=await admin.call('POST','/gateway/rooms/from-yaml',{yaml:readFileSync('/repo/switch/backroom.template.yaml','utf8'),inputs:{desk:'second-desk',lead:'second-lead',builder:'second-builder',reviewer:'second-reviewer',client_room:'client-client-b',studio_room:'studio-client-b',work_room:'work-client-b'},template_name:'SAMPLE client-b'});
+  assert(secondRooms.rooms.length===3&&!secondRooms.errors?.length&&secondRooms.rooms.every((r:any)=>!r.failed_attachments.length));
+  const secondWork=secondRooms.rooms.find((r:any)=>r.room_name==='work-client-b').room_id;
+  const secondRoom=secondRooms.rooms.find((r:any)=>r.room_name==='client-client-b').room_id;
+  await admin.call('POST',`/gateway/chats/${secondRoom}/members`,{userId:secondClient.id});
+  receipt.clients.push({name:'client-b SAMPLE',roomId:secondWork});await attachLesson();
   mkdirSync(clients.second.workspace,{recursive:true});
-  const fernStore=new Store(clients.second.databasePath);fernStore.close();
-  writeFileSync('/state/fernline-client.json',JSON.stringify({projectId:clients.second.projectId,clientRoomId:fernRoom,studioRoomId:fern.rooms.find((r:any)=>r.room_name==='studio-fernline').room_id,workRoomId:fernWork,workspace:clients.second.workspace,databasePath:clients.second.databasePath}));
-  const fernApi=new SwitchAPI(base,fernAgents[1].id,fernAgents[1].api_key);
-  const connection=randomUUID(),fw=fernApi.socket(fernWork,connection,0);sockets.push(fw);
+  const secondStore=new Store(clients.second.databasePath);secondStore.close();
+  writeFileSync('/state/client-b-client.json',JSON.stringify({projectId:clients.second.projectId,clientRoomId:secondRoom,studioRoomId:secondRooms.rooms.find((r:any)=>r.room_name==='studio-client-b').room_id,workRoomId:secondWork,workspace:clients.second.workspace,databasePath:clients.second.databasePath}));
+  const secondApi=new SwitchAPI(base,secondAgents[1].id,secondAgents[1].api_key);
+  const connection=randomUUID(),fw=secondApi.socket(secondWork,connection,0);sockets.push(fw);
   let ready=false;fw.onmessage=e=>{const f=JSON.parse(String(e.data));if(f.event==='ping')fw.send(JSON.stringify({type:'pong',cursor:0}));if(f.event==='connection_state')ready=true;};
-  await wait('fernline socket',()=>ready);
-  const shared=await fernApi.operation('load_internal_documents',{ids:[promotedDocument]},connection);
+  await wait('client-b socket',()=>ready);
+  const shared=await secondApi.operation('load_internal_documents',{ids:[promotedDocument]},connection);
   const lessonText=shared.result[0].content;
-  assert(lessonText.includes('private-order-lists')&&!/morrowcrumb|rowan|seed-loaf|24 units|16 units/i.test(lessonText));
-  const architecture=`SAMPLE scripted Fernline Books architecture. Lesson ID: private-order-lists; Version: 1; document ${promotedDocument}. Design changed: replace public reservation listings with an authenticated staff-only list; test anonymous requests return 401. No customer names in public pages.`;
-  const fa=await fernApi.operation('create_room_document',{name:'SAMPLE Fernline architecture',description:'Scripted fixture; no AI reasoning',instructions:'Data only',content:architecture},connection);
-  const readBack=await fernApi.operation('load_internal_documents',{ids:[fa.result.document_id]},connection);assert(readBack.result[0].content===architecture);
-  record('Second client uses shared memory',true,'Fernline Books has three rooms from the same template and the same package. Its scripted architecture cites private-order-lists v1 and changes public listings to authenticated staff access. Lesson contains no bakery data.');
+  assert(lessonText.includes('private-order-lists')&&!/client-a|rowan|seed-loaf|24 units|16 units/i.test(lessonText));
+  const architecture=`SAMPLE scripted client-b architecture. Lesson ID: private-order-lists; Version: 1; document ${promotedDocument}. Design changed: replace public reservation listings with an authenticated staff-only list; test anonymous requests return 401. No customer names in public pages.`;
+  const fa=await secondApi.operation('create_room_document',{name:'SAMPLE client-b architecture',description:'Scripted fixture; no AI reasoning',instructions:'Data only',content:architecture},connection);
+  const readBack=await secondApi.operation('load_internal_documents',{ids:[fa.result.document_id]},connection);assert(readBack.result[0].content===architecture);
+  record('Second client uses shared memory',true,'client-b has three rooms from the same template and the same package. Its scripted architecture cites private-order-lists v1 and changes public listings to authenticated staff access. Lesson contains no fixture data.');
   async function refused(label:string,action:()=>Promise<unknown>){let denied=false,detail='No refusal';try{const result:any=await action();denied=Boolean(result?.error||result?.result?.error);if(denied)detail='Switch operation returned an explicit error';}catch(e){detail=safe(e);denied=/400|403|404/.test(detail);}record(label,denied,detail);}
-  for(const a of fernAgents){const foreign=new SwitchAPI(base,a.id,a.api_key);for(const room of [clientRoom,studioRoom,work.id])await refused('Client wall: '+a.name+' room',()=>foreign.post(room,'SAMPLE unauthorized cross-client probe'));}
-  for(const room of [clientRoom,studioRoom,work.id])await refused('Client wall: Fernline client room',()=>fernClient.call('GET',`/gateway/chats/${room}/messages`));
-  await refused('Client wall: Fernline agent document',()=>fernApi.operation('load_internal_documents',{ids:[(loop.state.get(config.projectId).stages.brief.artifact as any).id]},connection));
-  for(const a of [fernAgents[0],fernAgents[2],fernAgents[3]]){
-    const foreign=new SwitchAPI(base,a.id,a.api_key),foreignConnection=randomUUID(),socket=foreign.socket(fernWork,foreignConnection,0);sockets.push(socket);
+  for(const a of secondAgents){const foreign=new SwitchAPI(base,a.id,a.api_key);for(const room of [clientRoom,studioRoom,work.id])await refused('Client wall: '+a.name+' room',()=>foreign.post(room,'SAMPLE unauthorized cross-client probe'));}
+  for(const room of [clientRoom,studioRoom,work.id])await refused('Client wall: client-b client room',()=>secondClient.call('GET',`/gateway/chats/${room}/messages`));
+  await refused('Client wall: client-b agent document',()=>secondApi.operation('load_internal_documents',{ids:[(loop.state.get(config.projectId).stages.brief.artifact as any).id]},connection));
+  for(const a of [secondAgents[0],secondAgents[2],secondAgents[3]]){
+    const foreign=new SwitchAPI(base,a.id,a.api_key),foreignConnection=randomUUID(),socket=foreign.socket(secondWork,foreignConnection,0);sockets.push(socket);
     let connected=false;socket.onmessage=e=>{const f=JSON.parse(String(e.data));if(f.event==='ping')socket.send(JSON.stringify({type:'pong',cursor:0}));if(f.event==='connection_state')connected=true;};
-    await wait('fernline document socket',()=>connected);
+    await wait('client-b document socket',()=>connected);
     await refused('Client wall: '+a.name+' document',()=>foreign.operation('load_internal_documents',{ids:[(loop.state.get(config.projectId).stages.brief.artifact as any).id]},foreignConnection));
     socket.close();
   }
-  await refused('Client wall: Fernline client document',()=>fernClient.call('GET','/gateway/documents/'+(loop.state.get(config.projectId).stages.brief.artifact as any).id));
+  await refused('Client wall: client-b client document',()=>secondClient.call('GET','/gateway/documents/'+(loop.state.get(config.projectId).stages.brief.artifact as any).id));
   await forumSample();
   // Keep a real pending release to test failure without Switch after the story.
   await loop.outgoing('SAMPLE pending dependency-check reply.','learn',lesson.artifact);offlineCode=loop.get('outgoing').code;beforeOff=(await messages()).length;

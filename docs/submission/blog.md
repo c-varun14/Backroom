@@ -12,8 +12,8 @@ The best moment was the reviewer. A fresh agent that had never seen the code tes
 
 Switch is what makes this safe. Rooms are the wall between clients. A real test broke that wall early: agents sharing an admin owner could invite themselves into a client's room. Separate non-admin ownership fixed it, and those attempts now get real refusals. Verified identity is the release gate, so an agent can't approve its own work. Run `bash demo.sh` and it turns Switch off to show nothing moves without it.
 
-Running it for real taught me more than any test. The session cookie vanished on first sign-in. A migration fix would have replayed every migration on redeploy. Builders stalled silently, and reviewers had nowhere to test. Each one is fixed, and each became a test.
+Testing the live studio exposed operational failures. The session cookie vanished on first sign-in. A migration fix would have replayed every migration on redeploy. Builders stalled silently, and reviewers had nowhere to test. Each one is fixed, and each became a test.
 
-The part I care about most is memory. An approved lesson reaches the next project as a Switch package, and that project cites it by version. Mistakes get made once.
+The part I care about most is memory. An approved lesson reaches the next project as a Switch package, and that project cites it by version. Each project can start with the lessons already approved.
 
 I want to spend my attention on decisions, with evidence for exactly what each one released. [The code is public](https://github.com/c-varun14/Backroom).

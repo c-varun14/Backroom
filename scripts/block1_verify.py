@@ -20,7 +20,7 @@ def discord_check():
     bot=get('/users/@me')
     print('Discord bot authenticated: '+str(bot.get('bot') is True).lower())
     channels=get('/guilds/'+guild+'/channels')
-    for field,name in [('clientChannelId','client-morrowcrumb'),('studioChannelId','studio-morrowcrumb')]:
+    for field,name in [('clientChannelId','client-client-a'),('studioChannelId','studio-client-a')]:
         channel=next(c for c in channels if c['id']==config[field])
         denied=any(o['id']==guild and int(o.get('deny','0')) & 1024 for o in channel['permission_overwrites'])
         print('#'+name+': exists='+str(channel['name']==name).lower()+'; everyone View Channel denied='+str(bool(denied)).lower())
@@ -66,16 +66,17 @@ def probe():
         # Switch 0.31 represents a multipart media group as three adjacent
         # chat entries, with the handoff caption on its first file.
         forwarded=[a for m in messages[handoff_indexes[-1]:handoff_indexes[-1]+3] if m['sender']['agentId']==config['deskId'] for a in m['attachments']] if handoff_indexes else []
-        names={'01-owner-brief.md','02-counter-notes.md','03-chat-export.txt'}
+        inputs=json.loads((ROOT/'demo/inputs.json').read_text())
+        names=set(inputs)
         all_files={a['filename'] for a in forwarded}==names
-        print('Labeled desk handoff with three files: '+str(all_files).lower())
+        print('Labeled desk handoff with the demo fixture: '+str(all_files).lower())
         media=requests.Session();media.headers['Authorization']='Bearer '+private_field(PRIVATE,'desk','api_key')
         matched=0
         for attachment in forwarded:
             if attachment['filename'] not in names:continue
             response=media.get(f'http://127.0.0.1:8000/agents/{config["deskId"]}/rooms/{config["studioRoomId"]}/media',params={'mxc':attachment['uri']},timeout=20)
-            if response.ok and hashlib.sha256(response.content).digest()==hashlib.sha256((ROOT/'sample-client'/attachment['filename']).read_bytes()).digest():matched+=1
-        print('Forwarded source file byte hashes match: '+str(matched==3).lower())
+            if response.ok and hashlib.sha256(response.content).digest()==hashlib.sha256(inputs[attachment['filename']].encode()).digest():matched+=1
+        print('Forwarded source file byte hashes match: '+str(matched==1).lower())
         print('Real Claude lead draft observed: '+str(bool(lead_drafts)).lower())
         print('Frozen simulation draft observed: '+str(h.get('briefVersion') is not None).lower())
         if lead_drafts:
@@ -83,7 +84,7 @@ def probe():
             print('Brief retains conflicts/questions: '+str('question' in body or 'conflict' in body).lower())
             print('Brief sets aside blockchain/Kubernetes prescriptions: '+str('blockchain' in body and 'kubernetes' in body).lower())
         print('Human approvals performed by this test: 0')
-        assert lead_drafts and all_files and matched==3
+        assert lead_drafts and all_files and matched==1
     finally:
         call(admin,'DELETE',f'/gateway/rooms/{config["studioRoomId"]}/agents/{config["probeId"]}')
 

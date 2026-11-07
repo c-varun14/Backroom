@@ -62,7 +62,7 @@ def discord_visibility(config, token, guild, owner_ids, get=None):
     roles = read(f'/guilds/{guild}/roles') if member else None
     results = []
     owner_seen = False
-    for field, name in [('clientChannelId', 'client-morrowcrumb'), ('studioChannelId', 'studio-morrowcrumb')]:
+    for field, name in [('clientChannelId', 'client-client-a'), ('studioChannelId', 'studio-client-a')]:
         channel_id = config[field]
         channel = read('/channels/' + channel_id)
         readable = bool(channel and member and roles and can_read_channel(channel, member, roles, guild))

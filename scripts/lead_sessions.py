@@ -17,7 +17,7 @@ from block1_setup import ROOT, PUBLIC, SetupError, lead_session, call
 
 def repair(fresh=False, restart=False):
     config = json.loads(PUBLIC.read_text())
-    if config['projectId'] != 'morrowcrumb' or not config.get('workRoomId'):
+    if config['projectId'] != 'client-a' or not config.get('workRoomId'):
         raise SetupError('Real Stage 1 work-room configuration required')
     session = lead_session()
     agents = call(session, 'GET', '/gateway/management/agents')
@@ -39,7 +39,7 @@ def repair(fresh=False, restart=False):
         if not source.exists():
             continue
         saved = json.loads((source / 'config.json').read_text())
-        if saved['session']['agentId'] != config['leadId'] or Path(saved['start']['input']['cwd']).resolve() != ROOT / 'spikes/providers/lead':
+        if saved['session']['agentId'] != config['leadId'] or Path(saved['start']['input']['cwd']).resolve() != ROOT / '.switch-runtime/providers/lead':
             raise SetupError('Session ownership check failed; no session state changed')
         known.append(source)
     call(session, 'PATCH', '/gateway/management/agents/' + config['leadId'], {'desired_state': 'stopped'})
@@ -90,7 +90,7 @@ def repair(fresh=False, restart=False):
             if attempt == 2:
                 raise SetupError('Lead running-state update failed after controller restart; rerun after checking status')
             time.sleep(1)
-    print('real lead restarted; next handoff uses work-morrowcrumb')
+    print('real lead restarted; next handoff uses work-client-a')
 
 
 if __name__ == '__main__':

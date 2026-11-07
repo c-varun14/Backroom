@@ -1,4 +1,4 @@
-import disclosureTerms from '../../harness/disclosure-terms.json';
+import disclosureTerms from '../../desk/harness/disclosure-terms.json';
 /** Deliberately conservative: false blocks are safer than internal-text leaks. */
 export const LEAK_GUARD = [
   ...["lead", "desk", "builder", "reviewer", "agent", ...disclosureTerms, "AI", "Switch", "awaiting-owner", "frozen", "draft code", "owner approval", "untrusted"]

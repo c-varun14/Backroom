@@ -1,5 +1,0 @@
-.runtime/
-*.sqlite*
-bakery/.git/
-bakery/data/
-bakery/node_modules/

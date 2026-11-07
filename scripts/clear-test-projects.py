@@ -3,13 +3,13 @@ import sys
 sys.path.insert(0, 'scripts')
 from block1_setup import BASE, call, lead_session, owner_session
 
-ROOMS = {'studio-test', 'wall-created-test-builder', 'work-morrowcrumb', 'SAMPLE-forum-rehearsal-2b0d3e77-studio',
-         'work-morrowcrumb-orders', 'studio-dryrun', 'studio-rehearsal', 'wall-created-isolated-builder',
+ROOMS = {'studio-test', 'wall-created-test-builder', 'work-client-a', 'SAMPLE-forum-rehearsal-2b0d3e77-studio',
+         'work-client-a-orders', 'studio-dryrun', 'studio-rehearsal', 'wall-created-isolated-builder',
          'SAMPLE-forum-rehearsal-2b0d3e77-client', 'client-test', 'SAMPLE-forum-rehearsal-2b0d3e77-work',
          'client-dryrun', 'work-dryrun', 'client-rehearsal'}
-AGENTS = {'builder', 'builder-morrowcrumb', 'builder-morrowcrumb-orders', 'front-morrowcrumb-orders', 'lead',
-          'lead-morrowcrumb-orders', 'lead-rehearsal', 'lead-rehearsal-sol', 'reviewer', 'reviewer-1', 'reviewer-2',
-          'reviewer-3', 'reviewer-4', 'reviewer-morrowcrumb-orders', 'reviewer-morrowcrumb-standby'}
+AGENTS = {'builder', 'builder-client-a', 'builder-client-a-orders', 'front-client-a-orders', 'lead',
+          'lead-client-a-orders', 'lead-rehearsal', 'lead-rehearsal-sol', 'reviewer', 'reviewer-1', 'reviewer-2',
+          'reviewer-3', 'reviewer-4', 'reviewer-client-a-orders', 'reviewer-client-a-standby'}
 
 
 def rooms(session):

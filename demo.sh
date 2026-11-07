@@ -3,7 +3,8 @@ set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES
 export DEMO_UID="$(id -u)" DEMO_GID="$(id -g)"
-state=.secrets/judge-demo
+state="${TMPDIR:-/tmp}/backroom-judge-demo-$(id -u)"
+export DEMO_STATE_DIR="$state"
 compose() { docker compose --project-name backroom-judge-demo --env-file "$state/stack.env" -f compose.yaml "$@"; }
 if [[ "${1:-}" == --down ]]; then
   if [[ -f "$state/stack.env" ]]; then compose down --volumes --remove-orphans; fi
@@ -26,7 +27,7 @@ echo 'Checking anonymous pulls with an empty Docker configuration...'
 for image in ghcr.io/sandbox-quantum/switch-core:0.31.0 ghcr.io/sandbox-quantum/gateway:0.31.0 postgres:16-alpine oven/bun:1.3.14; do
   docker --config "$anonymous" pull "$image"
 done
-docker run --rm -e DEMO_UID -e DEMO_GID -v "$PWD:/repo:ro" -v "$PWD/$state:/state" oven/bun:1.3.14 bun --no-env-file /repo/demo/init.ts
+docker run --rm -e DEMO_UID -e DEMO_GID -v "$PWD:/repo:ro" -v "$state:/state" oven/bun:1.3.14 bun --no-env-file /repo/demo/init.ts
 compose build runner
 compose up -d postgres init-db switch gateway runner
 status=1
@@ -48,6 +49,6 @@ if [[ $status == 0 ]]; then
   compose exec -T runner bun --no-env-file demo/control.ts summary || status=$?
 fi
 printf 'Demo wall time: %ss (including pulls/build/startup).\n' "$((SECONDS-started))"
-echo 'Receipt: demo/out/receipt.html · Bakery: http://127.0.0.1:49163'
+echo 'Receipt: demo/out/receipt.html · Demo fixture: http://127.0.0.1:49163'
 echo 'Cleanup: bash demo.sh --down'
 exit "$status"

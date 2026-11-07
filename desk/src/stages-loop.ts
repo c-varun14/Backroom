@@ -15,7 +15,7 @@ import type { Artifact, Stage } from "./types";
 import type { Identity } from "./switch-identities";
 import type { ManagedDeployer } from "./types";
 
-export interface RehearsalConfig extends ForumConfig { github?:import("./github").GitHubConfig; mode?:"real";stack?:string;videoEnabled?:boolean;deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
+export interface RehearsalConfig extends ForumConfig { github?:import("./github").GitHubConfig; mode?:"real";backwardFixWorkspace?:string;stack?:string;videoEnabled?:boolean;deskName?:string;workRoomId?:string;bridgeId?:string;scriptedVideo?:boolean;earlyLearning?:boolean;reviewChecklistDocument?:string;runtimeContractRequired?:boolean;ownerDecisionDocuments?:string[];projectId:string;ownerId:string;clientId:string;deskId:string;leadId:string;builderId:string;reviewerId:string;reviewerIds:string[];clientRoomId:string;studioRoomId:string;workspace:string;memoryDocumentId:string;packageId:string;leadName:string;builderName:string;reviewerName:string }
 export type Control = { github?:import("./github").GitHub; prepareBuild?:()=>Promise<void>; now?:()=>number; freshReviewer:(round:number)=>Promise<{id:string;name:string}>; promotePackage:(path:string)=>Promise<void>; prepareFix?:()=>Promise<void|{id:string;name:string}> };
 const COMMIT=/^[a-f0-9]{40}$/;
 const HASH=/^[a-f0-9]{64}$/;
@@ -46,6 +46,11 @@ export class StagesLoop {
       CREATE TABLE IF NOT EXISTS stage_kv(key TEXT PRIMARY KEY,value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS stage_artifacts(code TEXT PRIMARY KEY,stage TEXT,version INTEGER,artifact TEXT,content_hash TEXT,status TEXT);
       CREATE TABLE IF NOT EXISTS stage_outgoing(draft TEXT PRIMARY KEY,stage TEXT,artifact TEXT);`);
+  }
+  protected fixWorkspace(){
+    const target=this.config.backwardFixWorkspace;
+    if(!target||!target.startsWith('/')||resolve(target)===resolve(this.config.workspace))throw new Error('Explicit independent backward-fix workspace required');
+    return resolve(target);
   }
   get(key:string):any { const row=this.store.db.query("SELECT value FROM stage_kv WHERE key=?").get(key) as any;return row?JSON.parse(row.value):null; }
   set(key:string,value:any){this.store.db.query("INSERT INTO stage_kv VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(key,JSON.stringify(value));}
@@ -149,7 +154,7 @@ export class StagesLoop {
           this.state.approve(this.config.projectId,'learn',deferred.version,deferred.artifact,this.ownerActor());
         }
         this.set('delivered',null);await this.studio(`SIMULATION client approved ${workflow.stage} exact artifact. Next: ${this.state.get(this.config.projectId).stage}.`);
-        if(workflow.stage==='video'&&!this.get('promoted'))await this.mention(this.config.leadName,'SIMULATION client accepted the exact video hash. Propose pending private-order-lists v1 with reusable privacy lesson, evidence that bakery owner route rejects unauthenticated access and old-shop GET /api/orders exposes contacts; no client facts. Return protocol lesson. Promotion requires an owner command.');
+        if(workflow.stage==='video'&&!this.get('promoted'))await this.mention(this.config.leadName,'SIMULATION client accepted the exact video hash. Propose pending private-order-lists v1 with reusable privacy lesson, evidence from the assigned private-route regression check; no client facts. Return protocol lesson. Promotion requires an owner command.');
       } else if(approval){return;}
       else if(/\?$/.test(body.trim())&&!['request','bug'].includes(classifyClient(body).kind)){this.set('clientQuestion',{stage:workflow.stage,version:workflow.stages[workflow.stage].version});await this.mention(this.config.leadName,`SIMULATION client question; do not change version or approve anything. Answer via protocol answer: ${body}`);}
       else {
@@ -174,7 +179,7 @@ export class StagesLoop {
       if(workflow.stage==='build'&&workflow.stages.architecture.approvals.includes('owner')&&(m=/^@desk spec\n([\s\S]+)$/.exec(body))){const id=await this.document('implementation-spec-rehearsal',m[1]);this.set('specDocument',id);await this.mention(this.config.builderName,`SIMULATION spec document ${id}. Root ${this.config.workspace}; small task only. Run bun test, report real output, check status for secrets, local commit with required trailer. No deploy/client sends. Return candidate SHA to desk-rehearsal.`);return;}
       if((m=/^@desk answer\n([\s\S]+)$/.exec(body))){const id=await this.document('answer-rehearsal',m[1]);await this.studio('SIMULATION answer · document '+id+' · stage/version unchanged.');const question=this.get('clientQuestion');if(question?.stage===workflow.stage&&question.version===workflow.stages[workflow.stage].version&&!leakWord(m[1])){this.set('clientQuestion',null);await this.outgoing(m[1],workflow.stage,workflow.stages[workflow.stage].artifact!);}return;}
       if((workflow.stage==='learn'||(workflow.stage==='video'&&this.config.earlyLearning))&&!workflow.completed&&(m=/^@desk lesson ([a-z0-9-]+) ([1-9][0-9]*)\n([\s\S]+)$/.exec(body))){
-        const path=join(this.root,'studio-memory/pending',m[1]+'.md');writeFileSync(path,m[3]+'\n');
+        const path=join(this.root,'studio-kit/memory/pending',m[1]+'.md');writeFileSync(path,m[3]+'\n');
         const hash=sha256(readFileSync(path));const id=await this.document(`pending-lesson-${m[1]}-v${m[2]}`,m[3]);
         const code=await this.publish('learn',{kind:'document',id},m[3]);this.set('lesson',{slug:m[1],version:Number(m[2]),hash,path,code});
         await this.studio(`SIMULATION pending lesson only: @desk promote ${m[1]} ${m[2]} ${hash}`);return;
@@ -190,7 +195,7 @@ export class StagesLoop {
       }
       if(this.get('fixAuthorized')&&(m=/^@desk fix ([a-zA-Z0-9/_-]+) ([a-f0-9]{40})(?:\n|$)/.exec(body))){
         const expected='fix/'+this.get('promoted')?.slug;
-        const check=protectedGitSync(join(this.root,'sample-projects/old-shop'),['rev-parse',m[1]]);
+        const check=protectedGitSync(this.fixWorkspace(),['rev-parse',m[1]]);
         if(m[1]!==expected||check.exitCode||new TextDecoder().decode(check.stdout).trim()!==m[2])throw new Error('Unverified fix branch');
         this.set('backwardFix',{branch:m[1],sha:m[2]});await this.studio('SIMULATION backward fix branch prepared; no remote or PR created.');return;}
     }
@@ -247,14 +252,14 @@ export class StagesLoop {
     if((match=/^@desk deploy ([a-f0-9]{40})$/.exec(body))){if(workflow.stage!=='build'||match[1]!==this.get('candidate')||this.get('reviewVerdict')!=='pass')return;const result=await this.gate.handleMessage({senderId:this.config.ownerId,senderKind:'human',roomId:event.room_id,body,eventId});this.set('deployResult',result);await this.studio(`SIMULATION deploy ${result.status}.`);return;}
     if((match=/^@desk send ([a-f0-9]{10,64})$/.exec(body))){const active=this.get('outgoing');if(!active||active.code!==match[1]||active.stage!==workflow.stage||active.version!==workflow.stages[workflow.stage].version)return;const result=await this.gate.handleMessage({senderId:this.config.ownerId,senderKind:'human',roomId:event.room_id,body,eventId});if(result.status==='sent'){const outgoing=this.get('outgoing');if(outgoing?.code===match[1])this.set('delivered',outgoing);}await this.studio(`SIMULATION outgoing release ${result.status}.`);return;}
     if(body==='@desk learn'&&workflow.stage==='video'&&this.config.earlyLearning&&!this.get('lesson')){
-      const task=await this.document('pending-privacy-lesson-task','SIMULATION: propose private-order-lists v1 in at most150 words, SAMPLE marker and schema fields (what/evidence/source/date/status pending/applicability/review pending). Evidence: original sample-projects/old-shop/server.js GET /api/orders returns all contacts without authentication (static source observation); rehearsal bakery owner route rejects unauthenticated access (actual HTTP check). De-identify all facts; no contacts/credentials. Applies to private administrative order lists. Owner must promote exact proposal hash before any fix. Return lesson private-order-lists 1 document <id> to desk-rehearsal.');
+      const task=await this.document('pending-privacy-lesson-task','SIMULATION: propose private-order-lists v1 in at most150 words, SAMPLE marker and schema fields (what/evidence/source/date/status pending/applicability/review pending). Evidence: the assigned fixture has a private administrative route; verify anonymous requests are refused. De-identify all facts; no contacts/credentials. Applies to private administrative order lists. Owner must promote exact proposal hash before any fix. Return lesson private-order-lists 1 document <id> to desk-rehearsal.');
       await this.mention(this.config.leadName,`SIMULATION learning now precedes video by explicit owner instruction. Task document ${task}; one short proposal handoff.`);return;
     }
     if(body==='@desk video'&&workflow.stage==='video'){
       if(this.get('videoRequested'))return;this.set('videoRequested',true);
       const deployed=await this.deployer.current(this.config.projectId);
-      if(this.config.scriptedVideo){await this.mention(this.config.builderName,`SIMULATION owner requests scripted video. Authorized root ${this.config.workspace}. Operator prepared video/produce.ts using the existing studio-kit/video pipeline. Run only bun --no-env-file video/produce.ts from that root (allow loopback and local cached tools, no downloads). No edits, polish or commits. Inspect video/artifacts/manifest.json; verify exact MP4 hash, then return video <sha256> video/artifacts/bakery-demo.mp4 to desk-rehearsal. Human listening/ASR unperformed. One short handoff.`);return;}
-      await this.mention(this.config.builderName,`SIMULATION owner requests video for approved deployed commit ${deployed?.commitSha}, local URL ${deployed?.url}. Use read-only ${this.root}/studio-kit/video/SKILL.md and its local cached tools; do not modify that kit. Create product-specific recording/narration/scripts under your authorized workspace video/. Make a real 30–45s narrated MP4 of this bakery, not old-shop, with fictional data, actual saved-order confirmation, local-only browser routes and technical QC/hash. No hosted services, model fallback or cache downloads; use existing local kit dependencies/cache offline. Return protocol video SHA256 relativepath plus QC limits. No approval or client delivery.`);return;
+      if(this.config.scriptedVideo){await this.mention(this.config.builderName,`SIMULATION owner requests scripted video. Authorized root ${this.config.workspace}. Operator prepared video/produce.ts using the existing studio-kit/video pipeline. Run only bun --no-env-file video/produce.ts from that root (allow loopback and local cached tools, no downloads). No edits, polish or commits. Inspect video/artifacts/manifest.json; verify exact MP4 hash, then return video <sha256> video/artifacts/product-demo.mp4 to desk-rehearsal. Human listening/ASR unperformed. One short handoff.`);return;}
+      await this.mention(this.config.builderName,`SIMULATION owner requests video for approved deployed commit ${deployed?.commitSha}, local URL ${deployed?.url}. Use read-only ${this.root}/studio-kit/video/SKILL.md and its local cached tools; do not modify that kit. Create product-specific recording/narration/scripts under your authorized workspace video/. Make a real 30–45s narrated MP4 of the approved product, with fictional data, actual saved-order confirmation, local-only browser routes and technical QC/hash. No hosted services, model fallback or cache downloads; use existing local kit dependencies/cache offline. Return protocol video SHA256 relativepath plus QC limits. No approval or client delivery.`);return;
     }
     if((match=/^@desk promote ([a-z0-9-]+) ([1-9][0-9]*) ([a-f0-9]{64})$/.exec(body))){
       if(workflow.completed||this.get('promoted'))return;
@@ -264,17 +269,17 @@ export class StagesLoop {
       const artifact=JSON.parse(record.artifact);
       const loaded=await this.api.operation('load_internal_documents',{ids:[artifact.id]},this.brief.cursor(this.config.studioRoomId).connection_id);
       if(sha256(loaded.result[0].content)!==record.content_hash)throw new Error('Changed lesson document refused');
-      const target=join(this.root,'studio-memory/architecture',lesson.slug+'.md');
+      const target=join(this.root,'studio-kit/memory/architecture',lesson.slug+'.md');
       writeFileSync(target,`SAMPLE SIMULATION approved promotion\n\nLesson ID: ${lesson.slug} / version ${lesson.version}\nStatus: approved (SIMULATION only)\nSIMULATION owner promotion: proposal SHA-256 ${lesson.hash}; verified native owner event ${p.message_id}. No real client/Varun approval is claimed.\n\n## Reviewed proposal (verbatim historical pending text)\n\n`+readFileSync(lesson.path,'utf8'));
       await this.control.promotePackage(target);
-      const index=join(this.root,'studio-memory/packages/approved-index.md');
+      const index=join(this.root,'studio-kit/memory/packages/approved-index.md');
       const entry=`\nSIMULATION owner-approved addition: architecture/${lesson.slug}.md v${lesson.version}; proposal SHA-256 ${lesson.hash}; decision event ${p.message_id}. Attached through rehearsal Gateway package only.\n`;
       writeFileSync(index,readFileSync(index,'utf8')+entry);this.set('promoted',lesson);
       if(workflow.stage==='learn')this.state.approve(this.config.projectId,'learn',workflow.stages.learn.version,workflow.stages.learn.artifact!,this.ownerActor());
       else this.set('deferredLearn',{version:record.version,artifact,ownerEvent:p.message_id});
       this.store.db.query("UPDATE stage_artifacts SET status='approved' WHERE code=?").run(lesson.code);
-      await this.studio(`SIMULATION lesson promoted. Backward fix requires a separate explicit owner command: @desk fix old-shop ${lesson.hash}`);return;
+      await this.studio(`SIMULATION lesson promoted. Backward fix requires a separate explicit owner command: @desk fix earlier-client ${lesson.hash}`);return;
     }
-    if((match=/^@desk fix old-shop ([a-f0-9]{64})$/.exec(body))){const lesson=this.get('promoted');if(!lesson||lesson.hash!==match[1])throw new Error('Unapproved lesson/fix');if(this.get('fixAuthorized'))return;this.set('fixAuthorized',lesson.hash);await this.control.prepareFix?.();await this.mention(this.config.builderName,`SIMULATION owner explicitly authorizes the backward fix for approved lesson ${lesson.slug} v${lesson.version}. Additional write allowlist ONLY ${this.root}/sample-projects/old-shop (fictional earlier project). Initialize a local git repo if absent; checkpoint baseline with required co-author trailer after git status has no secrets. Create branch fix/${lesson.slug}; remove/protect unauthenticated contact listing and add regression test. Keep the fix limited to private order listings; do not expand into pricing. Write PR.md with problem, change, exact tests/output and limitations; this is a local PR description only. No remote/PR creation/push. Run bun test, make exact local fix commit with required trailer, report checks, return protocol fix branch SHA. Do not modify rehearsal/ or other projects.`);return;}
+    if((match=/^@desk fix earlier-client ([a-f0-9]{64})$/.exec(body))){const lesson=this.get('promoted');if(!lesson||lesson.hash!==match[1])throw new Error('Unapproved lesson/fix');if(this.get('fixAuthorized'))return;const target=this.fixWorkspace();this.set('fixAuthorized',lesson.hash);await this.control.prepareFix?.();await this.mention(this.config.builderName,`SIMULATION owner explicitly authorizes the backward fix for approved lesson ${lesson.slug} v${lesson.version}. Additional write allowlist ONLY ${target} (independently configured fixture). Initialize a local git repo if absent; checkpoint baseline with required co-author trailer after git status has no secrets. Create branch fix/${lesson.slug}; remove/protect unauthenticated contact listing and add regression test. Keep the fix limited to private order listings; do not expand into pricing. Write PR.md with problem, change, exact tests/output and limitations; this is a local PR description only. No remote/PR creation/push. Run bun test, make exact local fix commit with required trailer, report checks, return protocol fix branch SHA. Do not modify other projects.`);return;}
   }
 }

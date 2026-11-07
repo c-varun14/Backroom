@@ -85,9 +85,9 @@ const timer = setInterval(()=>{
   if (config.mode!=="real" && existsSync(request) && healthy.size === 2) {
     unlinkSync(request);
     enqueue(async()=>{
-      const names=["01-owner-brief.md","02-counter-notes.md","03-chat-export.txt"];
-      const files=names.map(name=>({name,bytes:new Uint8Array(readFileSync(join(root,"sample-client",name)))}));
-      await (loop as VisibleLoop).intake("simulation:"+crypto.randomUUID(),"FICTIONAL SAMPLE — simulate the Stage 1 handoff from the three supplied source files. This is not a Discord human message or approval.",[],true,files);
+      const inputs=JSON.parse(readFileSync(join(root,"demo/inputs.json"),"utf8"));
+      const files=Object.entries(inputs).map(([name,text])=>({name,bytes:new TextEncoder().encode(String(text))}));
+      await (loop as VisibleLoop).intake("simulation:"+crypto.randomUUID(),"FICTIONAL SAMPLE — simulate a form request. This is not a Discord human message or approval.",[],true,files);
       console.log("desk: labeled simulation forwarded to lead; no client message sent.");
     });
   }

@@ -10,12 +10,12 @@ root=Path(__file__).resolve().parent
 out=root/'artifacts'
 markers=json.loads((out/'markers.json').read_text())
 cues=[
- ('intro',0.35,'Meet Lantern Crate, a fictional shop. Let us place a sample order.'),
- ('shop',0.6,'The shop keeps its order form on one page. This earlier sample collects no payment.'),
- ('name',0.1,'Rowan enters an invented name, then adds a sample email address.'),
- ('quantity',0.2,'Choose two tea tins, then place the sample order.'),
- ('success',0.2,'The confirmation shows the order number and total. The order is stored in memory for this session.'),
- ('outro',0.1,'A simple journey, with a visible result. Fictional data throughout.'),
+ ('intro',0.35,'Meet the product. Follow one task from start to finish.'),
+ ('shop',0.6,'Start on the page where the task begins. Use fictional details.'),
+ ('name',0.1,'Enter the invented details required by the task.'),
+ ('quantity',0.2,'Check the details, then submit the action.'),
+ ('success',0.2,'Verify the confirmation against the actual saved result.'),
+ ('outro',0.1,'One task completed, with a visible result. Fictional data throughout.'),
 ]
 torch.set_num_threads(4)
 revision='f3ff3571791e39611d31c381e3a41a3af07b4987'

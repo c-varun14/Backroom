@@ -39,7 +39,7 @@ def status():
     bridge=next(b for b in bridges if b['bridge_id']==config['bridgeId'])
     print('Switch API: healthy; server 0.31.0')
     print('Discord bridge: '+bridge['status'])
-    for field,name in [('clientRoomId','client-morrowcrumb'),('studioRoomId','studio-morrowcrumb')]:
+    for field,name in [('clientRoomId','client-client-a'),('studioRoomId','studio-client-a')]:
         room=call(admin,'GET','/gateway/rooms/'+config[field])
         print('#'+name+': '+str(room['channel_type'])+'; agents='+str(room['agent_count']))
     lead=lead_session()
@@ -64,7 +64,7 @@ def status():
     lines,owner_seen=discord_visibility(config,env_field(ROOT/'.secrets/discord.env','DISCORD_BOT_TOKEN'),env_field(ROOT/'.secrets/discord.env','DISCORD_GUILD_ID'),owner_ids)
     for line in lines:print(line)
     linked='linked; real owner Discord message seen' if owner_seen else 'linked (identity test still needs a real message)'
-    print('Varun Discord account: '+(linked if owner_ids else 'not linked — follow reports/try-it.md'))
+    print('Varun Discord account: '+(linked if owner_ids else 'not linked — follow docs/LIVE-SETUP.md'))
 
 
 def up():

@@ -1,64 +1,15 @@
-# One-command judge demo
+# Account-free Switch proof
 
-Run `bash demo.sh` from a clone. Docker Engine with Compose, Bash, network access
-for anonymous image pulls and the first runner build, and free loopback ports
-49161–49163 are required. No host Bun/Python, accounts, Discord or model calls.
-The runner image installs Git and FFmpeg on pinned Bun 1.3.14. Switch core and
-Gateway are pinned to 0.31.0; Postgres uses the requested `16-alpine` tag.
+Run `bash demo.sh`. Docker Engine with Compose, Bash, network access for pinned public image pulls and the first runner build (Git, FFmpeg and Python), and loopback ports 49161–49163 are required. No accounts or model calls are used.
 
-The stack project is always `backroom-judge-demo`. The source mount is read-only;
-no Docker socket is mounted into the runner. Credentials, role keys, temporary
-product Git history and SQLite state are generated in ignored `.secrets/judge-demo/`.
-No external logins are read. Product fixture commits exist only in that ignored
-temporary workspace; the source checkout is never committed or modified by the
-runner. Each run first removes this project's previous stack/volume and generates
-new credentials; exported receipts in `demo/out/` are overwritten.
+The `backroom-judge-demo` stack mounts source read-only and never receives a Docker socket. It creates credentials and all fixture Git history under a disposable `/tmp/backroom-judge-demo-<uid>` directory. No existing account files are read. Each run resets only this stack and its own database volume.
 
-Each client gets three rooms from `switch/backroom.template.yaml`, including a
-private work room. `demo/clients.json` supplies independent workspace/database paths. Desk belongs to the SAMPLE owner;
-lead, builder and fresh review identities belong to another non-admin account.
-Native owner/client messages are scripted, never presented as human decisions.
-Authoritative sender mappings come from this disposable Switch database, as in
-the existing dryrun and live ACL checks. The fictional client is not a studio
-member. Existing block0/rehearsal stacks are never addressed.
+`demo/fixture.ts` generates a tiny labelled demo fixture inside runtime state. It serves a revision number, saves a neutral record and refuses a private route. Scripted builder/reviewer commands run its checks and create temporary snapshots. Desk deploys the exact reviewed Git tree. Revision 2 reopens approvals and preserves the record. This fixture is never presented as a client project.
 
-`harness/command-agent.ts` runs the configured `demo/scripted/<role>.sh` commands
-on addressed Switch tasks. Lead emits fixed documents. Builder materializes the
-existing fictional bakery, runs its application tests and makes temporary fixture
-snapshots. Each reviewer identity independently runs those tests against the exact
-candidate. These are scripted checks, not a security review by an AI. Desk's real
-gate controls exact-SHA deployment; the replaceable deployer exports that Git tree
-and runs it inside the runner with a persistent SQLite path and a runtime password
-file. The published host binding is `127.0.0.1:49163`.
+The proof covers real Switch template provisioning, native owner cards, rejected agent/stale/non-owner releases, exact-commit deployment, a client revision, exact-file video delivery, lesson promotion through a package, and a second client refused access to the first client’s rooms and documents. The shared lesson is read successfully in the second room. It also checks forum greetings, questions and blocked commitments.
 
-The story saves a fictional order before changing morning-only capacity40 into
-morning24/evening16. Approvals reopen; the revised app is reviewed, deployed and
-accepted. The order's private receipt survives. A synthetic 1-second labelled
-video exercises exact-file approvals/delivery so the existing six-stage machine
-can reach learning; production walkthrough generation is outside this reproduction
-test. A de-identified lesson is promoted only after its exact hash is approved.
-Memory propagation iterates a list of client projects, currently one SAMPLE bakery.
+The shell stops only this stack’s Switch service. Five real operations fail; after recovery the same handoff succeeds and the client message count is unchanged. Step counts come from the actual checks, printed at completion.
 
-The shell then stops only the `switch` service. The same native-message, protocol
-handoff, owner-release and package-attachment functions make real network attempts.
-Without Switch, no verified sender event reaches desk, so release refuses before
-creating a send intent. Five actual shortened errors appear in the receipt. After
-restart, a real handoff succeeds and the client count confirms no outage delivery.
+Results: `demo/out/receipt.json`, `demo/out/receipt.html` and `demo/out/*-checks.txt`. Open the fixture at `http://127.0.0.1:49163`. `bash demo.sh --down` removes only this stack’s containers/network/volumes; runtime files are reset on the next run.
 
-`demo/out/receipt.json` and self-contained `receipt.html` contain scrubbed results,
-with no runtime IDs or credentials. Actual builder/reviewer test output is in
-`demo/out/*-checks.txt`. Failure exits nonzero and leaves the isolated stack for
-inspection. The bakery remains running after success for judging. Run
-`bash demo.sh --down` to remove this project's containers, network and volumes;
-ignored local receipts/credentials remain until the next run (or local removal).
-
-This shares one disposable runner user across fixture commands and desk. It is
-not a hostile-command sandbox. Separate Switch ownership and real HTTP403 are
-tested, but local fixture code is trusted. The optional AI/Discord live workflow
-still needs the documented plan logins in `docs/LIVE-SETUP.md`.
-
-Runtime roles are selected in `backroom.yaml`; its demo section uses the command harness for every role. Change one role entry to swap a harness. Managed setup reads the same validated file (override path with BACKROOM_HARNESS_CONFIG). Custom commands use argv arrays via harness/command-agent.ts; room text is JSON on stdin.
-
-Build-ready owner cards include the app URL and an attached PNG. This scripted demo uses a visibly labelled synthetic image, never evidence of browser verification. Real builders must open the running app, try the changed flow, attach a PNG and write build-verification.json. Real setup requires that manifest. Desk confines paths to the product workspace and caches the exact image bytes.
-
-The plain-code watchdog persists assignments and verified role progress, defaults to 20 minutes (client config watchdogMs), and emits at most one warning per assignment, including across restarts. The demo labels its fake-clock stall injection. A failed warning send is marked attempted and is not retried automatically.
+Humans and role commands are scripted; image/video inputs are visibly labelled synthetic fixtures. Shared runner-user access is not a hostile-command sandbox. Live AI/Discord setup is in `docs/LIVE-SETUP.md`. Runtime role configuration is in `backroom.yaml`, using `desk/harness/command-agent.ts`.

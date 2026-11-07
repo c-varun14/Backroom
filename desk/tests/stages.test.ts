@@ -10,7 +10,7 @@ const cleanup:(()=>void)[]=[];afterEach(()=>cleanup.splice(0).forEach(f=>f()));
 const SHA='a'.repeat(40),OTHER='b'.repeat(40);
 function fixture(){
  const dir=mkdtempSync(join(tmpdir(),'backroom-stages-')),store=new Store();cleanup.push(()=>{store.close();rmSync(dir,{recursive:true,force:true});});
- const config={projectId:'rehearsal',ownerId:'owner',clientId:'client',deskId:'desk',leadId:'lead',builderId:'builder',reviewerId:'reviewer',reviewerIds:['reviewer'],clientRoomId:'client-room',studioRoomId:'studio-room',workspace:dir,memoryDocumentId:'memory',packageId:'package',leadName:'lead-rehearsal',builderName:'builder',reviewerName:'reviewer'};
+ const config={projectId:'rehearsal',ownerId:'owner',clientId:'client',deskId:'desk',leadId:'lead',builderId:'builder',reviewerId:'reviewer',reviewerIds:['reviewer'],clientRoomId:'client-room',studioRoomId:'studio-room',workspace:dir,backwardFixWorkspace:join(dir,"prior-fixture"),memoryDocumentId:'memory',packageId:'package',leadName:'lead-rehearsal',builderName:'builder',reviewerName:'reviewer'};
  const ids=[['owner','human',null,['owner']],['client','human',null,['client']],['stranger','human',null,[]],...['lead','builder','reviewer','old-reviewer'].map(x=>[x,'agent',x,[]])].map(([sender,kind,agent_id,users])=>({sender,kind,agent_id,users}));
  const posts:any[]=[],documents=new Map<string,string>();let n=0,current:any=null,deploys=0;
  const openedCards=new Set<string>();
@@ -91,17 +91,17 @@ test('owner approval preserves client change text in document-based spec handoff
 test('pending lesson requires exact version/hash and separate owner fix authorization',async()=>{
  const f=fixture();f.toClient();let w=f.loop.state.get('rehearsal');f.loop.state.approve('rehearsal','client_review',w.stages.client_review.version,w.stages.client_review.artifact!,{senderId:'verified-client-channel-human',senderKind:'human',roomId:'client-room'});
  const video={kind:'video' as const,sha256:'1'.repeat(64)};w=f.loop.state.suggest('rehearsal','video',video);f.loop.state.approve('rehearsal','video',w.stages.video.version,video,f.loop.ownerActor());f.loop.state.approve('rehearsal','video',w.stages.video.version,video,{senderId:'verified-client-channel-human',senderKind:'human',roomId:'client-room'});
- for(const folder of ['pending','architecture','packages'])mkdirSync(join(f.dir,'studio-memory',folder),{recursive:true});writeFileSync(join(f.dir,'studio-memory/packages/approved-index.md'),'SAMPLE approved index\n');
+ for(const folder of ['pending','architecture','packages'])mkdirSync(join(f.dir,'studio-kit/memory',folder),{recursive:true});writeFileSync(join(f.dir,'studio-kit/memory/packages/approved-index.md'),'SAMPLE approved index\n');
  await f.loop.handle(f.event('lead','@desk-rehearsal lesson private-order-lists 1\nSAMPLE\nStatus: pending\nPrivate order listings require authentication.'));const l=f.loop.get('lesson');
  await f.loop.handle(f.event('builder',`@desk promote ${l.slug} 1 ${l.hash}`));expect(f.loop.get('promoted')).toBeNull();await expect(f.loop.handle(f.event('owner',`@desk promote ${l.slug} 2 ${l.hash}`))).rejects.toThrow('Lesson promotion identity');
- await expect(f.loop.handle(f.event('owner',`@desk fix old-shop ${l.hash}`))).rejects.toThrow('Unapproved lesson');
- await f.loop.handle(f.event('owner',`@desk promote ${l.slug} 1 ${l.hash}`));expect(f.loop.get('promoted').hash).toBe(l.hash);expect(f.loop.get('fixAuthorized')).toBeNull();expect(f.loop.state.get('rehearsal').completed).toBe(true);expect(readFileSync(join(f.dir,'studio-memory/packages/approved-index.md'),'utf8')).toContain(l.hash);
- await f.loop.handle(f.event('builder',`@desk fix old-shop ${l.hash}`));expect(f.loop.get('fixAuthorized')).toBeNull();await f.loop.handle(f.event('owner',`@desk fix old-shop ${l.hash}`));expect(f.loop.get('fixAuthorized')).toBe(l.hash);
+ await expect(f.loop.handle(f.event('owner',`@desk fix earlier-client ${l.hash}`))).rejects.toThrow('Unapproved lesson');
+ await f.loop.handle(f.event('owner',`@desk promote ${l.slug} 1 ${l.hash}`));expect(f.loop.get('promoted').hash).toBe(l.hash);expect(f.loop.get('fixAuthorized')).toBeNull();expect(f.loop.state.get('rehearsal').completed).toBe(true);expect(readFileSync(join(f.dir,'studio-kit/memory/packages/approved-index.md'),'utf8')).toContain(l.hash);
+ await f.loop.handle(f.event('builder',`@desk fix earlier-client ${l.hash}`));expect(f.loop.get('fixAuthorized')).toBeNull();await f.loop.handle(f.event('owner',`@desk fix earlier-client ${l.hash}`));expect(f.loop.get('fixAuthorized')).toBe(l.hash);
 });
 test('explicit early-learning order keeps video approvals open and applies only the recorded promotion afterwards',async()=>{
  const f=fixture();(f.config as any).earlyLearning=true;f.toClient();let w=f.loop.state.get('rehearsal');
  f.loop.state.approve('rehearsal','client_review',w.stages.client_review.version,w.stages.client_review.artifact!,{senderId:'verified-client-channel-human',senderKind:'human',roomId:'client-room'});
- for(const folder of ['pending','architecture','packages'])mkdirSync(join(f.dir,'studio-memory',folder),{recursive:true});writeFileSync(join(f.dir,'studio-memory/packages/approved-index.md'),'SAMPLE index\n');
+ for(const folder of ['pending','architecture','packages'])mkdirSync(join(f.dir,'studio-kit/memory',folder),{recursive:true});writeFileSync(join(f.dir,'studio-kit/memory/packages/approved-index.md'),'SAMPLE index\n');
  await f.loop.handle(f.event('lead','@desk-rehearsal lesson private-order-lists 1\nSAMPLE\nStatus: pending\nProtect order contact listings.'));const l=f.loop.get('lesson');
  expect(f.loop.state.get('rehearsal').stage).toBe('video');expect(f.loop.state.get('rehearsal').stages.learn.artifact).toBeNull();
  await f.loop.handle(f.event('owner',`@desk promote ${l.slug} 1 ${l.hash}`));expect(f.loop.get('promoted').hash).toBe(l.hash);expect(f.loop.state.get('rehearsal').completed).toBe(false);
