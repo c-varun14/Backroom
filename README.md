@@ -15,11 +15,21 @@ The work around each project was the hard part. Every new project meant environm
 | Deploying | Clicks and a build cycle | One tap deploys the exact reviewed commit on NixOS |
 | Environment keys | Copied around by hand | One private page, one paste |
 
+![How one job moves through Backroom](docs/media/blog/workflow.png)
+
 ## What it does
 
 A client starts a project in Discord with one button and posts their documents. An AI lead finds contradictions and asks about them, writes the brief, and writes a technical plan that only I see. A builder works on a branch. A separate reviewer, who never saw the builder's conversation, tests the running app and sends bugs back. The exact reviewed commit deploys on NixOS. Small safe changes are built to ship themselves; anything touching login, payments, data or configuration waits for me.
 
 In a real run on real accounts, the lead caught two conflicts between client documents, including one nobody planted, and turned a one-line answer into the final brief. I am rolling Backroom out to production for a real client.
+
+| The client's agreed quote form: no phone field | Polar plans in the admin dashboard |
+| --- | --- |
+| ![Quote form](docs/media/blog/quote-form.png) | ![Polar plans](docs/media/blog/polar-plans.png) |
+
+GitHub fills itself in, with commits signed by a builder identity:
+
+![Commits by the Backroom Builder](docs/media/blog/github-commits.png)
 
 ## How Switch is used
 
@@ -32,6 +42,8 @@ Without Switch, Backroom stops. `bash demo.sh` proves it: with Switch off, five 
 - **Handoffs:** Claude passes work to Codex through Switch.
 
 The agents decide the work. Plain code holds the keys.
+
+![With Switch off, five real operations fail](docs/media/blog/switch-off.png)
 
 ## How to run it
 

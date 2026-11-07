@@ -141,3 +141,11 @@ The two controller directories are transferred separately to `agent`, limited to
 ## Limits and unverified work
 
 This handoff was checked offline with fictional fixtures, planted Git/broker attacks, temporary local test sockets and fake child processes. No live state is asserted; an earlier or concurrent prepare does not install these local changes. Nix evaluation, package installation on NixOS, plan logins, real service ordering, volume transfer, controller identity/connection recovery, browser rendering, reboot recovery, Discord behavior and deployment remain live checks for Claude. Agents share one Unix identity with their controllers and can access that identity's plan-login/controller stores; the protected studio credentials, root keys and metadata endpoint are separate. This is not a per-agent sandbox.
+
+## Live run requirements
+
+- Run the identity helper (`scripts/identity-helper.py`) as a root service. It answers one fixed query, so the desk needs no Docker access.
+- Give each builder session its project's `.git` as a writable root, plus network access for installing packages. The Codex sandbox stays on.
+- Keep project workspaces group-usable (`2770`), since agents run as a separate user in the studio group.
+- The bot's Discord role needs Manage Messages and Pin Messages.
+- GitHub polling is paced to once a minute to stay inside the API limit.

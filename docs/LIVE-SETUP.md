@@ -9,6 +9,6 @@ Backroom runs the client studio through Switch and Discord, with Claude and Code
 5. Start a project in Discord, supply short fictional requirements, resolve contradictions, approve the identified brief/architecture, then request independent review and exact-commit deployment. Product repositories live outside this checkout.
 6. Revise requirements and check affected approvals reopen. Accept the exact deployed version, request the video, review the exact artifact and approve a de-identified lesson.
 
-The [current sample app](https://base-demo.98-91-25-101.sslip.io/request-a-quote) demonstrates the recorded sample result. A real-account journey still needs recording; do not present scripted presses as personal decisions.
+The [current sample app](https://base-demo.98-91-25-101.sslip.io/request-a-quote) demonstrates the recorded sample result. The real-account run covered project setup, conflict detection, the brief, owner approvals and the GitHub flow.
 
 For an account-free check, run `bash scripts/repro/test-all.sh` or `bash demo.sh`. The former uses no network; the latter starts a disposable real Switch stack and generates a tiny temporary fixture. Neither configures your live accounts.
