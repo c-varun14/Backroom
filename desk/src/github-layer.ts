@@ -2,7 +2,6 @@ import type {Store} from './store';
 import type {GitHub,GitHubConfig} from './github';
 import {validateGitHubConfig} from './github';
 import {smallChange} from './small-change';
-import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 
 export interface GitHubRecord {
@@ -43,13 +42,8 @@ export class GitHubLayer {
     }
     if(start&&!record.branch){
       const branch=`issue-${record.issue}`;
-      // A new empty project needs an unborn branch, never a synthetic commit.
-      let isolated=false;
-      try{const top=this.git('rev-parse','--show-toplevel');isolated=!this.workspace||resolve(top)===resolve(this.workspace);}catch{}
-      if(!isolated)this.git('init','-b',branch);
-      if(this.git('symbolic-ref','--short','HEAD')!==branch){
-        if(this.git('branch','--list',branch))this.git('switch',branch);else this.git('switch','-c',branch);
-      }
+      // Branch checkout belongs to the unprivileged builder. A privileged
+      // switch would write working-tree files while agents can race them.
       await this.client.updateIssue(record.issue,record.body,[record.kind]);record.branch=branch;this.save(record);
     }
     return record;

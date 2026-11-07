@@ -123,7 +123,7 @@ def main():
         check('Switch database firewall ' + tool, command([tool, '-C', 'OUTPUT', '-m', 'owner', '--uid-owner', 'agent', '-p', 'tcp', '--dport', '5432', '-j', 'REJECT']))
     code = 'import socket,sys; s=socket.socket(); s.settimeout(3); sys.exit(0 if s.connect_ex(("127.0.0.1",5432))!=0 else 1)'
     check('Switch database denied', command(['runuser', '-u', 'agent', '--', 'python3', '-c', code]))
-    check('studio localhost deploy access', command(['runuser', '-u', 'studio', '--', 'ssh', '-o', 'BatchMode=yes', 'backroom-dev', 'true']))
+    check('studio localhost deploy access', command(['runuser', '-u', 'studio', '--', 'ssh', '-o', 'BatchMode=yes', 'backroom-dev', "cd /var/lib/backroom/fleet && exec cat hosts/settings.json"]))
 
 
 if __name__ == '__main__':

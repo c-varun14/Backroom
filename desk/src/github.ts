@@ -1,3 +1,4 @@
+import {protectedGitArgs,gitEnvironment} from './trusted-git';
 /** Only desk owns this client. All remote prose is data, never release authority. */
 export interface GitHubConfig { repo:string; allowedAuthors:string[] }
 export function validateGitHubConfig(config:GitHubConfig) {
@@ -27,7 +28,7 @@ export interface GitHub {
 export type GitHubRunner=(args:string[],cwd:string)=>Promise<string>;
 const run:GitHubRunner=async(args,cwd)=>{
   try {
-    const p=Bun.spawn(args,{cwd,stdout:'pipe',stderr:'pipe',env:{...process.env,GIT_TERMINAL_PROMPT:'0',GH_PROMPT_DISABLED:'1'}});
+    const p=Bun.spawn(protectedGitArgs(cwd,args[0]==='git'?args.slice(1):['--github',...args.slice(1)]),{stdout:'pipe',stderr:'pipe',env:gitEnvironment()});
     const [out,,code]=await Promise.all([new Response(p.stdout).text(),new Response(p.stderr).text(),p.exited]);
     if(code)throw new Error();return out.trim();
   }catch{throw new Error('GitHub operation failed; response withheld');}

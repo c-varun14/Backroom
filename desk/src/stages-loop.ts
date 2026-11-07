@@ -1,3 +1,4 @@
+import {protectedGitSync} from './trusted-git';
 import {scopeStudio} from './studio-scope';
 import {randomUUID} from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync, realpathSync } from "node:fs";
@@ -80,20 +81,20 @@ export class StagesLoop {
   }
   async buildTask(reason='initial build'){
     const architecture=this.state.get(this.config.projectId).stages.architecture;
-    const head=Bun.spawnSync(['git','-C',this.config.workspace,'rev-parse','HEAD'],{stdout:'pipe',stderr:'pipe'});
+    const head=protectedGitSync(this.config.workspace,['rev-parse','HEAD']);
     const starting=head.exitCode?'unavailable':new TextDecoder().decode(head.stdout).trim();
     const task=await this.document('build-task-rehearsal',`SIMULATION bounded task: ${reason}. Starting exact commit ${starting}. Architecture v${architecture.version} document ${(architecture.artifact as any)?.id}. Approved brief document ${(this.state.get(this.config.projectId).stages.brief.artifact as any)?.id}. Existing product ${this.config.workspace}; preserve its work and initial morning-only scope. No recopy from revised reference. Make only requested correction; initial task is finishing the interrupted validation change. Bun SQLite persistent /data, runtime settings supplied by current deploy adapter, port3210. Tests: bun test. Report build-report.md, exact starting/candidate commit. Local commits authorized after status excludes secrets. No deploy/client sends/remotes.`);
     await this.mention(this.config.leadName,`SIMULATION build task document ${task}; create filled spec document, return spec document <id> to desk-rehearsal. One short handoff.`);
   }
   async candidate(sha:string){
     if(!COMMIT.test(sha)||this.state.get(this.config.projectId).stage!=='build'||!this.get('specDocument'))return;
-    const verify=Bun.spawnSync(['git','-C',this.config.workspace,'rev-parse','--verify',sha+'^{commit}'],{stdout:'pipe',stderr:'pipe'});
+    const verify=protectedGitSync(this.config.workspace,['rev-parse','--verify',sha+'^{commit}']);
     if(verify.exitCode||new TextDecoder().decode(verify.stdout).trim()!==sha)throw new Error('Candidate commit not present');
     if(this.config.runtimeContractRequired){
-      const contract=Bun.spawnSync(['git','-C',this.config.workspace,'cat-file','-e',sha+':backroom.deploy.json'],{stdout:'pipe',stderr:'pipe'});
+      const contract=protectedGitSync(this.config.workspace,['cat-file','-e',sha+':backroom.deploy.json']);
       if(contract.exitCode){await this.mention(this.config.builderName,'SIMULATION candidate held: committed backroom.deploy.json and runtime-file startup/readiness corrections from owner decision document are still required. Finish bounded task before a new review.');return;}
     }
-    const head=Bun.spawnSync(['git','-C',this.config.workspace,'rev-parse','HEAD'],{stdout:'pipe',stderr:'pipe'});
+    const head=protectedGitSync(this.config.workspace,['rev-parse','HEAD']);
     if(head.exitCode||new TextDecoder().decode(head.stdout).trim()!==sha)throw new Error('Candidate is not HEAD');
     if(this.get('candidate')===sha)return;
     this.store.db.query("UPDATE stage_artifacts SET status='superseded' WHERE stage='build' AND status='active'").run();
@@ -189,7 +190,7 @@ export class StagesLoop {
       }
       if(this.get('fixAuthorized')&&(m=/^@desk fix ([a-zA-Z0-9/_-]+) ([a-f0-9]{40})(?:\n|$)/.exec(body))){
         const expected='fix/'+this.get('promoted')?.slug;
-        const check=Bun.spawnSync(['git','-C',join(this.root,'sample-projects/old-shop'),'rev-parse',m[1]],{stdout:'pipe',stderr:'pipe'});
+        const check=protectedGitSync(join(this.root,'sample-projects/old-shop'),['rev-parse',m[1]]);
         if(m[1]!==expected||check.exitCode||new TextDecoder().decode(check.stdout).trim()!==m[2])throw new Error('Unverified fix branch');
         this.set('backwardFix',{branch:m[1],sha:m[2]});await this.studio('SIMULATION backward fix branch prepared; no remote or PR created.');return;}
     }

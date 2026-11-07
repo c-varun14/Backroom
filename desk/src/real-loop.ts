@@ -1,3 +1,4 @@
+import {protectedGitSync} from './trusted-git';
 import {AppKeys} from './app-keys';
 import {planKeys} from '../../deploy/app-keys';
 import {GitHubLayer} from './github-layer';
@@ -284,7 +285,7 @@ export class RealStagesLoop extends StagesLoop {
     this.store.db.query("UPDATE stage_followups SET completed=1 WHERE event=?").run(id);
   }
   private git(...args:string[]){
-    const p=Bun.spawnSync(["git",...(this.github?["-c","core.hooksPath=/dev/null"]:[]),"-C",this.real.workspace,...args],{stdout:"pipe",stderr:"pipe"});
+    const p=protectedGitSync(this.real.workspace,args);
     if(p.exitCode)throw new Error("Product checkpoint check failed");return args.includes('-z')?new TextDecoder().decode(p.stdout):new TextDecoder().decode(p.stdout).trim();
   }
   private async pollGitHub(){
@@ -533,7 +534,7 @@ export class RealStagesLoop extends StagesLoop {
               ? `Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Stack ${selectedStack.id}: ${selectedStack.build} Test commands: ${selectedStack.test}. Report real output and criterion evidence. Use only what the client supplied; never invent client facts. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Ask questions with ask: <question>; desk routes them through lead. Return build-ready <report-relative-path> after a clean checkpoint; independent review starts automatically. ${DELIVERY_RULE}`
               : `Read filled spec document ${ref[2]}, approved architecture ${(state.stages.architecture.artifact as any)?.id} and brief ${(state.stages.brief.artifact as any)?.id}. Implement only this bounded task in ${this.real.workspace}; use your loaded builder playbook. Run bun test; report real output. Commit only the bounded product source/tests after checks, without AI attribution; never commit the outer Backroom repository. No deploys, remotes or client messages. Return build-ready <report-relative-path> after a clean checkpoint; the owner requests independent review.`;
             const branch=this.github?.record(this.ticket())?.branch;
-            await this.mention(this.real.builderName,assignment+(branch?` Work only on branch ${branch}. Only desk talks to GitHub; you hold no token.`:''));
+            await this.mention(this.real.builderName,assignment+(branch?` Check out branch ${branch} (create it from the current checkpoint if absent), then work only on it. Only desk talks to GitHub; you hold no token.`:''));
             await this.card("build","Approved spec assigned to builder.","@desk status","🔵");
           }else if(ref[1].startsWith("lesson ")&&state.stage==="learn"){
             const [,slug,version]=ref[1].split(" "),text=await this.loadDocument(ref[2]);

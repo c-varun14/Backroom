@@ -1,8 +1,9 @@
+import {protectedGitSync} from '../desk/src/trusted-git';
 import { test, expect } from "bun:test";
-import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { NixDeployer, type Command, type Run, type NixProjectConfig } from "./nix-deployer";
+import { NixDeployer, runCommand, remoteCommand, type Command, type Run, type NixProjectConfig } from "./nix-deployer";
 
 const first = "a".repeat(40), second = "b".repeat(40), third = "c".repeat(40);
 const hash = "sha256-" + Buffer.alloc(32, 7).toString("base64");
@@ -78,7 +79,7 @@ class Fake {
 async function fixture(fn: (d: NixDeployer, fake: Fake, root: string, config: Record<string, NixProjectConfig>) => Promise<void>) {
   const root = await mkdtemp("/tmp/backroom-nix-test-"), fake = new Fake();
   const config = { sample: { repoPath: join(root, "repo"), serverPort: 4100, webPort: 4101 } };
-  const d = new NixDeployer(config, { buildHost: "backroom-dev", deployHost: "root@deploy.example.test", fleetPath: "/var/lib/fleet", stateRoot: root, run: fake.run });
+  const d = new NixDeployer(config, { buildHost: "backroom-dev", deployHost: "root@deploy.example.test", fleetPath: "/var/lib/backroom/fleet", stateRoot: root, run: fake.run });
   try { await fn(d, fake, root, config); } finally { await rm(root, { recursive: true, force: true }); }
 }
 const input = (commitSha = first, intentId = "approved-first") => ({ project: "sample", commitSha, intentId });
@@ -128,7 +129,7 @@ test("Nix: HTML with status 200 is not API health", async () => fixture(async (d
 
 test("Nix: intents remain idempotent across restart and later successful releases", async () => fixture(async (d, f, root, config) => {
   await d.deploy(input()); const count = f.calls.length;
-  const restarted = new NixDeployer(config, { buildHost: "backroom-dev", deployHost: "root@deploy.example.test", fleetPath: "/var/lib/fleet", stateRoot: root, run: f.run });
+  const restarted = new NixDeployer(config, { buildHost: "backroom-dev", deployHost: "root@deploy.example.test", fleetPath: "/var/lib/backroom/fleet", stateRoot: root, run: f.run });
   expect(await restarted.current("sample")).toEqual(await d.current("sample"));
   await restarted.deploy(input()); expect(f.calls).toHaveLength(count);
   await restarted.deploy(input(second, "approved-second")); const later = f.calls.length;
@@ -211,3 +212,60 @@ test("Nix: apps cannot claim the private keys hostname", async()=>fixture(async(
   await expect(d.deploy(input())).rejects.toThrow("diagnostics withheld");
   expect(f.archives).toHaveLength(0);expect(f.writes).toHaveLength(0);expect(activates(f)).toHaveLength(0);
 }));
+
+
+test("Nix: the root broker accepts every real release, health, key and rollback command", async()=>fixture(async(d,f)=>{
+  await d.deploy(input());
+  f.failReady=true;
+  await expect(d.deploy(input(second,'approved-rollback'))).rejects.toThrow();
+  const commands=f.calls.filter(c=>c.host).map(c=>{
+    const text=remoteCommand(c);
+    if(c.host==='backroom-dev')return text;
+    const quote=(s:string)=>"'"+s.replaceAll("'", "'\\''")+"'";
+    return ['/run/current-system/sw/bin/ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','--','root@deploy.example.test',text].map(quote).join(' ');
+  });
+  const script=new URL('../scripts/studio-deploy-broker.py',import.meta.url).pathname;
+  const code=`import importlib.util,json,sys
+spec=importlib.util.spec_from_file_location('broker',sys.argv[1]); broker=importlib.util.module_from_spec(spec);spec.loader.exec_module(broker)
+for command in json.load(sys.stdin): broker.parse(command,'root@deploy.example.test')
+print('all emitted commands validated')`;
+  const child=Bun.spawn(['python3','-c',code,script],{stdin:new TextEncoder().encode(JSON.stringify(commands)),stdout:'pipe',stderr:'pipe'});
+  const [out,error,exit]=await Promise.all([new Response(child.stdout).text(),new Response(child.stderr).text(),child.exited]);
+  expect(error).toBe('');expect(exit).toBe(0);expect(out).toContain('all emitted commands validated');
+}));
+
+
+test("Nix: real poisoned workspace cannot substitute approved keys, review bytes or deployed archive", async()=>{
+  const root=await mkdtemp('/tmp/backroom-nix-poison-'),repo=join(root,'repo'),home=join(root,'home');
+  await mkdir(repo);await mkdir(home,{mode:0o700});
+  const previousHome=process.env.HOME;process.env.HOME=home;
+  try{
+    const git=(...args:string[])=>{
+      const p=Bun.spawnSync(['git','-C',repo,...args],{env:{PATH:process.env.PATH!,HOME:home,GIT_NO_REPLACE_OBJECTS:'1',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null'},stdout:'pipe',stderr:'pipe'});
+      if(p.exitCode)throw new Error('Fictional Git fixture failed');return new TextDecoder().decode(p.stdout).trim();
+    };
+    const checkpoint=()=>{git('add','.');git('-c','user.name=Sample','-c','user.email=sample@example.invalid','-c','commit.gpgsign=false','commit','-qm','Fictional sample');return git('rev-parse','HEAD');};
+    git('init','-q','--template=');
+    await writeFile(join(repo,'source.txt'),'approved source\n');await writeFile(join(repo,'pnpm-lock.yaml'),'approved dependencies\n');
+    await writeFile(join(repo,'.env.required'),'SAMPLE_TOKEN\n');await writeFile(join(repo,'.gitattributes'),'source.txt filter=attack\n');
+    const approved=checkpoint();
+    await writeFile(join(repo,'source.txt'),'unreviewed source\n');await writeFile(join(repo,'.env.required'),'ATTACKER_KEY\n');
+    const attacker=checkpoint();git('reset','--hard',approved);
+    const marker=join(root,'ATTACK_EXECUTED'),payload=join(root,'attack.sh');
+    await writeFile(payload,'#!/bin/sh\ntouch '+marker+'\ncat\n',{mode:0o700});
+    const config=join(repo,'.git/config');await writeFile(config,await readFile(config,'utf8')+`\n[core]\n fsmonitor = ${payload}\n[filter "attack"]\n clean = ${payload}\n[credential]\n helper = !${payload}\n`);
+    await mkdir(join(repo,'.git/refs/replace'),{recursive:true});await writeFile(join(repo,'.git/refs/replace',approved),attacker+'\n');
+    const fake=new Fake();const run:Run=async command=>{
+      if(command.args[0]==='git'){fake.calls.push(command);return runCommand(command);}
+      return fake.run(command);
+    };
+    const d=new NixDeployer({sample:{repoPath:repo,serverPort:4100,webPort:4101}},{buildHost:'backroom-dev',deployHost:'root@deploy.example.test',fleetPath:'/var/lib/backroom/fleet',stateRoot:join(root,'state'),run});
+    expect(await d.declaredKeys('sample',approved)).toEqual(['SAMPLE_TOKEN']);
+    const reviewed=protectedGitSync(repo,['show',approved+':source.txt']);expect(reviewed.exitCode).toBe(0);expect(new TextDecoder().decode(reviewed.stdout)).toBe('approved source\n');
+    const status=protectedGitSync(repo,['status','--porcelain']);expect(status.exitCode).toBe(0);expect(status.stdout.byteLength).toBe(0);
+    await d.deploy({project:'sample',commitSha:approved,intentId:'approved-poison-fixture'});
+    const archive=Bun.spawnSync(['tar','-xOf','-','source.txt'],{stdin:fake.archives[0],stdout:'pipe',stderr:'pipe'});
+    expect(archive.exitCode).toBe(0);expect(new TextDecoder().decode(archive.stdout)).toBe('approved source\n');
+    expect(await Bun.file(marker).exists()).toBe(false);expect((await d.current('sample'))!.commitSha).toBe(approved);
+  }finally{if(previousHome===undefined)delete process.env.HOME;else process.env.HOME=previousHome;await rm(root,{recursive:true,force:true});}
+});

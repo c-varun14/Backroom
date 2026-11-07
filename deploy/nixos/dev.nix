@@ -5,7 +5,7 @@ let
     bash coreutils gnugrep gnused gawk findutils
     iptables postgresql chromium (python3.withPackages (p: [ p.requests p.pyyaml ])) ];
   servicePath = lib.makeBinPath tools + ":/opt/backroom/tools/bin";
-  compose = "${pkgs.docker}/bin/docker compose -p backroom-block0 --env-file /srv/backroom/.secrets/switch.env -f /srv/backroom/.switch-runtime/compose.yml --profile gateway";
+  compose = "${pkgs.docker}/bin/docker compose -p backroom-block0 --env-file /etc/backroom/switch.env -f /etc/backroom/switch-compose.yml --profile gateway";
   controller = name: after: {
     description = "Backroom ${name} controller";
     wantedBy = [ "multi-user.target" ];
@@ -17,6 +17,7 @@ let
       BROWSER_PATH = "${pkgs.chromium}/bin/chromium";
       # review-env detects Docker by PATH. This wrapper forces its local backend.
       BACKROOM_REVIEW_BACKEND = "local";
+      GIT_NO_REPLACE_OBJECTS = "1";
     };
     serviceConfig = {
       User = "agent"; Group = "backroom"; UMask = "0007";
@@ -52,6 +53,7 @@ in {
     export PATH="/opt/backroom/tools/bin:$PATH"
     if [ "$(id -un)" = agent ]; then
       export BACKROOM_REVIEW_BACKEND=local
+      export GIT_NO_REPLACE_OBJECTS=1
       export BROWSER_PATH=${pkgs.chromium}/bin/chromium
     fi
   '';
@@ -65,7 +67,7 @@ in {
     createHome = true; homeMode = "0700"; shell = pkgs.bashInteractive;
   };
   systemd.tmpfiles.rules = [
-    "d /srv/backroom 0750 studio backroom -"
+    "d /srv/backroom 0750 root backroom -"
     "d /srv/backroom/.secrets 0700 studio backroom -"
     "d /srv/backroom/.switch-runtime 0700 studio backroom -"
     "d /srv/backroom/workspaces 2770 studio backroom -"
@@ -73,19 +75,27 @@ in {
     "d /var/lib/backroom-agent/lead 0700 agent backroom -"
     "d /var/lib/backroom-agent/build 0700 agent backroom -"
     "d /opt/backroom 0755 root root -"
+    "d /etc/backroom 0700 root root -"
+    "d /var/lib/backroom 0700 root root -"
+    "d /home/studio/.backroom-git 0700 studio backroom -"
   ];
+  # Agent Git is unprivileged; desk always uses its protected shadow.
   # Wildcard is limited to the shared workspace tree, not all Git directories.
   programs.git.config.safe.directory = [ "/srv/backroom" "/srv/backroom/workspaces/*" ];
-  # UID rules apply to interactive agents too, and include Docker bridge IPs.
+  # Metadata credentials stay with root. UID rules cover interactive sessions too.
   networking.firewall.extraCommands = ''
     iptables -I OUTPUT 1 -m owner --uid-owner agent -d 169.254.169.254 -j REJECT
     ip6tables -I OUTPUT 1 -m owner --uid-owner agent -d fd00:ec2::254 -j REJECT
+    iptables -I OUTPUT 1 -m owner --uid-owner studio -d 169.254.169.254 -j REJECT
+    ip6tables -I OUTPUT 1 -m owner --uid-owner studio -d fd00:ec2::254 -j REJECT
     iptables -I OUTPUT 1 -m owner --uid-owner agent -p tcp --dport 5432 -j REJECT
     ip6tables -I OUTPUT 1 -m owner --uid-owner agent -p tcp --dport 5432 -j REJECT
   '';
   networking.firewall.extraStopCommands = ''
     iptables -D OUTPUT -m owner --uid-owner agent -d 169.254.169.254 -j REJECT || true
     ip6tables -D OUTPUT -m owner --uid-owner agent -d fd00:ec2::254 -j REJECT || true
+    iptables -D OUTPUT -m owner --uid-owner studio -d 169.254.169.254 -j REJECT || true
+    ip6tables -D OUTPUT -m owner --uid-owner studio -d fd00:ec2::254 -j REJECT || true
     iptables -D OUTPUT -m owner --uid-owner agent -p tcp --dport 5432 -j REJECT || true
     ip6tables -D OUTPUT -m owner --uid-owner agent -p tcp --dport 5432 -j REJECT || true
   '';
@@ -98,9 +108,9 @@ in {
     path = [ pkgs.docker pkgs.curl pkgs.coreutils ];
     environment = { SWITCH_BIND_ADDR = "127.0.0.1"; POSTGRES_HOST_PORT = "5432"; API_HOST_PORT = "8000"; GATEWAY_HOST_PORT = "3000"; };
     serviceConfig = {
-      WorkingDirectory = "/srv/backroom";
+      WorkingDirectory = "/etc/backroom";
       ExecStartPre = "${compose} up -d --wait --wait-timeout 180";
-      ExecStart = "${pkgs.bash}/bin/bash /srv/backroom/scripts/studio-switch-watch.sh";
+      ExecStart = "${pkgs.bash}/bin/bash /etc/backroom/studio-switch-watch.sh";
       ExecStop = "${compose} stop";
       Restart = "always"; RestartSec = 5; TimeoutStartSec = 240; TimeoutStopSec = 120;
       StandardOutput = "null"; StandardError = "null";

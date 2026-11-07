@@ -1,3 +1,4 @@
+import {protectedCommand,gitEnvironment} from "../desk/src/trusted-git";
 import {keyNames, requiredKeys, MissingKeysError} from "./app-keys";
 export {MissingKeysError} from "./app-keys";
 import {readFileSync} from "node:fs";
@@ -30,15 +31,16 @@ const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
 
 /** All process execution, including SSH and health requests, passes through Run.
  * Raw diagnostics are never propagated to desk's logs. */
+export const remoteCommand = (command: Command) => (command.cwd ? `cd ${quote(command.cwd)} && ` : "") + "exec " + command.args.map(quote).join(" ");
 export const runCommand: Run = async command => {
-  const remote = (command.cwd ? `cd ${quote(command.cwd)} && ` : "") + "exec " + command.args.map(quote).join(" ");
+  const remote = remoteCommand(command);
   const args = command.host
     ? ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "--", command.host, remote]
-    : command.args;
+    : protectedCommand(command.args);
   const p = Bun.spawn(args, {
     cwd: command.host ? undefined : command.cwd,
     stdin: command.stdin ?? "ignore", stdout: "pipe", stderr: "pipe",
-    env: { PATH: process.env.PATH!, HOME: process.env.HOME!, LANG: "C.UTF-8" },
+    env: gitEnvironment(),
   });
   const [buffer, stderr, code] = await Promise.all([
     new Response(p.stdout).arrayBuffer(), new Response(p.stderr).text(), p.exited,

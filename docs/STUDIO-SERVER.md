@@ -4,16 +4,18 @@ The server runs Switch, both controllers, the door and one desk for every projec
 
 | Location | What runs or lives there |
 | --- | --- |
-| `/srv/backroom` | Studio code, owned by `studio`, readable by `agent` |
+| `/srv/backroom` | Root-owned studio code, readable by `studio` and `agent` |
 | `/srv/backroom/.secrets` | Discord, Switch and per-project credentials; only `studio` and root can enter |
 | `/srv/backroom/.switch-runtime` | Door, desk and project state; only `studio` and root can enter |
 | `/srv/backroom/workspaces` | Shared project source and reports; both users can write |
 | `/var/lib/backroom-agent` | Controller state and the owner's Claude/Codex plan logins, owned by `agent` |
+| `/home/studio/.backroom-git` | Studio-only shadow Git directories; agents cannot enter |
+| `/etc/backroom` | Root-only broker, installer, Switch watcher, Compose and Compose env |
 | `/opt/backroom/tools` | Read-only Claude 2.1.319 and Codex 0.167.0 installations |
 | `/opt/backroom/controller` | Read-only copy of the existing Switch controller package |
 | `/root` | Existing deployment key and private fleet checkout; agents cannot enter |
 
-Neither user belongs to `docker` or `wheel`. Docker serves Switch only. Agent review environments use local disposable Postgres processes and the system Chromium browser. The studio reaches root through a dedicated key accepted only from localhost. A studio-only SSH adapter sends direct deployment-host calls through that localhost connection, so the deployment key stays in `/root`.
+Neither user belongs to `docker` or `wheel`. Docker serves Switch only. Agent review environments use local disposable Postgres processes and the system Chromium browser. The studio uses a localhost SSH key restricted to a root-owned forced-command deployment broker. It has no root shell, arbitrary command execution or service-management access. The SSH adapter forwards only the deployment-host checks that the broker validates; the deployment key stays in `/root`.
 
 ## Commands for Claude, in order
 
@@ -26,7 +28,9 @@ These are the commands to run after reviewing the local report. This implementat
    bash scripts/studio-move.sh login-help
    ```
 
-   `prepare` uses the existing root SSH alias `backroom-dev`, copies `deploy/nixos/dev.nix` to `/etc/backroom/dev.nix`, and applies it with `nixos-rebuild switch -I nixos-config=/etc/backroom/dev.nix`. It creates a Git bundle of the current local `HEAD`, streams it over that alias, fetches the bundle on the server, and checks out `client-studio` at that commit in `/srv/backroom`. It then overlays the laptop's uncommitted source files, installs the pinned tools, and configures localhost SSH. No public push or public repository fetch is needed. Each run fetches the bundle again, so a later local commit updates an existing server checkout; tracked server source is replaced. Secret/runtime/workspace directories are excluded from the overlay and retained. Running it again also repairs an interrupted tool installation. Initial preparation leaves the gateway gated until cutover; later preparations retain the existing ready marker.
+   `prepare` uses the owner's existing root SSH alias `backroom-dev`. It installs root-consumed artifacts into `/etc/backroom` before applying `dev.nix`. Source history is fetched from a local bundle into `/var/lib/backroom/source.git`, with explicit `--git-dir` and `--work-tree` for checkout; server workspace Git configuration is never consulted. Before checkout, previous source entries are moved into a root-only backup without following links; state directories remain in place and directory symlinks are refused. Uncommitted source is overlaid, pinned tools are installed, code and fleet become root-owned, and localhost SSH is restricted to the deployment broker. The installer removes prior localhost entries, including old unrestricted entries for the studio key. Studio writes its own SSH config/known-hosts; root never writes through studio-owned home-file symlinks. No public push is needed.
+
+   Switch Compose and its watcher use `/etc/backroom/switch-compose.yml` and `/etc/backroom/switch.env`. Cutover installs the env from the existing allowlisted payload as root:root, mode 0600. Preparation alone does not install that env. On a server imported with the earlier migration, the owner must arrange this root-only env through the approved migration before starting Switch; an earlier completed import checkpoint does not prove it exists. Never point the root service back at studio's copy.
 
 2. The owner runs these three commands in his own terminal. Follow the login prompts there; never paste login codes or tokens into a report:
 
@@ -74,6 +78,16 @@ These are the commands to run after reviewing the local report. This implementat
 
    SSH can disconnect during `systemctl reboot`. After recovery, use the owner's Discord/browser to create one fresh fictional sample project, check a client reply, and approve a reviewed sample deploy. Confirm the new agents use `/srv/backroom/workspaces`, and old agents/rooms remain retired. Do not use an old project as a reason to rewrite or reactivate its agents. These live checks are required before treating the migration as finished.
 
+## Git and root boundaries
+
+Every privileged desk Git call, declaration read, diff and release export uses `scripts/shadow_git.py`. Each workspace maps to a studio-owned Git directory under the private home. The importer opens workspace directories through pinned directory descriptors with symlink refusal, copies only plain object data, validates ordinary heads/tags/remotes and HEAD, and runs `git fsck --full --strict` before use. It rebuilds its own index; it never imports workspace config, hooks, index, alternates, grafts, shallow metadata or `refs/replace`. `GIT_NO_REPLACE_OBJECTS=1` is set for all these commands and review exports. `gh` also runs inside the shadow. Trusted GitHub authentication is configured by the boundary itself. Initial workspace metadata is exported as plain files only when absent; retries use the shadow. Issue branch checkout belongs to the unprivileged builder.
+
+The forced broker recognizes exactly NixDeployer's fleet entry operations, source import, secret initialization, fixed metadata/hash reads, Nix eval/build, build/switch/rollback, bounded HTTPS health checks, and deployment-host system-profile/key-presence reads. It validates the complete argument vector and fixed fleet path, reconstructs executable paths, clears the environment and calls `execve` without a shell. Unknown commands, shell syntax and path traversal fail closed. Before execution it checks root ownership and write permissions on the fleet code tree, including imported source. Neither the broker nor studio can invoke arbitrary root SSH, Git or systemctl commands.
+
+Root executes installation/broker/watcher scripts only from `/etc/backroom`; root-consumed Compose and its env are there too. `/srv/backroom` and its source directories are root-owned; only runtime, secrets and project workspaces are writable by studio. Never make fleet, `/etc/backroom`, or an ancestor writable by studio. The owner's root SSH remains available for administration.
+
+Fleet's keys HTTP service admits at most 16 handlers, immediately closes overflow connections, applies the 30-per-minute client rate limit to GET and POST, and closes each connection after an absolute 10-second request deadline, including trickle bodies. The service has `MemoryMax=128M` and `TasksMax=48`.
+
 ## Agent definitions
 
 The existing provisioning chain `new_project.py` → `real_setup.create_role` → `block1_setup.lead_session` reads the now-allowlisted `.secrets/spike-state.json`. Fresh projects provision fresh agents on the server using server workspace paths. The copied Postgres database preserves old authoritative definitions unchanged; old agents and rooms stay retired. There is no authoritative-definition rewrite step or cutover block for one.
@@ -92,9 +106,9 @@ ssh backroom-dev 'systemctl status backroom-switch backroom-controller-lead back
 ssh backroom-dev 'journalctl -u backroom-studio -n 50 --no-pager'
 ```
 
-`studio-up.sh` restarts only `backroom-studio` through the existing SSH alias; it never launches door/desks on the laptop. When run as root from `/srv/backroom` on dev, it invokes systemd directly. When run as `studio` there, it uses studio's configured localhost root alias. The supervisor keeps one door and one desk per project alive.
+`studio-up.sh` restarts only `backroom-studio` through the existing SSH alias; it never launches door/desks on the laptop. When run as root from `/srv/backroom` on dev, it invokes systemd directly. When run as `studio` there, its broker refuses this service-management command; restart through the owner's root connection. The supervisor keeps one door and one desk per project alive.
 
-The studio journal records fixed start/stop statuses. Raw provider, controller, door and desk output is discarded because it can contain credentials. `verify` checks the real Switch API, the Switch socket ledger and live process leases for both controllers, running-agent definition paths, actual door process, filesystem denials, both metadata firewall rules and connection denials, database-port denial and studio's localhost root access. It exits unsuccessfully if a check cannot be proved.
+The studio journal records fixed start/stop statuses. Raw provider, controller, door and desk output is discarded because it can contain credentials. `verify` checks the real Switch API, the Switch socket ledger and live process leases for both controllers, running-agent definition paths, actual door process, filesystem denials, both metadata firewall rules and connection denials, database-port denial and studio's allowlisted localhost deployment access. It exits unsuccessfully if a check cannot be proved.
 
 New project configs are discovered every second. With `BACKROOM_SUPERVISED=1`, provisioning leaves desk startup to the supervisor. The door and desk launchers also hold locks, so a repeated launcher cannot start a second process. Restart the studio service to restart the whole door/desk group; do not run `block1_runtime.py up`, which would revive the retired desk.
 
@@ -126,4 +140,4 @@ The two controller directories are transferred separately to `agent`, limited to
 
 ## Limits and unverified work
 
-This handoff was checked offline with fictional fixtures and fake child processes. Nix evaluation, package installation on NixOS, plan logins, real service ordering, volume transfer, controller identity/connection recovery, browser rendering, reboot recovery, Discord behavior and deployment remain live checks for Claude. Agents share one Unix identity with their controllers and can access that identity's plan-login/controller stores; the protected studio credentials, root keys and metadata endpoint are separate. This is not a per-agent sandbox.
+This handoff was checked offline with fictional fixtures, planted Git/broker attacks, temporary local test sockets and fake child processes. No live state is asserted; an earlier or concurrent prepare does not install these local changes. Nix evaluation, package installation on NixOS, plan logins, real service ordering, volume transfer, controller identity/connection recovery, browser rendering, reboot recovery, Discord behavior and deployment remain live checks for Claude. Agents share one Unix identity with their controllers and can access that identity's plan-login/controller stores; the protected studio credentials, root keys and metadata endpoint are separate. This is not a per-agent sandbox.

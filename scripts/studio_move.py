@@ -34,6 +34,7 @@ UNITS = ('backroom-switch', 'backroom-controller-lead', 'backroom-controller-bui
 NEW_SOURCE = ('scripts/studio-move.sh', 'scripts/studio_move.py', 'scripts/studio-supervise.sh',
               'scripts/studio_supervise.py', 'scripts/studio-switch-watch.sh',
               'scripts/studio-install-tools.sh', 'scripts/studio-verify.py', 'scripts/studio-ssh.py',
+              'scripts/studio-deploy-broker.py', 'scripts/shadow_git.py', 'desk/src/trusted-git.ts',
               'scripts/repro/test-studio-move.py', 'docs/STUDIO-SERVER.md')
 
 
@@ -220,6 +221,13 @@ def install_payload(stage, old_root):
     finally:
         os.chown(home, agent, group)
         home.chmod(0o700)
+    # Compose never reads studio-owned env files, including after a restart.
+    switch_env = stage / '.secrets/switch.env'
+    if switch_env.exists():
+        target = Path('/etc/backroom/switch.env')
+        shutil.copyfile(switch_env, target)
+        os.chown(target, 0, 0)
+        target.chmod(0o600)
     status('allowlisted state', 'installed')
 
 
@@ -295,19 +303,48 @@ def transfer_commit(root):
         run(['git', 'bundle', 'create', str(bundle), 'HEAD'], cwd=root)
         # Fetch on EVERY prepare, including an existing checkout. The source
         # overlay below carries this task's uncommitted edits after checkout.
-        command = ('set -e; cd /srv/backroom; '
-                   'if ! test -d .git; then git init -q; fi; '
-                   'umask 077; cat > .git/studio-source.bundle; '
-                   'trap "rm -f .git/studio-source.bundle" EXIT; '
-                   'git fetch -q .git/studio-source.bundle HEAD; '
-                   'git checkout -q -f -B client-studio FETCH_HEAD')
+        # Source metadata is root-owned and outside the studio/agent trees.
+        # Rename old source entries as directory entries, without traversing
+        # them. A compromised studio from the old layout cannot redirect root's
+        # checkout/overlay through an old symlink. State stays in place.
+        reset = '''import os, stat, time
+from pathlib import Path
+root=Path('/srv/backroom')
+backup=Path('/var/lib/backroom') / ('source-backup-'+str(time.time_ns()))
+backup.mkdir(mode=0o700)
+for name in ('.secrets','.switch-runtime','workspaces'):
+    path=root/name
+    if path.exists() or path.is_symlink():
+        if not stat.S_ISDIR(path.lstat().st_mode): raise ValueError('State directory link refused')
+for path in root.iterdir():
+    if path.name not in {'.secrets','.switch-runtime','workspaces'}:
+        path.rename(backup/path.name)
+'''
+        command = ('set -e; umask 077; '
+                   'install -d -m 700 /var/lib/backroom; '
+                   'install -d -m 750 -o root -g backroom /srv/backroom; '
+                   'python3 -I -c ' + shlex.quote(reset) + '; '
+                   'if ! test -d /var/lib/backroom/source.git; then '
+                   'GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git init -q --bare --template= /var/lib/backroom/source.git; fi; '
+                   'cat > /var/lib/backroom/studio-source.bundle; '
+                   'trap "rm -f /var/lib/backroom/studio-source.bundle" EXIT; '
+                   'export GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null; '
+                   'git --git-dir=/var/lib/backroom/source.git fetch -q /var/lib/backroom/studio-source.bundle HEAD; '
+                   'git --git-dir=/var/lib/backroom/source.git --work-tree=/srv/backroom -c core.hooksPath=/dev/null checkout -q -f -B client-studio FETCH_HEAD')
         with bundle.open('rb') as source:
-            ssh('runuser -u studio -- bash -c ' + shlex.quote(command), stdin=source)
+            ssh(command, stdin=source)
+
 
 
 def prepare(root):
     ssh('mkdir -p /etc/backroom')
+    # Copy root-consumed artifacts via the owner's root connection BEFORE any
+    # service config references them. Never execute studio-owned installation code.
+    for name in ('studio-switch-watch.sh', 'studio-install-tools.sh', 'studio-deploy-broker.py', 'studio-ssh.py'):
+        run(['scp', '-q', str(root / 'scripts' / name), HOST + ':/etc/backroom/' + name])
     run(['scp', '-q', str(root / 'deploy/nixos/dev.nix'), HOST + ':/etc/backroom/dev.nix'])
+    run(['scp', '-q', str(root / '.switch-runtime/compose.yml'), HOST + ':/etc/backroom/switch-compose.yml'])
+    ssh('chown -R root:root /etc/backroom && chmod 700 /etc/backroom && chmod 600 /etc/backroom/*')
     ssh('nixos-rebuild switch -I nixos-config=/etc/backroom/dev.nix')
     status('server config', 'applied')
     transfer_commit(root)
@@ -326,9 +363,7 @@ def prepare(root):
                     with file.open('rb') as content:
                         archive.addfile(info, content)
         source.seek(0)
-        run(['ssh', '-o', 'BatchMode=yes', HOST, 'runuser -u studio -- tar -xf - -C /srv/backroom'], stdin=source)
-    run(['scp', '-q', str(root / '.switch-runtime/compose.yml'), HOST + ':/srv/backroom/.switch-runtime/compose.yml'])
-    ssh('chown studio:backroom /srv/backroom/.switch-runtime/compose.yml && chmod 600 /srv/backroom/.switch-runtime/compose.yml')
+        run(['ssh', '-o', 'BatchMode=yes', HOST, 'tar --no-same-owner -xf - -C /srv/backroom'], stdin=source)
     # Only the immutable shipped controller package, never its data directory.
     with tempfile.TemporaryFile() as package:
         with tarfile.open(fileobj=package, mode='w') as archive:
@@ -337,8 +372,11 @@ def prepare(root):
                 archive.add(base / relative, arcname=str(relative), recursive=False)
         package.seek(0)
         ssh('install -d -m 755 /opt/backroom/controller')
-        run(['ssh', '-o', 'BatchMode=yes', HOST, 'tar -xf - -C /opt/backroom/controller && chown -R root:root /opt/backroom/controller && chmod -R a+rX,go-w /opt/backroom/controller'], stdin=package)
-    ssh('bash /srv/backroom/scripts/studio-install-tools.sh')
+        run(['ssh', '-o', 'BatchMode=yes', HOST, 'tar --no-same-owner -xf - -C /opt/backroom/controller && chown -R root:root /opt/backroom/controller && chmod -R a+rX,go-w /opt/backroom/controller'], stdin=package)
+    ssh('chmod -R g+rX,go-w /srv/backroom/desk /srv/backroom/deploy /srv/backroom/harness /srv/backroom/studio-kit /srv/backroom/scripts')
+    # Root owns code, helpers and all Compose inputs. Studio owns only state.
+    ssh('chown root:backroom /srv/backroom && chmod 750 /srv/backroom; chown -R root:backroom /srv/backroom/desk /srv/backroom/deploy /srv/backroom/harness /srv/backroom/studio-kit /srv/backroom/scripts; chown -R root:root /var/lib/backroom/fleet && chmod -R go-w /var/lib/backroom/fleet')
+    ssh('bash /etc/backroom/studio-install-tools.sh')
     # Repo source is read-only to agent; workspaces alone are shared writable.
     ssh('chmod -R g+rX,go-w /srv/backroom/desk /srv/backroom/harness /srv/backroom/studio-kit /srv/backroom/scripts; chmod 700 /srv/backroom/.secrets /srv/backroom/.switch-runtime; install -d -m 700 /var/lib/backroom')
     status('server source and tools', 'prepared')
@@ -388,6 +426,9 @@ def cutover(root, position):
         ssh('rm -f /var/lib/backroom/studio-payload.tar /var/lib/backroom/studio-pgdata.tar')
         status('Switch volume', 'copied; original retained')
     ssh('touch /srv/backroom/.switch-runtime/studio-move-ready && chown studio:backroom /srv/backroom/.switch-runtime/studio-move-ready')
+    # A completed checkpoint from an older migration does not prove the new
+    # root-owned Compose input exists. Refuse startup until the owner imports it.
+    ssh('test -f /etc/backroom/switch.env && test "$(stat -c %u:%g:%a /etc/backroom/switch.env)" = 0:0:600')
     for unit in UNITS:
         ssh('systemctl start ' + unit)
         status(unit, 'start requested')

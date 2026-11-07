@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Disposable Better-T-Stack review services. stdout is exactly one JSON line.
 set -Eeuo pipefail
+# Bind source exports and receipts to the real reviewed object identities.
+export GIT_NO_REPLACE_OBJECTS=1
 umask 077
 # Keep setup diagnostics visible even when a failing command redirects its logs.
 exec 8>&2
@@ -152,6 +154,8 @@ PY
 cat > "$runtime/run" <<'RUN'
 #!/usr/bin/env bash
 set -euo pipefail
+# Bind all source reads and review exports to real object identities.
+export GIT_NO_REPLACE_OBJECTS=1
 runtime=$(cd -- "$(dirname -- "$0")" && pwd -P)
 source "$runtime/config.sh"
 cd "$runtime/source"

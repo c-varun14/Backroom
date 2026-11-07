@@ -111,7 +111,7 @@ test('only allowed authors on assigned open PRs reach builders; comment prompts 
 });
 
 test('forum integration: spec branch, exact PR update, CI tick, independent review and verified Deploy',async()=>{
- const f=await githubFixture();expect(f.requestCalls).toBe(0);expect(f.github.calls.filter(c=>c.method==='createMilestone')).toHaveLength(1);expect(f.posts.some(p=>p.text.includes('Work only on branch issue-1'))).toBe(true);
+ const f=await githubFixture();expect(f.requestCalls).toBe(0);expect(f.github.calls.filter(c=>c.method==='createMilestone')).toHaveLength(1);expect(f.posts.some(p=>p.text.includes('work only on it') && p.text.includes('branch issue-1'))).toBe(true);
  expect(f.github.calls.some(c=>c.method==='updateIssue'&&c.args[1].includes('- [ ] AC-1'))).toBe(true);
  f.github.checks={state:'pending',noChecks:false,failures:[]};
  await f.loop.handle(f.event('builder','build-ready build-report.md'));await f.loop.handle(f.event('builder','build-ready build-report.md'));
@@ -196,7 +196,7 @@ test('workspace bootstrap cannot switch the enclosing Backroom repository',async
  try{
   const layer=new GitHubLayer(store,'sample',{repo:'WebbyWasp/sample',allowedAuthors:[]},fake,(...args)=>{calls.push(args);if(args[0]==='rev-parse')return '/tmp/enclosing';if(args[0]==='symbolic-ref')return 'issue-1';return '';},'/tmp/enclosing/sample');
   await layer.ticket({n:1,status:'received',kind:'phase',client_text:'SAMPLE'},{title:'Sample',link:'sample'},true);
-  expect(calls.findIndex(c=>c[0]==='init')).toBeGreaterThan(calls.findIndex(c=>c[0]==='rev-parse'));
+  expect(calls).toEqual([]); // privileged code never initializes or switches agent metadata
   expect(calls.filter(c=>c[0]==='switch')).toHaveLength(0);
  }finally{store.close();}
 });

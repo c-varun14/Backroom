@@ -58,12 +58,23 @@ def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=su
     repo = owner + '/' + config['projectId']
     if config.get('github') and config['github']['repo'] != repo:
         raise ValueError('Project GitHub repository mismatch')
-    workspace = Path(config['workspace']).resolve()
+    workspace = Path(os.path.abspath(config['workspace']))
     workspace.mkdir(parents=True, exist_ok=True)
+    def execute(args):
+        # Tests inject an account-free runner. Production never opens workspace
+        # Git metadata, including during retries after an agent has run.
+        options = dict(cwd=str(workspace), capture_output=True, text=True)
+        if runner is subprocess.run:
+            options['env'] = {k:v for k,v in os.environ.items() if not k.startswith('GIT_')}
+            options['env'].update(GIT_NO_REPLACE_OBJECTS='1', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null', GIT_TERMINAL_PROMPT='0', GH_PROMPT_DISABLED='1')
+            if args[0] == 'git':
+                args = [sys.executable, str(ROOT / 'scripts/shadow_git.py'), str(workspace), *args[1:]]
+            else:
+                args = [sys.executable, str(ROOT / 'scripts/shadow_git.py'), str(workspace), '--github', *args[1:]]
+        return runner(args, **options)
     def command(args, missing=False):
         try:
-            result = runner(args, cwd=str(workspace), capture_output=True, text=True,
-                            env={**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GH_PROMPT_DISABLED': '1'})
+            result = execute(args)
         except Exception:
             raise ValueError('GitHub provisioning failed; response withheld') from None
         if result.returncode:
@@ -108,7 +119,7 @@ def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=su
     # An empty tree checkpoint gives the first issue branch a PR base. No product
     # files are added; all application work still goes through CI and review.
     if not heads:
-        head = runner(['git', 'rev-parse', '--verify', 'HEAD'], cwd=str(workspace), capture_output=True, text=True)
+        head = execute(['git', 'rev-parse', '--verify', 'HEAD'])
         if head.returncode:
             if command(['git', 'status', '--porcelain']):
                 raise ValueError('Clean empty project required for initialization')
@@ -124,9 +135,11 @@ def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=su
         if not any(line.endswith('\trefs/heads/main') for line in heads.splitlines()):
             raise ValueError('Project template must provide main')
         command(['git', '-c', 'core.hooksPath=/dev/null', 'fetch', '--no-tags', 'origin', 'refs/heads/main:refs/remotes/backroom/main'])
-        head = runner(['git', 'rev-parse', '--verify', 'HEAD'], cwd=str(workspace), capture_output=True, text=True)
+        head = execute(['git', 'rev-parse', '--verify', 'HEAD'])
         if head.returncode:
             command(['git', '-c', 'core.hooksPath=/dev/null', 'switch', '-C', 'main', 'refs/remotes/backroom/main'])
+    if runner is subprocess.run and not (workspace / '.git').exists():
+        command(['git', '--export-initial'])
     config['github'] = {'repo': repo, 'allowedAuthors': allowed_authors}
     save(config)
     return config

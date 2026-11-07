@@ -26,6 +26,13 @@ spec.loader.exec_module(router)
 spec = importlib.util.spec_from_file_location('studio_verify', ROOT / 'scripts/studio-verify.py')
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
+spec = importlib.util.spec_from_file_location('shadow_tests', ROOT / 'scripts/repro/test-shadow-git.py')
+shadow_tests = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(shadow_tests)
+ShadowTests = shadow_tests.ShadowTests
+spec = importlib.util.spec_from_file_location('broker', ROOT / 'scripts/studio-deploy-broker.py')
+broker = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(broker)
 
 
 def write(root, name, content='fictional-secret-sentinel-87c4'):
@@ -173,26 +180,36 @@ class MoveTests(unittest.TestCase):
             calls = []
             def fake_ssh(command, **kwargs):
                 calls.append(command)
-                args = shlex.split(command)
-                self.assertEqual(args[:6], ['runuser', '-u', 'studio', '--', 'bash', '-c'])
-                return move.run(['bash', '-c', args[6].replace('/srv/backroom', shlex.quote(str(server)))], **kwargs)
+                self.assertNotIn('runuser',command)
+                command=command.replace('/var/lib/backroom',str(server.parent / 'protected')).replace('/srv/backroom',str(server))
+                # Owner/group creation is live-only; exercise the actual Git flow.
+                command=command.replace('install -d -m 750 -o root -g backroom','mkdir -p')
+                return move.run(['bash','-c',command], **kwargs)
             with patch.object(move, 'ssh', side_effect=fake_ssh):
                 move.transfer_commit(root)
-                self.assertEqual(move.run(['git', 'rev-parse', 'HEAD'], cwd=server).strip(), first)
+                self.assertEqual(move.run(['git', '--git-dir='+str(server.parent / 'protected/source.git'), 'rev-parse', 'HEAD'], cwd=server).strip(), first)
                 # Dirty source overlays and protected runtime files survive an
                 # ordinary prepare, while a newer HEAD replaces tracked source.
                 write(server, 'source.txt', 'fictional old overlay')
+                attack=write(server.parent,'attack.sh','#!/bin/sh\ntouch '+str(server.parent/'SOURCE_ATTACK_EXECUTED')+'\n')
+                attack.chmod(0o700)
+                write(server,'.git/config','[core]\n fsmonitor = '+str(attack)+'\n')
+                outside=server.parent/'outside';outside.mkdir()
+                (server/'agent-link').symlink_to(outside,target_is_directory=True)
                 write(server, '.secrets/keep', 'fictional protected state')
                 write(root, 'source.txt', 'fictional next revision')
                 (root / 'removed.txt').unlink()
                 second = checkpoint('fictional next checkpoint')
                 for _ in range(2):
                     move.transfer_commit(root)
-                    self.assertEqual(move.run(['git', 'rev-parse', 'HEAD'], cwd=server).strip(), second)
+                    self.assertEqual(move.run(['git', '--git-dir='+str(server.parent / 'protected/source.git'), 'rev-parse', 'HEAD'], cwd=server).strip(), second)
                     self.assertEqual((server / 'source.txt').read_text(), 'fictional next revision')
                     self.assertFalse((server / 'removed.txt').exists())
                     self.assertTrue((server / '.secrets/keep').exists())
                     self.assertFalse((server / '.git/studio-source.bundle').exists())
+                    self.assertFalse((server.parent/'SOURCE_ATTACK_EXECUTED').exists())
+                    self.assertFalse((server/'agent-link').exists())
+                    self.assertEqual(list(outside.iterdir()),[])
             self.assertTrue(all('origin' not in c and 'github.com' not in c for c in calls))
 
     def test_studio_up_only_restarts_server_supervisor(self):
@@ -335,6 +352,8 @@ class MoveTests(unittest.TestCase):
         self.assertIn('virtualisation.docker.enable = true', text)
         self.assertIn('p.requests p.pyyaml', text)
         self.assertIn('/srv/backroom/workspaces/*', text)
+        self.assertIn('--uid-owner studio -d 169.254.169.254 -j REJECT', text)
+        self.assertIn('--uid-owner studio -d fd00:ec2::254 -j REJECT', text)
         self.assertIn('--uid-owner agent -d 169.254.169.254 -j REJECT', text)
         self.assertIn('--uid-owner agent -d fd00:ec2::254 -j REJECT', text)
         self.assertEqual(text.count('--uid-owner agent -p tcp --dport 5432 -j REJECT'), 4)
@@ -345,6 +364,71 @@ class MoveTests(unittest.TestCase):
         self.assertIn('@anthropic-ai/claude-code@2.1.319', installer)
         self.assertIn('@openai/codex@0.167.0', installer)
         self.assertIn('chmod -R a+rX,go-w', installer)
+
+    def test_broker_planted_shell_metacharacter_traversal_and_unknown_commands(self):
+        import shlex
+        host='root@192.0.2.10'
+        good=['python3','scripts/entry.py','begin','sample','a'*64]
+        def command(args): return 'cd /var/lib/backroom/fleet && exec '+shlex.join(args)
+        self.assertEqual(broker.parse(command(good),host),[broker.BIN+'python3',*good[1:]])
+        with tempfile.TemporaryDirectory() as temporary:
+            marker=Path(temporary)/'ROOT_ATTACK_EXECUTED'
+            attacks=[command(['sh','-c','touch '+str(marker)]),
+                     command(['python3','scripts/entry.py','begin','sample;touch '+str(marker),'a'*64]),
+                     command(['python3','scripts/../scripts/entry.py','begin','sample','a'*64]),
+                     command(good)+'; touch '+str(marker),
+                     command(['cat','hosts/../../etc/shadow']),
+                     'systemctl restart backroom-studio',
+                     'true']
+            for attack in attacks:
+                with self.assertRaises(ValueError,msg=attack): broker.parse(attack,host)
+                # Exercise the forced-command entry point too. An accidental
+                # shell/exec before validation would leave the planted marker.
+                with patch.dict(os.environ,{'SSH_ORIGINAL_COMMAND':attack}), patch.object(broker,'deploy_host',return_value=host), patch.object(broker.os,'execve',side_effect=lambda *_:marker.write_text('executed')) as execute:
+                    with self.assertRaises(ValueError): broker.main()
+                    execute.assert_not_called()
+            self.assertFalse(marker.exists())
+
+    def test_installer_revokes_old_unrestricted_localhost_keys(self):
+        installer=(ROOT/'scripts/studio-install-tools.sh').read_text()
+        code=installer.split("<<'KEYS'\n",1)[1].split('\nKEYS',1)[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            home=root/'home';(home/'.ssh').mkdir(parents=True)
+            admin=root/'root';(admin/'.ssh').mkdir(parents=True)
+            (home/'.ssh/dev-root.pub').write_text('ssh-ed25519 SAMPLE_PUBLIC_NEW studio\n')
+            authorized=admin/'.ssh/authorized_keys'
+            authorized.write_text('from="127.0.0.1",no-port-forwarding ssh-ed25519 SAMPLE_PUBLIC_OLD\nssh-ed25519 SAMPLE_PUBLIC_NEW studio\nssh-ed25519 SAMPLE_OWNER_ADMIN owner\n')
+            code=code.replace('/home/studio',str(home)).replace('/root/.ssh',str(admin/'.ssh'))
+            child=subprocess.run(['python3','-I','-c',code],capture_output=True,text=True)
+            self.assertEqual(child.returncode,0,child.stderr)
+            lines=authorized.read_text().splitlines()
+            self.assertEqual(len(lines),2)
+            self.assertEqual(lines[0],'ssh-ed25519 SAMPLE_OWNER_ADMIN owner')
+            self.assertIn('restrict,from="127.0.0.1",command=',lines[1])
+            self.assertIn('studio-deploy-broker.py',lines[1])
+            self.assertNotIn('SAMPLE_PUBLIC_OLD',authorized.read_text())
+        self.assertIn('runuser -u studio -- python3 -I',installer)
+        self.assertNotIn('chown studio:backroom /home/studio/.ssh/{config',installer)
+
+    def test_root_service_never_executes_a_studio_writable_artifact(self):
+        text=(ROOT/'deploy/nixos/dev.nix').read_text()
+        switch=text.split('systemd.services.backroom-switch = {',1)[1].split('systemd.services.backroom-controller',1)[0]
+        self.assertNotIn('/srv/backroom/scripts',switch)
+        self.assertNotIn('/srv/backroom/.secrets/switch.env',text)
+        self.assertIn('--env-file /etc/backroom/switch.env',text)
+        self.assertIn('-f /etc/backroom/switch-compose.yml',text)
+        self.assertIn('/etc/backroom/studio-switch-watch.sh',switch)
+        self.assertIn('d /etc/backroom 0700 root root',text)
+        with tempfile.TemporaryDirectory() as temporary:
+            attack=write(Path(temporary),'studio-writable.sh','#!/bin/sh\ntouch ROOT_ATTACK_EXECUTED\n')
+            attack.chmod(0o777)
+            with self.assertRaises(ValueError): broker.trusted(attack)
+            self.assertFalse((Path(temporary)/'ROOT_ATTACK_EXECUTED').exists())
+        installer=(ROOT/'scripts/studio-install-tools.sh').read_text()
+        self.assertIn('restrict,from=',installer)
+        self.assertIn('command="/run/current-system/sw/bin/python3 -I /etc/backroom/studio-deploy-broker.py"',installer)
+        self.assertIn("key[1] not in line.split() and 'from=\"127.0.0.1\"' not in line",installer)
 
     def test_supervisor_no_double_start_and_crash_recovery(self):
         with tempfile.TemporaryDirectory() as temporary:

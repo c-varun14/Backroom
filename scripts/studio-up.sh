@@ -5,5 +5,5 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 if [[ "$PWD" == /srv/backroom && $(id -u) == 0 ]]; then
   exec systemctl restart backroom-studio
 fi
-# Laptop: existing root alias. Server studio user: its localhost root alias.
+# Owner root connection only. Studio cannot restart root services via its broker.
 exec ssh -o BatchMode=yes backroom-dev 'systemctl restart backroom-studio'

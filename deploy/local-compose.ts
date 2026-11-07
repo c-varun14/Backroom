@@ -1,3 +1,4 @@
+import {protectedCommand,gitEnvironment} from "../desk/src/trusted-git";
 import type { Deployer } from "../desk/src/types";
 import { mkdir, mkdtemp, readFile, writeFile, rm, realpath, stat, rename, readdir } from "node:fs/promises";
 import { resolve, join, isAbsolute } from "node:path";
@@ -9,8 +10,8 @@ export type ProjectConfig = { repoPath: string; containerPort: number; healthPat
 export type Deployment = { url: string; port: number; commitSha: string; intentId: string; composeProject: string; directory: string; healthPath?: string };
 async function run(args: string[], root: string) {
   const buildx = join(root,"buildx"); await mkdir(buildx,{recursive:true});
-  const env = { PATH:process.env.PATH!, HOME:process.env.HOME!, LANG:"C.UTF-8", BUILDX_CONFIG:buildx };
-  const p = Bun.spawn(args,{env,stdout:"pipe",stderr:"pipe"});
+  const env = { ...gitEnvironment(), BUILDX_CONFIG:buildx };
+  const p = Bun.spawn(protectedCommand(args),{env,stdout:"pipe",stderr:"pipe"});
   const [out,,code] = await Promise.all([new Response(p.stdout).text(),new Response(p.stderr).text(),p.exited]);
   if(code) throw new Error(`${args[0]} ${args[1]} failed (exit ${code}); output withheld`);
   return out.trim();
@@ -129,7 +130,7 @@ export class LocalComposeDeployer implements Deployer {
         // A tracked credential would enter the exact git worktree/build context.
         const repo=await realpath(c.repoPath);
         if(file.startsWith(repo+"/")){
-          const p=Bun.spawn(["git","-C",repo,"ls-files","--error-unmatch","--",file.slice(repo.length+1)],{stdout:"ignore",stderr:"ignore"});
+          const p=Bun.spawn(protectedCommand(["git","-C",repo,"ls-files","--error-unmatch","--",file.slice(repo.length+1)]),{env:gitEnvironment(),stdout:"ignore",stderr:"ignore"});
           if(await p.exited===0)throw new Error("Tracked secret source refused");
         }
         compose.secrets[s.name]={file};app.secrets.push({source:s.name,target:s.target});
