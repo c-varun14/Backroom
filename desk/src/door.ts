@@ -45,7 +45,7 @@ export class Door {
     const message=await this.webhook(project,thread,this.signed(project,fields));
     await this.io.sleep(2000);await this.removeWebhook(project,message.id,thread);
   }
-  private track(promise:Promise<unknown>){this.pending.add(promise);promise.catch(()=>this.io.log('door operation failed; details withheld')).finally(()=>this.pending.delete(promise));}
+  private track(promise:Promise<unknown>){this.pending.add(promise);promise.catch(error=>this.io.log('door operation failed: '+String(error?.message).slice(0,160))).finally(()=>this.pending.delete(promise));}
   async idle(){await Promise.allSettled([...this.pending]);}
   async dispatch(type:string,data:any){
     if(type==='THREAD_CREATE'){
@@ -351,7 +351,7 @@ export async function runDoor(){
   const io:DiscordIO={now:Date.now,sleep:ms=>new Promise(r=>setTimeout(r,ms)),log:message=>console.log(message),
     async request(method,path,body,webhook=false){
       let response:Response;try{response=await fetch('https://discord.com/api/v10'+path,{method,headers:{...(webhook?{}:{Authorization:'Bot '+token}),...(body instanceof FormData?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:body instanceof FormData?body:JSON.stringify(body)}),signal:AbortSignal.timeout(15000)});}catch{throw new Error('Discord request failed; details withheld');}
-      if(!response.ok)throw new Error('Discord request refused; details withheld');
+      if(!response.ok)throw new Error(`Discord refused ${method} ${webhook?'/webhooks':path.split('?')[0]}: HTTP ${response.status}`);
       return response.status===204?{}:response.json();
     }};
   const door=new Door(new Database(join(runtime,'door.sqlite'),{create:true}),loadProjects(join(runtime,'projects')),io);
@@ -377,7 +377,7 @@ export async function runDoor(){
     ws.onclose=event=>{if(!gateway.closed(event.code)){stopped=true;clearInterval(heartbeat);io.log('door gateway configuration refused');}else reconnect();};ws.onerror=reconnect;
   }
   let polling=false,lastCatchUp=0;
-  const timer=setInterval(()=>{if(polling)return;polling=true;door.projects=loadProjects(join(runtime,'projects'));const due=Date.now()-lastCatchUp>=30000;if(due)lastCatchUp=Date.now();void Promise.all([door.pollOutbox(),door.tickTyping(),door.pollBoard(),door.pollHubDigests(),...(due?[door.catchUp()]:[])]).catch(()=>io.log('door poll failed; details withheld')).finally(()=>polling=false);},1000);
+  const timer=setInterval(()=>{if(polling)return;polling=true;door.projects=loadProjects(join(runtime,'projects'));const due=Date.now()-lastCatchUp>=30000;if(due)lastCatchUp=Date.now();void Promise.all([door.pollOutbox(),door.tickTyping(),door.pollBoard(),door.pollHubDigests(),...(due?[door.catchUp()]:[])]).catch(error=>io.log('door poll failed: '+String(error?.message).slice(0,160))).finally(()=>polling=false);},1000);
   const stop=()=>{stopped=true;clearInterval(timer);clearInterval(heartbeat);ws?.close();};process.on('SIGTERM',stop);process.on('SIGINT',stop);
   connect();
 }

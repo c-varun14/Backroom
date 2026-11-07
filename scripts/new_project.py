@@ -10,6 +10,7 @@ import re
 import secrets
 import subprocess
 import sys
+import time
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +74,7 @@ def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=su
         raw = command(['gh', 'api', '--hostname', 'github.com', 'repos/' + name], missing=True)
         return json.loads(raw) if raw is not None else None
     existing = metadata(repo)
+    template_used = False
     if existing is None:
         template = metadata('WebbyWasp/app-base')
         args = ['gh', 'repo', 'create', repo, '--private']
@@ -80,6 +82,7 @@ def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=su
             if template.get('full_name') != 'WebbyWasp/app-base' or not template.get('is_template'):
                 raise ValueError('app-base exists but is not the expected template')
             args += ['--template', 'WebbyWasp/app-base']
+            template_used = True
         command(args)
         existing = metadata(repo)
     if not existing or existing.get('private') is not True or existing.get('full_name') != repo:
@@ -94,6 +97,13 @@ def provision_github(config, allowed_authors, save, owner='WebbyWasp', runner=su
     remotes = command(['git', 'remote']).splitlines()
     command(['git', 'remote', 'set-url' if 'origin' in remotes else 'add', 'origin', remote])
     heads = command(['git', 'ls-remote', '--heads', 'origin'])
+    # GitHub fills a template repository a moment after creating it. An early empty
+    # answer must not make this look like a bare repository.
+    for _ in range(30):
+        if heads or not template_used:
+            break
+        time.sleep(2)
+        heads = command(['git', 'ls-remote', '--heads', 'origin'])
     # An empty tree checkpoint gives the first issue branch a PR base. No product
     # files are added; all application work still goes through CI and review.
     if not heads:
@@ -289,6 +299,26 @@ def provision_studio(c, shared, discord, switch, webhook, pause, save_shared, sa
     return c
 
 
+def deployment_settings(config, private, project_dir):
+    """A project deploys to NixOS on its own ports, and shares a hub secret with its app."""
+    ip = (ROOT / '.secrets/backroom-demo-ip.txt').read_text().strip()
+    ports = {p for other in project_dir.glob('*.json') if other.stem != config['projectId']
+             for p in [json.loads(other.read_text()).get('nixDeploy', {}).get('serverPort')] if p}
+    existing = config.get('nixDeploy', {}).get('serverPort')
+    server = existing or next(port for port in range(4200, 5200, 2) if port not in ports)
+    secret = Path(private) / 'hub-secret'
+    if not secret.exists():
+        secret.write_text(secrets.token_hex(32))
+        secret.chmod(0o600)
+    domain = config['projectId'] + '.' + ip.replace('.', '-') + '.sslip.io'
+    config.update(deployTarget='nix', videoEnabled=False, nixDeploy={
+        'buildHost': 'backroom-dev', 'deployHost': 'root@' + ip, 'fleetPath': '/var/lib/backroom/fleet',
+        'serverPort': server, 'webPort': server + 1, 'memoryMax': '512M', 'environment': {},
+        'hubSecretFile': str(secret)},
+        hub={'url': 'https://' + domain, 'secretFile': str(secret)})
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--name', required=True)
@@ -376,6 +406,7 @@ def main():
             raise ValueError('Studio webhook failed; details withheld')
         return response.json() if response.content else {}
     config = provision_studio(config, shared, discord.call, lambda method, path, body=None: call(session, method, path, body), studio_webhook, time.sleep, save_shared, save)
+    config = deployment_settings(config, private, project_dir)
     write_json(project_dir / (slug + '.json'), config)
     if not args.no_start:
         pid = ROOT / '.switch-runtime/project-state' / slug / 'desk.pid'

@@ -24,5 +24,5 @@
     options = "--delete-older-than 14d";
   };
 
-  environment.systemPackages = with pkgs; [ git gh jq nodejs_24 pnpm bun ];
+  environment.systemPackages = with pkgs; [ git gh jq nodejs_24 pnpm bun python3 sops curl ];
 }

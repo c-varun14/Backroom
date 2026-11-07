@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import type { ManagedDeployer, CurrentDeployment } from "../desk/src/types";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -12,6 +13,7 @@ export type NixProjectConfig = {
   domain?: string;
   environment?: Record<string, string>;
   memoryMax?: string;
+  hubSecretFile?: string;
 };
 export type Command = { host?: string; args: string[]; cwd?: string; stdin?: Uint8Array };
 export type CommandResult = { code: number; stdout: string; stderr: string; bytes?: Uint8Array };
@@ -182,7 +184,8 @@ export class NixDeployer implements ManagedDeployer {
           await entry("write", value(depsHash));
         }
         if (!HASH.test(depsHash)) throw new Error("Invalid dependency hash");
-        await this.checked(this.dev(["python3", "scripts/ensure-secret.py", project]));
+        const hubSecret = c.hubSecretFile ? new TextEncoder().encode(readFileSync(c.hubSecretFile, "utf8").trim()) : undefined;
+        await this.checked(this.dev(["python3", "scripts/ensure-secret.py", project], hubSecret));
         // Separate build phase: no target-host command or activation on failure.
         await this.checked(this.dev(["nixos-rebuild", "build", "--flake", `path:${this.options.fleetPath}#deploy`, "--no-write-lock-file"]));
         previousClosure = (await this.checked({ host: this.options.deployHost, args: ["readlink", "-f", "/nix/var/nix/profiles/system"] })).stdout.trim();
