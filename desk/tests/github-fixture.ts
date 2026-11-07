@@ -27,11 +27,11 @@ export async function githubFixture(kind='phase',previousDeployment=false){
  const loop=new RealStagesLoop(store,api,new SwitchTransport(api,join(root,'files')),config,deployer,()=>identities,{github,freshReviewer:async round=>{const id='reviewer-'+round;identities.push({sender:id,kind:'agent',agent_id:id,users:[]});return {id,name:id};},promotePackage:async()=>{}},root);
  let sha='b'.repeat(40),branch='main';const gitCalls:string[][]=[];
  (loop as any).git=(...args:string[])=>{
-  gitCalls.push(args);if(args[0]==='status'||args[0]==='merge-base')return '';
+  gitCalls.push(args);if(['status','merge-base','ls-tree','ls-files'].includes(args[0]))return '';
   if(args[0]==='symbolic-ref')return branch;
   if(args[0]==='switch'){branch=args.at(-1)!;return '';}
   if(args[0]==='branch')return '';
-  if(args[0]==='diff')return '5\t2\tsrc/page.ts\0';
+  if(args[0]==='diff')return args.includes('--name-only')?'src/page.ts\0':args.includes('--unified=0')?'':'5\t2\tsrc/page.ts\0';
   if(args[1]==='--show-toplevel')return root;
   return sha;
  };

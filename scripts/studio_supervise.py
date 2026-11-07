@@ -10,6 +10,12 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def next_restart_delay(previous, stable):
+    if stable:
+        return 2
+    return min(60, previous * 2 if previous else 2)
+
+
 def supervise(root=ROOT):
     runtime = root / '.switch-runtime'
     runtime.mkdir(mode=0o700, exist_ok=True)
@@ -21,6 +27,8 @@ def supervise(root=ROOT):
             return
         stopped = False
         children = {}
+        failures = {}
+        started = {}
 
         def stop(*_):
             nonlocal stopped
@@ -35,7 +43,12 @@ def supervise(root=ROOT):
                         desired[str(path)] = ['bash', str(root / 'scripts/run-desk.sh'), str(path)]
                 for name, child in list(children.items()):
                     if child.poll() is not None:
+                        now = time.monotonic()
+                        previous_delay = failures.get(name, (0, 0))[1]
+                        stable = now - started.get(name, now) >= 300
+                        failures[name] = (now, next_restart_delay(previous_delay, stable))
                         del children[name]
+                        started.pop(name, None)
                     elif name not in desired:
                         # Retain the child until reaped: a removed/readded config
                         # must never overlap with its previous process.
@@ -43,10 +56,17 @@ def supervise(root=ROOT):
                 for name, args in desired.items():
                     if name in children:
                         continue
+                    last_failure = failures.get(name)
+                    if last_failure is not None:
+                        failed_at, delay = last_failure
+                        elapsed = time.monotonic() - failed_at
+                        if elapsed < delay:
+                            continue
                     children[name] = subprocess.Popen(
                         args, cwd=root, stdin=subprocess.DEVNULL,
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                        stdout=None, stderr=None,
                         env={**os.environ, 'BACKROOM_SUPERVISED': '1'})
+                    started[name] = time.monotonic()
                     print(('door' if name == 'door' else 'desk') + ': started', flush=True)
                 time.sleep(1)
         finally:

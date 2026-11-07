@@ -20,7 +20,12 @@ export class OwnerCards {
   identity(event:SwitchEvent):Identity|undefined { return (event as any)[verifiedCard]===this?{sender:'user:'+this.config.ownerId,kind:'human',agent_id:null,users:[this.config.ownerId]}:undefined; }
   private path(request:string){return `/agent-sessions/${this.session}/approvals/${request}`;}
   async offer(title:string,detail:string,buttons:Button[],identity?:string,force=false,questions:any[]=[],requestId?:string){
-    if(title.length>500||detail.length>4000||buttons.length>9)throw new Error('Owner card exceeds Switch limits');
+    if(title.length>500||buttons.length>9)throw new Error('Owner card exceeds Switch limits');
+    let fullDetail:string|undefined;
+    if(detail.length>4000){
+      fullDetail=detail;
+      detail=`Full details were posted above.\n\n${detail.slice(0,3700)}\n\nUse a button below to continue.`;
+    }
     // Switch refuses an approval with no options, so an information card still gets one.
     if(!buttons.length&&!questions.length)buttons=[{label:'Got it',command:'__ack'}];
     const binding=identity??JSON.stringify(buttons.map(b=>[b.command,this.binding(b.command)]));
@@ -32,6 +37,7 @@ export class OwnerCards {
     const request=requestId??randomUUID();
     const frozen=this.store.db.query('SELECT * FROM owner_cards WHERE request=?').get(request) as Row|null;
     if(frozen){await this.open(frozen);return request;}
+    if(fullDetail!==undefined)await this.api.post(this.config.studioRoomId,fullDetail);
     const mapped=buttons.map(b=>({...b,id:randomUUID()}));
     const payload={request_id:request,turn_id:request,kind:questions.length?'questions':'approval',title,detail,
       options:mapped.map(b=>({id:b.id,label:b.label,decision:b.command==='__change'?'decline':'accept'})),questions,
@@ -48,6 +54,14 @@ export class OwnerCards {
   async closeStale(){
     for(const row of this.store.db.query("SELECT * FROM owner_cards WHERE project=? AND status='open'").all(this.config.projectId) as Row[]){
       if(!this.valid(row)){await this.api.json(this.path(row.request)+'/close',{});this.store.db.query("UPDATE owner_cards SET status='closed' WHERE request=?").run(row.request);}
+    }
+  }
+  async closeWarnings(){
+    for(const row of this.store.db.query("SELECT * FROM owner_cards WHERE project=? AND status='open'").all(this.config.projectId) as Row[]){
+      const payload=JSON.parse(row.payload);
+      if(!/has made no progress/.test(payload.detail??''))continue;
+      await this.api.json(this.path(row.request)+'/close',{});
+      this.store.db.query("UPDATE owner_cards SET status='closed' WHERE request=?").run(row.request);
     }
   }
   async question(body:string){

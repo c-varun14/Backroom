@@ -8,6 +8,7 @@ import contextlib
 import ctypes
 import fcntl
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -72,6 +73,15 @@ def put(path, data):
 
 
 def git_args(shadow, workspace, args):
+    if args[:1] == ['status']:
+        # Status excludes are harness policy, never the product's excludes or
+        # ignore files. Exact-tree diffs still include committed policy paths.
+        parts = json.loads((Path(__file__).resolve().parents[1] / 'desk/harness/policy-paths.json').read_text())
+        if not isinstance(parts, list) or not parts or any(not isinstance(part, str) or not re.fullmatch(r'\.[A-Za-z0-9_-]+', part) for part in parts):
+            raise ValueError('Invalid harness policy paths')
+        args = [*args, *([] if '--' in args else ['--'])]
+        for part in parts:
+            args.extend([':(top,exclude,literal)' + part, ':(exclude,glob)**/' + part + '/**'])
     return ['git', '--git-dir=' + str(shadow), '--work-tree=' + str(workspace),
             '-c', 'core.hooksPath=/dev/null', '-c', 'core.bare=false',
             '-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential', *args]

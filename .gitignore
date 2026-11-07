@@ -3,6 +3,7 @@
 *.env
 node_modules/
 .switch-runtime/
+.handoff-contracts/
 *.AppImage
 __pycache__/
 # Local rehearsal repos, data, media and deployment state are never source inputs.

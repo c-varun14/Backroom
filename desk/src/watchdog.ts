@@ -11,7 +11,7 @@ export class Watchdog {
   this.store.db.query('INSERT INTO watchdog VALUES (?,?,?,?,0) ON CONFLICT(project) DO UPDATE SET ticket=excluded.ticket,role=excluded.role,progress=excluded.progress,warned=0').run(this.project,ticket,role,this.now());
  }
  current(){return this.store.db.query('SELECT * FROM watchdog WHERE project=?').get(this.project) as {ticket:number;role:WorkingRole;progress:number;warned:number}|null;}
- progress(role:WorkingRole){this.store.db.query('UPDATE watchdog SET progress=? WHERE project=? AND role=?').run(this.now(),this.project,role);}
+ progress(role:WorkingRole){this.store.db.query('UPDATE watchdog SET progress=?,warned=0 WHERE project=? AND role=?').run(this.now(),this.project,role);}
  clear(){this.store.db.query('DELETE FROM watchdog WHERE project=?').run(this.project);}
  async poll(post:(ticket:number,role:WorkingRole)=>Promise<void>){
   const row=this.current();if(!row||row.warned||this.now()-row.progress<this.timeoutMs)return;

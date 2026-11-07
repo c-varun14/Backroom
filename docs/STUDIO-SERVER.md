@@ -1,151 +1,82 @@
-# The studio on backroom-dev
+# Backroom studio server
 
-The server runs Switch, both controllers, the door and one desk for every project. systemd starts them at boot and restarts them after a crash. The owner's Discord account and browser stay on the laptop.
+The Backroom studio server runs the Switch gateway, project provisioning, door and desk services, and a bounded deployment broker. `studio-sync.py` sets its code to an exact local commit, removes stale code files, restores group read access for the video tool dependencies, restarts the services and verifies file hashes. Agent workspaces and runtime state remain separate from the synchronized source.
 
-| Location | What runs or lives there |
-| --- | --- |
-| `/srv/backroom` | Root-owned studio code, readable by `studio` and `agent` |
-| `/srv/backroom/.secrets` | Discord, Switch and per-project credentials; only `studio` and root can enter |
-| `/srv/backroom/.switch-runtime` | Door, desk and project state; only `studio` and root can enter |
-| `/srv/backroom/workspaces` | Shared project source and reports; both users can write |
-| `/var/lib/backroom-agent` | Controller state and the owner's Claude/Codex plan logins, owned by `agent` |
-| `/home/studio/.backroom-git` | Studio-only shadow Git directories; agents cannot enter |
-| `/etc/backroom` | Root-only broker, installer, Switch watcher, Compose and Compose env |
-| `/opt/backroom/tools` | Read-only Claude 2.1.319 and Codex 0.167.0 installations |
-| `/opt/backroom/controller` | Read-only copy of the existing Switch controller package |
-| `/root` | Existing deployment key and private fleet checkout; agents cannot enter |
+## Server boundaries
 
-Neither user belongs to `docker` or `wheel`. Docker serves Switch only. Agent review environments use local disposable Postgres processes and the system Chromium browser. The studio uses a localhost SSH key restricted to a root-owned forced-command deployment broker. It has no root shell, arbitrary command execution or service-management access. The SSH adapter forwards only the deployment-host checks that the broker validates; the deployment key stays in `/root`.
+| Path or identity | Purpose |
+|---|---|
+| `/srv/backroom` | Root-owned application source |
+| `/srv/backroom/workspaces` | Shared project workspaces |
+| `/srv/backroom/.switch-runtime` | Studio-owned runtime state |
+| `/srv/backroom/.secrets` | Studio-only credentials |
+| `/var/lib/backroom-agent` | Controller data for the agent user |
+| `/var/lib/backroom/fleet` | Root-owned deployment source |
+| `/etc/backroom` | Root-only broker, installer, Compose and service inputs |
 
-## Commands for Claude, in order
+`studio` owns the door and desks. `agent` owns the Switch controllers and runs provider sessions. Both use the `backroom` group for shared workspace access. Neither is a member of `docker` or `wheel`. Docker runs Switch only. The deployment SSH key is held by root and restricted to the deployment broker.
 
-These are the commands to run after reviewing the local report. This implementation session did not run any of them against a server.
+The identity helper runs as a hardened root systemd service, accesses only the named Switch Postgres container, and exposes the fixed identity query through `/run/backroom-identity.sock`. The socket is root-owned and group-readable/writable by `backroom`.
 
-1. From the laptop checkout, prepare the server:
+## Apply server configuration
 
-   ```bash
-   bash scripts/studio-move.sh prepare
-   bash scripts/studio-move.sh login-help
-   ```
-
-   `prepare` uses the owner's existing root SSH alias `backroom-dev`. It installs root-consumed artifacts into `/etc/backroom` before applying `dev.nix`. Source history is fetched from a local bundle into `/var/lib/backroom/source.git`, with explicit `--git-dir` and `--work-tree` for checkout; server workspace Git configuration is never consulted. Before checkout, previous source entries are moved into a root-only backup without following links; state directories remain in place and directory symlinks are refused. Uncommitted source is overlaid, pinned tools are installed, code and fleet become root-owned, and localhost SSH is restricted to the deployment broker. The installer removes prior localhost entries, including old unrestricted entries for the studio key. Studio writes its own SSH config/known-hosts; root never writes through studio-owned home-file symlinks. No public push is needed.
-
-   Switch Compose and its watcher use `/etc/backroom/switch-compose.yml` and `/etc/backroom/switch.env`. Cutover installs the env from the existing allowlisted payload as root:root, mode 0600. Preparation alone does not install that env. On a server imported with the earlier migration, the owner must arrange this root-only env through the approved migration before starting Switch; an earlier completed import checkpoint does not prove it exists. Never point the root service back at studio's copy.
-
-2. The owner runs these three commands in his own terminal. Follow the login prompts there; never paste login codes or tokens into a report:
-
-   ```bash
-   ssh -t backroom-dev "runuser -l agent -c 'claude auth login'"
-   ssh -t backroom-dev "runuser -l agent -c 'codex login --device-auth'"
-   ssh -t backroom-dev "runuser -l studio -c 'gh auth login --hostname github.com --web --git-protocol https && gh auth setup-git'"
-   ```
-
-   These use plan logins. The GitHub login belongs to `studio`; `agent` receives no GitHub token, AWS credentials or deployment key. No allowlisted migration secret is consulted by `login-help`.
-
-3. Confirm the two owner-approved additions exist, without printing their contents:
-
-   ```bash
-   test -f .secrets/spike-state.json
-   test -f .secrets/keys-signing-key
-   ```
-
-   The signing key is the raw file named in the app-env handoff (local operator evidence), shared with the deployment server's encrypted signing key. If it has not been bootstrapped, complete that handoff first. The migration transfers the existing file; it does not generate or rotate it. No provisioning/path-rewrite marker is required.
-
-4. Run from the laptop:
-
-   ```bash
-   bash scripts/studio-move.sh cutover
-   bash scripts/studio-move.sh verify
-   ```
-
-   Cutover preflights all required allowlisted files and controller databases before stopping anything. It confirms that the laptop door, all desks, controllers and their provider children have stopped. It then stops the laptop's `backroom-block0` Compose project. Only after confirming there are no running containers in that project does it export `backroom-block0_pgdata`. It copies the fixed allowlist, active controller stores, studio state, desk databases, deployment receipts and project workspaces. Laptop files and volumes remain in place. It rewrites literal laptop repo paths in local JSON/SQLite state, installs the unchanged Switch Postgres volume on dev, then starts Switch, lead controller, build controller and studio in order. It never rewrites or starts retired Switch agent definitions. A recorded import checkpoint prevents a repeated cutover from overwriting an already imported server database.
-
-   Migration output contains fixed names and statuses. Native command output and server responses are withheld. On failure, stop and inspect the named phase and permissions locally; do not print secret files or raw auth responses.
-
-5. Check services, reboot recovery, and services again, from the laptop:
-
-   ```bash
-   ssh backroom-dev 'systemctl is-active backroom-switch backroom-controller-lead backroom-controller-build backroom-studio'
-   ssh backroom-dev 'systemctl reboot'
-   ```
-
-   Wait for the host to finish rebooting and its units to start, then run:
-
-   ```bash
-   bash scripts/studio-move.sh verify
-   ssh backroom-dev 'systemctl is-active backroom-switch backroom-controller-lead backroom-controller-build backroom-studio'
-   ```
-
-   SSH can disconnect during `systemctl reboot`. After recovery, use the owner's Discord/browser to create one fresh fictional sample project, check a client reply, and approve a reviewed sample deploy. Confirm the new agents use `/srv/backroom/workspaces`, and old agents/rooms remain retired. Do not use an old project as a reason to rewrite or reactivate its agents. These live checks are required before treating the migration as finished.
-
-## Git and root boundaries
-
-Every privileged desk Git call, declaration read, diff and release export uses `scripts/shadow_git.py`. Each workspace maps to a studio-owned Git directory under the private home. The importer opens workspace directories through pinned directory descriptors with symlink refusal, copies only plain object data, validates ordinary heads/tags/remotes and HEAD, and runs `git fsck --full --strict` before use. It rebuilds its own index; it never imports workspace config, hooks, index, alternates, grafts, shallow metadata or `refs/replace`. `GIT_NO_REPLACE_OBJECTS=1` is set for all these commands and review exports. `gh` also runs inside the shadow. Trusted GitHub authentication is configured by the boundary itself. Initial workspace metadata is exported as plain files only when absent; retries use the shadow. Issue branch checkout belongs to the unprivileged builder.
-
-The forced broker recognizes exactly NixDeployer's fleet entry operations, source import, secret initialization, fixed metadata/hash reads, Nix eval/build, build/switch/rollback, bounded HTTPS health checks, and deployment-host system-profile/key-presence reads. It validates the complete argument vector and fixed fleet path, reconstructs executable paths, clears the environment and calls `execve` without a shell. Unknown commands, shell syntax and path traversal fail closed. Before execution it checks root ownership and write permissions on the fleet code tree, including imported source. Neither the broker nor studio can invoke arbitrary root SSH, Git or systemctl commands.
-
-Root executes installation/broker/watcher scripts only from `/etc/backroom`; root-consumed Compose and its env are there too. `/srv/backroom` and its source directories are root-owned; only runtime, secrets and project workspaces are writable by studio. Never make fleet, `/etc/backroom`, or an ancestor writable by studio. The owner's root SSH remains available for administration.
-
-Fleet's keys HTTP service admits at most 16 handlers, immediately closes overflow connections, applies the 30-per-minute client rate limit to GET and POST, and closes each connection after an absolute 10-second request deadline, including trickle bodies. The service has `MemoryMax=128M` and `TasksMax=48`.
-
-## Agent definitions
-
-The existing provisioning chain `new_project.py` → `real_setup.create_role` → `block1_setup.lead_session` reads the now-allowlisted `.secrets/spike-state.json`. Fresh projects provision fresh agents on the server using server workspace paths. The copied Postgres database preserves old authoritative definitions unchanged; old agents and rooms stay retired. There is no authoritative-definition rewrite step or cutover block for one.
-
-For the definition-path check, `verify` reads only names of definitions whose desired state is `running` and whose definition still contains the original laptop checkout path (passed from the laptop by the migration driver) or its `/home/<owner>/` prefix, including tools/skills outside the checkout. Switch 0.31.0 stores `running`/`stopped`, with no separate definition retirement column: retired agents remain stopped. Stopped/retired definitions may keep laptop paths and do not fail this check. Offenders are reported by agent name only; definitions, directories, instructions and database diagnostics are never printed. The check never modifies agents.
-
-## Restart and logs
-
-Run these from the laptop:
+Apply NixOS configuration only after reviewing `deploy/nixos/dev.nix`. It enables system Git, sets the builder Git author and committer identity in the controller environment, starts the identity and provision helpers on boot, and orders both before `backroom-studio`.
 
 ```bash
-bash scripts/studio-up.sh
-ssh backroom-dev 'systemctl restart backroom-controller-lead backroom-controller-build'
-ssh backroom-dev 'systemctl restart backroom-switch'
-ssh backroom-dev 'systemctl status backroom-switch backroom-controller-lead backroom-controller-build backroom-studio --no-pager'
-ssh backroom-dev 'journalctl -u backroom-studio -n 50 --no-pager'
+nixos-rebuild switch -I nixos-config=/etc/backroom/dev.nix
+systemctl is-active backroom-identity backroom-provision backroom-switch backroom-controller-lead backroom-controller-build backroom-studio
 ```
 
-`studio-up.sh` restarts only `backroom-studio` through the existing SSH alias; it never launches door/desks on the laptop. When run as root from `/srv/backroom` on dev, it invokes systemd directly. When run as `studio` there, its broker refuses this service-management command; restart through the owner's root connection. The supervisor keeps one door and one desk per project alive.
+## Sync one exact commit
 
-The studio journal records fixed start/stop statuses. Raw provider, controller, door and desk output is discarded because it can contain credentials. `verify` checks the real Switch API, the Switch socket ledger and live process leases for both controllers, running-agent definition paths, actual door process, filesystem denials, both metadata firewall rules and connection denials, database-port denial and studio's allowlisted localhost deployment access. It exits unsuccessfully if a check cannot be proved.
-
-New project configs are discovered every second. With `BACKROOM_SUPERVISED=1`, provisioning leaves desk startup to the supervisor. The door and desk launchers also hold locks, so a repeated launcher cannot start a second process. Restart the studio service to restart the whole door/desk group; do not run `block1_runtime.py up`, which would revive the retired desk.
-
-## Roll back
+Run from the laptop checkout. The dry run lists the selected commit and sync actions without changing the server:
 
 ```bash
-bash scripts/studio-move.sh rollback
+python3 scripts/studio-sync.py <commit> --dry-run
+python3 scripts/studio-sync.py <commit>
 ```
 
-Rollback first stops all four dev services and removes the dev boot-ready marker. If SSH fails or dev cannot be confirmed stopped, rollback refuses to start the laptop gateway. Once dev is down, it restarts the original laptop Switch volume, the two original controller directories, and the supervised forum desks and door. It never starts the retired desk or reactivates old rooms. Repeating rollback uses locks and process checks to avoid duplicate starts.
+The sync accepts regular files and safe directory entries from the exact Git archive, and refuses links, devices, unsafe paths, wrong-host execution and incomplete archives. It validates the complete managed destination before any deletion or service stop. It preserves `.secrets`, `.switch-runtime`, `workspaces`, `.handoff-contracts`, `.git`, installed dependencies and all unmanaged files. Stale removal uses only `/var/lib/backroom/studio-sync-manifest.json`, a root-owned record of previously managed source paths; a first sync leaves unknown old files untouched rather than guessing their ownership. All five source consumers stop before replacement. The sync repairs dependency group access without following symlinks or mutating external hardlinks, verifies every installed source hash and mode, atomically records the managed manifest, then starts the services. Before stopping consumers or changing files it durably writes `/var/lib/backroom/sync-incomplete`. Controller, studio, identity and provision units refuse to start while that marker exists, including after reboot. A copy or verification failure keeps them stopped and retains the marker; rerunning the sync repairs the complete tree. The marker is cleared only after source and installed-artifact verification. It also installs the exact commit's broker at `/etc/backroom/studio-deploy-broker.py` and SSH source at `/etc/backroom/studio-ssh.py` as `root:root` mode `0600`, and the active `/opt/backroom/studio-bin/ssh` as `root:root` mode `0755`. Those copies are installed while consumers are stopped, before the new source, and their hashes, owners and modes are verified before the barrier clears. It does not commit or push.
 
-Rollback uses the original laptop data. Changes made only after cutover on dev are not synchronized back. Preserve the dev copy for reconciliation. A later cutover after rollback takes a fresh laptop snapshot.
+## Agent environment check
 
-## Fixed secrets inventory
+`backroom-provision` prepares builders and runs environment checks through `/run/backroom-provision.sock`. The root service accepts only `prepare-builder` and `doctor`, with one validated project slug. It authorizes only the `studio` UID or root from the socket peer credentials; the shared `backroom` group alone grants no operation authority and derives the workspace as `/srv/backroom/workspaces/<project>`. Callers cannot supply a path or command. Component-by-component no-follow directory opens refuse symlinks; regular-file reads also reject hardlinks.
 
-Only these paths relative to `.secrets/` are copied:
+Before a builder is registered or started, provisioning calls `prepare-builder`. The helper writes the project `.codex/config.toml` as `root:backroom`, mode `0640`, inside a directory with mode `0750`. Only this project's `.git` is a writable root, and network access is enabled in that project config. The helper adds `.codex/` to `.git/info/exclude`. It atomically adds only a trusted-project entry in `/var/lib/backroom-agent/.codex/config.toml`, preserving existing bytes, owner and mode. Writable-root and network policy stay out of that shared config. An existing conflicting trust entry or shared sandbox policy fails closed with a fixed category.
 
-- `switch.env`
-- `discord.env`
-- `block1-credentials.json`
-- `real-stage-credentials.json`
-- `studio-door-webhook`
-- `backroom-demo-ip.txt`
-- `spike-state.json`
-- `keys-signing-key`
-- `projects/`, when it contains files
+The workspace must be owned by `studio` or root. The helper adds the sticky bit to its existing mode so `agent` cannot replace root's `.codex` directory through the writable parent. Workspace sharing preserves that bit and skips `.codex`. The handoff check refuses any committed `.codex` path even if the ticket names it as scope. Desk records the exact assignment base in its private state; live GitHub projects resolve it through the authenticated main reference and protected Git fetch. Builder-controlled refs cannot redefine that base. Desk publishes a read-only base/scope/criteria contract in `/srv/backroom/.handoff-contracts`, outside product workspaces, using unique temporary files and final mode `0440`, so the CLI and desk collect the same exact-tree evidence. Missing trusted evidence fails closed. Existing test files, CI files and `packages/db/test/` files must be byte-identical to the assignment base unless the approved spec has one exact `Test files allowed to change: <path>, <path>` line naming them. Prose, prohibitions and examples grant nothing. New test files are allowed. The byte rule replaces the test parser and is shared by desk and the CLI.
 
-The two controller directories are transferred separately to `agent`, limited to `controller.db` (and SQLite sidecars), `agents`, `secrets` and `watchers`. PEM files, console profiles, provider state and archived-session trees are excluded. Symlinks and special files are refused. The regression test pins the exact secret inventory and fails if it grows.
+Before desk sends a builder assignment in the server workspace namespace, it calls the helper's `doctor` operation. The helper runs only the fixed doctor script, drops to the distinct non-root `agent` UID and group list, uses a 180-second timeout, and returns at most 16 KiB of output. A timeout kills the process group. Desk persists a failed assignment, shows one owner card with the failed checks and a Retry button, and rechecks before releasing it. Failed retries replace the card; stale assignments are discarded. Dispatch state remains durable through the post: a known HTTP rejection retains held work and Retry, while an unknown outcome stays locked with its assignment marker. A verified desk echo in the work room can confirm that exact message after restart; Retry never blindly resends an unknown delivery. Recorded delivery prevents duplicate posts even if card cleanup was interrupted. Offline rehearsal workspaces outside the fixed server namespace do not exercise this root service.
 
-## Limits and unverified work
+`scripts/agent-doctor.py` checks the protected project Codex policy, a scratch Git commit, workspace `.git` write access, network, Chromium screenshot and the absolute trusted `/srv/backroom/studio-kit/video/node_modules/playwright-core` module, temporary Postgres start/stop, pnpm and bun. All commands run outside the product with fixed tool search paths and a clean environment; Git probes disable hooks and workspace-executable config. Product dependencies are not required for the initial check. Each failure prints a specific fix and causes a non-zero exit. Project policy must be root-owned, not agent-writable, and name exactly this workspace. It removes its temporary repositories, screenshots and database files.
 
-This handoff was checked offline with fictional fixtures, planted Git/broker attacks, temporary local test sockets and fake child processes. No live state is asserted; an earlier or concurrent prepare does not install these local changes. Nix evaluation, package installation on NixOS, plan logins, real service ordering, volume transfer, controller identity/connection recovery, browser rendering, reboot recovery, Discord behavior and deployment remain live checks for Claude. Agents share one Unix identity with their controllers and can access that identity's plan-login/controller stores; the protected studio credentials, root keys and metadata endpoint are separate. This is not a per-agent sandbox.
+The pinned controller overwrites definition-level `execution.codexConfig`, so these settings use Codex's project config instead. Its session-home preparation shallow-merges the agent home's config; the trust entry is intended to reach each session through that merge. Claude must verify the actual builder can write its own `.git` and use network after a server/session restart, while `.codex` and a sibling project's `.git` remain protected. Reviewers receive no project writable roots or shared network policy from this helper.
 
-## Live run requirements
+## End-to-end canary
 
-- Run the identity helper (`scripts/identity-helper.py`) as a root service. It answers one fixed query, so the desk needs no Docker access.
-- Give each builder session its project's `.git` as a writable root, plus network access for installing packages. The Codex sandbox stays on.
-- Keep project workspaces group-usable (`2770`), since agents run as a separate user in the studio group.
-- The bot's Discord role needs Manage Messages and Pin Messages.
-- GitHub polling is paced to once a minute to stay inside the API limit.
+`scripts/e2e-canary.py` checks these hops in order and stops at the first failure: Discord door, Switch, desk health, lead reply, GitHub, broker read, host `backroom-env check`, client reply path, and agent doctor. A dedicated canary room ID is required; the script rejects a destination that matches a recorded client room. Per-hop probe commands are JSON argument arrays in `BACKROOM_CANARY_<HOP_NAME>` environment variables. The probe receives the fixed label `[BACKROOM CANARY — fictional sample; never a client request]`; probe output is discarded so credentials cannot appear in terminal output.
+
+The Switch health hop is built in. Configure the other probes to perform their corresponding read or reply operation in the dedicated canary room. Do not point a probe at a client room. The script has not been run against the live server as part of this laptop change.
+
+## Supervisor and logs
+
+`backroom-studio` runs one supervisor holding a checkout-wide lock. It starts one door and one desk per valid project config, sends their stdout and stderr to the systemd journal, and shuts down children cleanly. Failed children restart after a delay that doubles from 2 seconds to a 60-second cap; a child that stays up for five minutes resets the delay.
+
+```bash
+systemctl restart backroom-studio
+journalctl -u backroom-studio -n 50 --no-pager
+```
+
+Child logs must not contain credentials. Lane C's redacting logger is responsible for desk errors before they reach the journal.
+
+## Git and deployment boundaries
+
+Privileged desk Git calls use `scripts/shadow_git.py`. The broker validates complete argument vectors, fixed fleet paths, ownership and write permissions, then executes only its allowlisted operations. It does not expose arbitrary root SSH, Git, shell or service-management commands. Keep fleet, `/etc/backroom` and their parents unwritable by `studio`.
+
+## Rollback
+
+Use the existing studio move rollback procedure when reverting the server migration. For a source-only change, sync the prior approved commit and verify its hash manifest. Do not restore stale workspace or secret trees as part of a code sync.
+
+## Current verification boundary
+
+This lane's tests use local temporary directories and injected canary failures. No live service restart, Nix evaluation, server hash comparison, reboot, Discord conversation, agent session restart or deployment is claimed here. The project-config and trusted-home merge must still be verified on a live server session after restart; no live sandbox or root-credential-drop result is claimed by the local tests.

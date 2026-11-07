@@ -1,5 +1,6 @@
-import {GhGitHub} from './github';
+import {GhGitHub,GitHubTransientError} from './github';
 import {Watchdog} from './watchdog';
+import {logDeskError} from './error-log';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Store } from "./store";
@@ -18,7 +19,13 @@ mkdirSync(secretRoot,{recursive:true,mode:0o700});
 const configPath = resolve(process.argv[2] ?? process.env.BACKROOM_CLIENT_CONFIG ?? join(runtime,"block1.json"));
 const config: LoopConfig & Partial<RealConfig> & {credentialsFile?:string;databasePath?:string;filesPath?:string;ownerPasswordFile?:string;healthFile?:string;simulateRequest?:string;switchBase?:string;deployTarget?:"compose"|"nix";nixDeploy?:Omit<NixOptions,"run"|"stateRoot"> & Omit<NixProjectConfig,"repoPath">} = JSON.parse(readFileSync(configPath,"utf8"));
 // Reject public/wrong-owner repositories before connecting any other service.
-if(config.clientSurface==='forum'&&config.github)await new GhGitHub(config.github,config.workspace!).verifyRepo();
+if(config.clientSurface==='forum'&&config.github){
+  const github=new GhGitHub(config.github,config.workspace!);
+  for(let attempt=0;;attempt++)try{await github.verifyRepo();break;}catch(error){
+    if(!(error instanceof GitHubTransientError)||attempt>=4)throw error;
+    await new Promise(resolve=>setTimeout(resolve,500*2**attempt));
+  }
+}
 // Read only the needed credential field. Never echo this object or errors.
 if(configPath !== join(runtime,"block1.json") && ![config.credentialsFile,config.databasePath,config.filesPath,config.workspace,config.healthFile,config.simulateRequest,...(config.deployTarget==="nix"?[]:[config.ownerPasswordFile])].every(Boolean))throw new Error("Per-client config requires isolated runtime paths");
 const key = JSON.parse(readFileSync(config.credentialsFile ?? join(secretRoot,"block1-credentials.json"),"utf8")).desk.api_key;
@@ -55,7 +62,7 @@ const healthy = new Set<string>();
 let errors = 0;
 function health() { const workflow=loop.workflow.get(config.projectId);writeFileSync(config.healthFile ?? join(runtime,"desk-health.json"),JSON.stringify({pid:process.pid,mode:config.mode??'stage1',updatedAt:new Date().toISOString(),connectedRooms:healthy.size,errors,ticket:loop.latestTicket()?.n ?? null,ticketStatus:loop.latestTicket()?.status ?? null,draftCode:loop.latestDraft()?.code ?? null,briefVersion:workflow.stages.brief.version,workflowStage:workflow.stage})); }
 function enqueue(task:()=>Promise<void>) {
-  queue = queue.then(task).catch((error)=>{errors++; console.log("desk: operation failed; sensitive details suppressed; inspect status and studio."+(process.env.BACKROOM_DEBUG?` [${error?.name}: ${String(error?.message).slice(0,160)} @ ${String(error?.stack).split("\n").slice(1,4).map(l=>l.trim().split("/").pop()).join(" < ")}]`:""));}).finally(health);
+  queue = queue.then(task).catch((error)=>{errors++; logDeskError("operation",error);}).finally(health);
 }
 function connect(room:string) {
   const state = loop.cursor(room);

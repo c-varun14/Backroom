@@ -461,6 +461,134 @@ class MoveTests(unittest.TestCase):
                     execute.assert_not_called()
             self.assertFalse(marker.exists())
 
+    def test_broker_fixed_refusal_categories_and_exit_codes(self):
+        import shlex
+        command = 'cd ' + str(broker.FLEET) + ' && exec ' + shlex.join(['cat', 'hosts/settings.json'])
+        cases = [
+            (broker.Refusal('untrusted-tree'), 'untrusted-tree'),
+            (broker.Refusal('bad-host'), 'bad-host'),
+        ]
+        for error, category in cases:
+            output = io.StringIO()
+            with patch.object(broker, 'deploy_host', side_effect=error), contextlib.redirect_stderr(output):
+                self.assertEqual(broker.cli(), 77)
+            self.assertEqual(output.getvalue(), 'Deployment broker: ' + category + '\n')
+        for attack in ['true', "cd 'unterminated", command + '; fictional-private-value']:
+            output = io.StringIO()
+            with patch.object(broker, 'deploy_host', return_value='root@192.0.2.10'), patch.dict(os.environ, {'SSH_ORIGINAL_COMMAND': attack}), contextlib.redirect_stderr(output):
+                self.assertEqual(broker.cli(), 77)
+            self.assertEqual(output.getvalue(), 'Deployment broker: refused-operation\n')
+        with patch.object(broker, 'main', side_effect=OSError('fictional-private-path')), contextlib.redirect_stderr(io.StringIO()) as output:
+            self.assertEqual(broker.cli(), 1)
+        self.assertEqual(output.getvalue(), 'Deployment broker: failed\n')
+
+    def test_broker_exact_no_link_build_grammar(self):
+        import shlex
+        host = 'root@192.0.2.10'
+        target = 'path:' + str(broker.FLEET) + '#nixosConfigurations.deploy.config.system.build.toplevel'
+        good = ['nix', 'build', '--no-link', '--no-write-lock-file', target]
+        def command(args): return 'cd ' + str(broker.FLEET) + ' && exec ' + shlex.join(args)
+        self.assertEqual(broker.parse(command(good), host), [broker.BIN + 'nix', *good[1:]])
+        attacks = [
+            ['nixos-rebuild', 'build', '--flake', 'path:' + str(broker.FLEET) + '#deploy', '--no-write-lock-file'],
+            ['nix', 'build', '--no-write-lock-file', target],
+            ['nix', 'build', '--no-link', target],
+            good + ['--out-link', 'result'],
+            good[:-1] + [target + '.evil'],
+            good[:-1] + [target.replace('.deploy.', '.other.')],
+        ]
+        for args in attacks:
+            with self.assertRaises(broker.Refusal) as error: broker.parse(command(args), host)
+            self.assertEqual(error.exception.category, 'refused-operation')
+
+    def test_broker_real_tree_refuses_result_and_no_link_sequence_stays_trusted(self):
+        # Run the real parser, walk, lstat symlink check and execve in children.
+        # The laptop user cannot create root-owned fixtures. Adapt only ownership
+        # and ancestor permissions; all fixture modes and file types stay real.
+        import shlex
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fleet = root / 'fleet'
+            write(fleet, 'hosts/settings.json', json.dumps({'deployIp': '192.0.2.10'}))
+            fake_nix = write(root, 'bin/nix', '#!' + sys.executable + '\n' +
+                "import json,pathlib,sys\n" +
+                "args=sys.argv[1:]\n" +
+                "with open('nix-calls.jsonl','a') as out: out.write(json.dumps(args)+'\\n')\n" +
+                "if '--no-link' not in args: pathlib.Path('result').symlink_to('/nix/store/fictional-closure')\n")
+            fake_nix.chmod(0o700)
+            fake_cat = write(root, 'bin/cat', '#!' + sys.executable + '\n' +
+                "import pathlib,sys\nsys.stdout.write(pathlib.Path(sys.argv[1]).read_text())\n")
+            fake_cat.chmod(0o700)
+            driver = r"""
+import importlib.util,os,pathlib,sys
+from types import SimpleNamespace
+spec=importlib.util.spec_from_file_location('broker',sys.argv[1])
+broker=importlib.util.module_from_spec(spec);spec.loader.exec_module(broker)
+root=pathlib.Path(sys.argv[2]);broker.FLEET=root/'fleet';broker.BIN=str(root/'bin')+'/'
+original=pathlib.Path.lstat
+def fixture_lstat(path,*args,**kwargs):
+    info=original(path,*args,**kwargs)
+    if path==root or root in path.parents:
+        return SimpleNamespace(st_uid=0,st_mode=info.st_mode)
+    if path in root.parents:
+        return SimpleNamespace(st_uid=0,st_mode=info.st_mode & ~0o022)
+    return info
+pathlib.Path.lstat=fixture_lstat
+os.environ['SSH_ORIGINAL_COMMAND']=sys.argv[3]
+raise SystemExit(broker.cli())
+"""
+            def run(args):
+                command = 'cd ' + shlex.quote(str(fleet)) + ' && exec ' + shlex.join(args)
+                return subprocess.run([sys.executable, '-I', '-c', driver, str(ROOT / 'scripts/studio-deploy-broker.py'), str(root), command], capture_output=True, text=True)
+            # Both builds emitted by NixDeployer use the same no-link flags.
+            for target in ['sample', 'nixosConfigurations.deploy.config.system.build.toplevel']:
+                result = run(['nix', 'build', '--no-link', '--no-write-lock-file', 'path:' + str(fleet) + '#' + target])
+                self.assertEqual((result.returncode, result.stdout, result.stderr), (0, '', ''))
+                self.assertFalse(any(path.is_symlink() for path in fleet.rglob('*')))
+                read = run(['cat', 'hosts/settings.json'])
+                self.assertEqual(read.returncode, 0, read.stderr)
+            calls = [json.loads(line) for line in (fleet / 'nix-calls.jsonl').read_text().splitlines()]
+            self.assertEqual(len(calls), 2)
+            self.assertTrue(all(args[:3] == ['build', '--no-link', '--no-write-lock-file'] for args in calls))
+            # The real dangling symlink poisons every later broker call.
+            (fleet / 'result').symlink_to('/nix/store/fictional-closure')
+            read = run(['cat', 'hosts/settings.json'])
+            self.assertEqual((read.returncode, read.stdout, read.stderr), (77, '', 'Deployment broker: untrusted-tree\n'))
+            (fleet / 'result').unlink()
+            self.assertEqual(run(['cat', 'hosts/settings.json']).returncode, 0)
+            # Permission and host validation still fail closed.
+            settings = fleet / 'hosts/settings.json'
+            settings.chmod(0o666)
+            self.assertEqual(run(['cat', 'hosts/settings.json']).stderr, 'Deployment broker: untrusted-tree\n')
+            settings.chmod(0o600)
+            settings.write_text(json.dumps({'deployIp': 'fictional-private-invalid-host'}))
+            bad = run(['cat', 'hosts/settings.json'])
+            self.assertEqual((bad.returncode, bad.stdout, bad.stderr), (77, '', 'Deployment broker: bad-host\n'))
+
+    def test_broker_ssh_adapter_reports_bad_host_and_preserves_refusal_exit(self):
+        # No real credential path or SSH is read or executed.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ip = write(root, 'deploy-ip', '999.1.2.3')
+            output = io.StringIO()
+            with patch.object(router, 'Path', return_value=ip), patch.object(router.os, 'execv') as execute, contextlib.redirect_stderr(output):
+                self.assertEqual(router.main(), 77)
+                execute.assert_not_called()
+            self.assertEqual(output.getvalue(), 'Deployment broker: bad-host\n')
+            ip.write_text('192.0.2.10')
+            fake = write(root, 'ssh', '#!' + sys.executable + '\nimport sys\nsys.stderr.write("Deployment broker: untrusted-tree\\n")\nsys.exit(77)\n')
+            fake.chmod(0o700)
+            driver = """
+import importlib.util,pathlib,sys
+spec=importlib.util.spec_from_file_location('router',sys.argv[1])
+router=importlib.util.module_from_spec(spec);spec.loader.exec_module(router)
+ip=pathlib.Path(sys.argv[2]);router.Path=lambda _:ip;router.SSH=sys.argv[3]
+sys.argv=['studio-ssh','backroom-dev','fictional-command']
+raise SystemExit(router.main())
+"""
+            child = subprocess.run([sys.executable, '-I', '-c', driver, str(ROOT / 'scripts/studio-ssh.py'), str(ip), str(fake)], capture_output=True, text=True)
+            self.assertEqual((child.returncode, child.stdout, child.stderr), (77, '', 'Deployment broker: untrusted-tree\n'))
+
     def test_installer_revokes_old_unrestricted_localhost_keys(self):
         installer=(ROOT/'scripts/studio-install-tools.sh').read_text()
         code=installer.split("<<'KEYS'\n",1)[1].split('\nKEYS',1)[0]

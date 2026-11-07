@@ -150,7 +150,9 @@ def share_workspace(path):
     root = Path(path)
     root.mkdir(parents=True, exist_ok=True)
     for folder, names, files in os.walk(root):
-        os.chmod(folder, 0o2770)
+        # The root helper owns .codex; sharing must never relax that policy.
+        names[:] = [name for name in names if name != '.codex']
+        os.chmod(folder, 0o2770 | (os.stat(folder).st_mode & 0o1000))
         for name in files:
             target = Path(folder) / name
             if not target.is_symlink():
@@ -433,6 +435,10 @@ def main():
     # GitHub is ready before any worker is created or started.
     state['projectId'] = slug
     provision_github(state, args.github_author if args.github_author is not None else base.get('github', {}).get('allowedAuthors', []), save, args.github_owner)
+    # Also refresh protected policy for an idempotent retry with an existing builder.
+    from real_setup import prepare_builder
+    prepare_builder(state, paths['workspace'])
+    share_workspace(paths['workspace'])
     config = provision(args.name, args.purpose, args.client_id, slug, base, discord.call,
                        lambda method, path, body=None: call(session, method, path, body), create_role, save, state)
     import time

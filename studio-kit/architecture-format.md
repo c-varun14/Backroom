@@ -4,7 +4,7 @@ SAMPLE template. Architecture starts from an approved brief version, not from un
 
 ## Identity and inputs
 
-Project ID, architecture version/status, approved brief version/hash, source references, date. List requirement IDs covered. Owner approval applies to this exact architecture version.
+Project ID, architecture version, approved brief version/hash, source references, date. List requirement IDs covered. Owner approval applies to this exact architecture version. Do not add a `Status: proposed` header; desk records approval.
 
 For any new third-party key, include exactly one names-only line: `Keys: POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET`. Omit it when none are needed. Never include values or automatic platform names. Names already supplied by shared studio keys need no owner action. The builder also declares needed names in the app root `.env.required`.
 

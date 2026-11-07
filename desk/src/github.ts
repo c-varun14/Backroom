@@ -26,12 +26,13 @@ export interface GitHub {
   diffStats(sha:string):Promise<DiffStats>;
 }
 export type GitHubRunner=(args:string[],cwd:string)=>Promise<string>;
+export class GitHubTransientError extends Error { constructor(){super('GitHub temporary network or server failure');} }
 const run:GitHubRunner=async(args,cwd)=>{
   try {
     const p=Bun.spawn(protectedGitArgs(cwd,args[0]==='git'?args.slice(1):['--github',...args.slice(1)]),{stdout:'pipe',stderr:'pipe',env:gitEnvironment()});
-    const [out,,code]=await Promise.all([new Response(p.stdout).text(),new Response(p.stderr).text(),p.exited]);
-    if(code)throw new Error();return out.trim();
-  }catch{throw new Error('GitHub operation failed; response withheld');}
+    const [out,err,code]=await Promise.all([new Response(p.stdout).text(),new Response(p.stderr).text(),p.exited]);
+    if(code){if(/HTTP (?:5\d\d)|\b5\d\d\b|ECONN|ETIMEDOUT|timeout|network is unreachable|connection reset|temporary failure/i.test(err))throw new GitHubTransientError();throw new Error('GitHub operation failed; response withheld');}return out.trim();
+  }catch(error){if(error instanceof GitHubTransientError)throw error;throw new Error('GitHub operation failed; response withheld');}
 };
 const shaCheck=(sha:string)=>{if(!/^[a-f0-9]{40}$/.test(sha))throw new Error('Exact Git SHA required');};
 export class GhGitHub implements GitHub {
@@ -40,14 +41,14 @@ export class GhGitHub implements GitHub {
   constructor(readonly config:GitHubConfig,readonly workspace:string,private runner:GitHubRunner=run){
     validateGitHubConfig(config);this.remote=`https://github.com/${config.repo}.git`;
   }
-  private async command(args:string[]){try{return await this.runner(args,this.workspace);}catch{throw new Error('GitHub operation failed; response withheld');}}
+  private async command(args:string[]){try{return await this.runner(args,this.workspace);}catch(error){if(error instanceof GitHubTransientError)throw error;throw new Error('GitHub operation failed; response withheld');}}
   private async api(path:string,method='GET',fields:Record<string,unknown>={}){
     const args=['gh','api','--hostname','github.com','--method',method,`repos/${this.config.repo}${path}`];
     for(const [key,value] of Object.entries(fields)){
       if(Array.isArray(value)){for(const entry of value)args.push('-f',`${key}[]=${entry}`);}
       else args.push(typeof value==='boolean'||typeof value==='number'?'-F':'-f',`${key}=${value}`);
     }
-    try{return JSON.parse(await this.command(args));}catch{throw new Error('GitHub operation failed; response withheld');}
+    try{return JSON.parse(await this.command(args));}catch(error){if(error instanceof GitHubTransientError)throw error;throw new Error('GitHub operation failed; response withheld');}
   }
   private git(...args:string[]){return this.command(['git','-c','core.hooksPath=/dev/null',...args]);}
   private async login(){

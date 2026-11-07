@@ -26,6 +26,14 @@ const SHA = /^[a-f0-9]{40}$/;
 const HASH = /^sha256-[A-Za-z0-9+/]{43}=$/;
 const DOMAIN = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
 const FAKE_HASH = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+const CLOSURE = /^\/nix\/store\/[a-z0-9]{32}-nixos-system-[A-Za-z0-9._-]+$/;
+const interrupted = (intent: Intent) => ["preparing", "activating", "uncertain"].includes(intent.status);
+class BrokerRefusal extends Error {
+  constructor(readonly category: string) { super("Deployment broker: " + category); }
+}
+class RecoveryFailure extends Error {}
+const safeReason = (error: unknown) => error instanceof BrokerRefusal ? error.message
+  : error instanceof RecoveryFailure ? error.message : "recovery could not be verified";
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
 
@@ -49,7 +57,14 @@ export const runCommand: Run = async command => {
   return { code, stdout: new TextDecoder().decode(bytes), stderr, bytes };
 };
 
-type Intent = { commitSha: string; status: "preparing" | "activating" | "succeeded" | "failed" | "uncertain" };
+type Intent = {
+  commitSha: string;
+  status: "preparing" | "activating" | "succeeded" | "failed" | "uncertain";
+  // Optional only for old state files: missing evidence must keep them locked.
+  token?: string;
+  previousClosure?: string | null;
+  activationStarted?: boolean;
+};
 type State = { current: CurrentDeployment | null; intents: Record<string, Intent>; hashes: Record<string, string> };
 
 export class NixDeployer implements ManagedDeployer {
@@ -77,7 +92,13 @@ export class NixDeployer implements ManagedDeployer {
     return c;
   }
   private async command(command: Command) {
-    try { return await this.run(command); } catch { throw new Error("Nix command failed; diagnostics withheld"); }
+    let result: CommandResult;
+    try { result = await this.run(command); } catch { throw new Error("Nix command failed; diagnostics withheld"); }
+    if (result.code === 77) {
+      const category = /^Deployment broker: (untrusted-tree|refused-operation|bad-host)\n?$/.exec(result.stderr)?.[1];
+      if (category) throw new BrokerRefusal(category);
+    }
+    return result;
   }
   private async checked(command: Command) {
     const result = await this.command(command);
@@ -152,6 +173,51 @@ export class NixDeployer implements ManagedDeployer {
     if (missing.length) throw new MissingKeysError(missing);
     return names;
   }
+  private entry(project: string, token: string, action: string, value?: unknown) {
+    return this.checked(this.dev(
+      ["python3", "scripts/entry.py", action, project, token],
+      value === undefined ? undefined : new TextEncoder().encode(JSON.stringify(value)),
+    ));
+  }
+  private async systemProfile() {
+    const closure = (await this.checked({ host: this.options.deployHost, args: ["readlink", "-f", "/nix/var/nix/profiles/system"] })).stdout.trim();
+    if (!CLOSURE.test(closure)) throw new RecoveryFailure("invalid host system profile");
+    return closure;
+  }
+  private async rollback(previousClosure: string, current: CurrentDeployment | null) {
+    await this.checked(this.dev(["nixos-rebuild", "switch", "--rollback", "--no-reexec", "--target-host", this.options.deployHost]));
+    if (await this.systemProfile() !== previousClosure) throw new RecoveryFailure("rollback did not restore the previous closure");
+    if (current) await this.health(current.url);
+  }
+  private async recoverState(project: string, state: State) {
+    for (const intent of Object.values(state.intents).filter(interrupted)) {
+      try {
+        if (!intent.token || !/^[a-f0-9]{64}$/.test(intent.token) || typeof intent.activationStarted !== "boolean") {
+          throw new RecoveryFailure("missing recovery metadata");
+        }
+        const now = await this.systemProfile();
+        if (intent.activationStarted) {
+          if (!intent.previousClosure || !CLOSURE.test(intent.previousClosure)) throw new RecoveryFailure("missing previous closure");
+          if (now !== intent.previousClosure) await this.rollback(intent.previousClosure, state.current);
+        }
+        await this.entry(project, intent.token, "restore");
+        await this.entry(project, intent.token, "end");
+        intent.status = "failed";
+        await this.save(project, state);
+      } catch (error) {
+        intent.status = "uncertain";
+        await this.save(project, state);
+        throw new Error("Interrupted Nix release remains locked: " + safeReason(error));
+      }
+    }
+  }
+  async recover(project: string): Promise<void> {
+    this.config(project);
+    await mkdir(this.root, { recursive: true, mode: 0o700 });
+    const lock = await acquireProjectLock(join(this.root, "fleet.lock"));
+    try { await this.recoverState(project, await this.load(project)); }
+    finally { await lock.release(); }
+  }
   async deploy(input: { project: string; commitSha: string; intentId: string }): Promise<void> {
     // Explicit fields only: neither untrusted extra fields nor branch names enter fleet.
     const { project, commitSha, intentId } = input;
@@ -162,20 +228,18 @@ export class NixDeployer implements ManagedDeployer {
     const lock = await acquireProjectLock(join(this.root, "fleet.lock"));
     try {
       const state = await this.load(project), previous = state.current, intentKey = digest(intentId), token = digest(project + "\0" + intentId);
+      await this.recoverState(project, state);
       const existing = state.intents[intentKey];
       if (existing) {
         if (existing.commitSha !== commitSha) throw new Error("Intent already used for another commit");
         if (existing.status === "succeeded") return;
         throw new Error("Intent already attempted; inspect failed or interrupted release before issuing a new intent");
       }
-      if (Object.values(state.intents).some(i => ["preparing", "activating", "uncertain"].includes(i.status))) throw new Error("Interrupted Nix release requires operator reconciliation");
       await this.preflightKeys(project, commitSha);
-      state.intents[intentKey] = { commitSha, status: "preparing" };
+      state.intents[intentKey] = { commitSha, status: "preparing", token, previousClosure: null, activationStarted: false };
       await this.save(project, state);
       let owned = false, activating = false, activated = false, previousClosure = "";
-      const entry = (action: string, value?: unknown) => this.checked(this.dev(
-        ["python3", "scripts/entry.py", action, project, token], value === undefined ? undefined : new TextEncoder().encode(JSON.stringify(value)),
-      ));
+      const entry = (action: string, value?: unknown) => this.entry(project, token, action, value);
       try {
         await entry("begin"); owned = true;
         const settings = JSON.parse((await this.checked(this.dev(["cat", "hosts/settings.json"]))).stdout);
@@ -220,39 +284,37 @@ export class NixDeployer implements ManagedDeployer {
         const hubSecret = c.hubSecretFile ? new TextEncoder().encode(readFileSync(c.hubSecretFile, "utf8").trim()) : undefined;
         await this.checked(this.dev(["python3", "scripts/ensure-secret.py", project], hubSecret));
         // Separate build phase: no target-host command or activation on failure.
-        await this.checked(this.dev(["nixos-rebuild", "build", "--flake", `path:${this.options.fleetPath}#deploy`, "--no-write-lock-file"]));
-        previousClosure = (await this.checked({ host: this.options.deployHost, args: ["readlink", "-f", "/nix/var/nix/profiles/system"] })).stdout.trim();
-        if (!/^\/nix\/store\/[a-z0-9]{32}-nixos-system-[A-Za-z0-9._-]+$/.test(previousClosure)) throw new Error("Invalid previous system closure");
-        state.intents[intentKey].status = "activating"; await this.save(project, state);
+        await this.checked(this.dev(["nix", "build", "--no-link", "--no-write-lock-file", `path:${this.options.fleetPath}#nixosConfigurations.deploy.config.system.build.toplevel`]));
+        previousClosure = await this.systemProfile();
+        Object.assign(state.intents[intentKey], { status: "activating", previousClosure, activationStarted: true });
+        await this.save(project, state);
         activating = true;
         await this.checked(this.dev(["nixos-rebuild", "switch", "--flake", `path:${this.options.fleetPath}#deploy`, "--target-host", this.options.deployHost, "--no-write-lock-file"]));
         activated = true;
         await this.health(url);
+        await entry("end"); owned = false;
         state.current = { url, commitSha, intentId };
         state.intents[intentKey].status = "succeeded";
         state.hashes[depsKey] = depsHash;
         await this.save(project, state);
-        await entry("end"); owned = false;
       } catch (error) {
         state.current = previous;
-        let recovered = true;
+        let recovered = true, recoveryError: unknown;
         try {
           if (activating) {
             // switch may fail before touching the target: do not roll back a
             // healthy older generation unless the profile actually changed.
-            const now = (await this.checked({ host: this.options.deployHost, args: ["readlink", "-f", "/nix/var/nix/profiles/system"] })).stdout.trim();
+            const now = await this.systemProfile();
             if (activated || now !== previousClosure) {
-              await this.checked(this.dev(["nixos-rebuild", "switch", "--rollback", "--no-reexec", "--target-host", this.options.deployHost]));
-              const restored = (await this.checked({ host: this.options.deployHost, args: ["readlink", "-f", "/nix/var/nix/profiles/system"] })).stdout.trim();
-              if (restored !== previousClosure) throw new Error("Rollback did not restore the previous closure");
-              if (state.current) await this.health(state.current.url);
+              await this.rollback(previousClosure, state.current);
             }
           }
           if (owned) { await entry("restore"); await entry("end"); owned = false; }
-        } catch { recovered = false; }
+        } catch (failure) { recovered = false; recoveryError = failure; }
         state.intents[intentKey].status = recovered ? "failed" : "uncertain";
         await this.save(project, state);
-        if (!recovered) throw new Error("Nix rollback/recovery failed; release locked for operator reconciliation");
+        if (!recovered) throw new Error("Nix rollback/recovery failed; release locked: " + safeReason(recoveryError) + (error instanceof BrokerRefusal ? "; " + error.message : ""));
+        if (error instanceof BrokerRefusal) throw new Error("Nix deployment failed; previous deployment retained; " + error.message);
         throw new Error("Nix deployment failed; previous deployment retained; diagnostics withheld");
       }
     } finally { await lock.release(); }

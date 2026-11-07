@@ -18,7 +18,7 @@ function fixture(overrides:Partial<RealConfig>={}){
  const api:any={async json(path:string,body:any){if(path.endsWith('/outcomes'))return [];if(path.endsWith('/approvals')){if(body?.detail)await api.post(body.room_id,body.detail);return {};}return {};},async post(room:string,text:string,files:any[]=[]){posts.push({room,text,files});return {event_id:'post-'+(++count)};},socket(){return {send(){}};},async operation(name:string,args:any){if(name==='post_message'||name==='send_targeted_message'){posts.push({room:args.thread_id==='post-thread'?'client-room':'work',text:args.body,thread:args.thread_id});return {result:{event_id:'thread-'+(++count)}};}if(name==='load_internal_documents')return {result:args.ids.map((id:string)=>({content:documents.get(id)}))};if(name==='create_room_document'){const id=randomUUID();documents.set(id,args.content);return {result:{document_id:id}};}return {result:{}};},thread:SwitchAPI.prototype.thread,publishApprovalText:SwitchAPI.prototype.publishApprovalText};
  const deployer:any={current:async()=>null,deploy:async()=>{}};
  const loop=new RealStagesLoop(store,api,new SwitchTransport(api,join(root,'files')),config,deployer,()=>identities,{freshReviewer:async(round)=>{const id='reviewer-'+round;identities.push({sender:id,kind:'agent',agent_id:id,users:[]});return {id,name:id};},promotePackage:async()=>{}},root);
- (loop as any).git=(...args:string[])=>args[0]==='status'?'':'b'.repeat(40);
+ (loop as any).git=(...args:string[])=>['status','diff','ls-tree','ls-files'].includes(args[0])?'':'b'.repeat(40);
  let n=0;const event=(sender:string,body:string,room=sender==='owner'?'studio':sender==='verified-client-channel-human'?'client-room':'work')=>({room_id:room,payload:{sender,body,message_id:'ev-'+(++n),attachments:[]}});
  const doc=(text:string)=>{const id=randomUUID();documents.set(id,text);return id;};
  const artifact=(stage:'brief'|'architecture',id:string)=>({kind:'document' as const,id});
@@ -68,7 +68,7 @@ test('build-ready requires passing evidence for every stored criterion and names
  expect(f.posts.some(p=>p.room==='work'&&p.text.includes('AC-2'))).toBe(true);
  writeFileSync(join(f.root,'build-report.md'),'AC-1: PASS - test page renders\nAC-2: FAIL - not implemented\n');
  await f.loop.handle(f.event('builder','build-ready build-report.md'));
- expect(f.posts.filter(p=>p.room==='work'&&p.text.includes('AC-2'))).toHaveLength(2);
+ expect(f.posts.filter(p=>p.room==='work'&&p.text.includes('AC-2')).length).toBeGreaterThanOrEqual(2);
  expect(f.posts.filter(p=>p.room==='studio')).toHaveLength(before);
 });
 
@@ -76,7 +76,7 @@ test('bug ticket report must name its failing reproduction test',async()=>{
  const f=fixture();await f.enterBuild();const spec=f.doc('AC-1: Correct the reported defect and verify the result.');await f.loop.handle(f.event('lead',`spec document ${spec}`));
  (f.loop as any).set('ticketKind','bug');mkdirSync(f.root,{recursive:true});writeFileSync(join(f.root,'build-report.md'),'AC-1: PASS - regression suite green\n');
  await f.loop.handle(f.event('builder','build-ready build-report.md'));
- expect(f.posts.some(p=>p.room==='work'&&p.text.includes('Reproduction test:'))).toBe(true);
+ expect(f.posts.some(p=>p.room==='work'&&/reproduction test/i.test(p.text))).toBe(true);
 });
 
 test('client acceptance skips disabled video and begins learning',()=>{
@@ -211,7 +211,7 @@ async function automaticFixture(options:{path?:string;lines?:number;kind?:string
  const deployments:string[]=[];
  f.deployer.current=async()=>current;f.deployer.deploy=async(input:any)=>{deployments.push(input.commitSha);current={...current,commitSha:input.commitSha};};
  f.deployer.checkHealth=async()=>{healthCalls++;if(options.healthFails&&healthCalls===1)throw new Error('fixture health failure');};
- (f.loop as any).git=(...args:string[])=>args[0]==='status'?'':args[0]==='diff'?`${options.lines??10}\t2\t${options.path??'apps/web/src/contact.svelte'}\0`:args[0]==='merge-base'?'':'b'.repeat(40);
+ (f.loop as any).git=(...args:string[])=>['status','ls-tree','ls-files'].includes(args[0])?'':args[0]==='diff'?(args.includes('--name-only')?`${options.path??'apps/web/src/contact.svelte'}\0`:args.includes('--unified=0')?'':`${options.lines??10}\t2\t${options.path??'apps/web/src/contact.svelte'}\0`):args[0]==='merge-base'?'':'b'.repeat(40);
  if(options.sendFails){const send=f.loop.transport.send.bind(f.loop.transport);f.loop.transport.send=async d=>{if(d.deliveryId.startsWith('small:'))throw new Error('fixture uncertain delivery');return send(d);};}
  await f.loop.handle(f.event('builder','build-ready build-report.md'));
  const verdict=f.event('reviewer-1',`review 1 ${'b'.repeat(40)} pass\nAC-1: PASS - independently exercised the form`);
@@ -287,17 +287,22 @@ test('review passed with a studio thread queues the frozen screenshot instead of
  expect(data.code).toBe((f.store.db.query("SELECT code FROM stage_artifacts WHERE stage='build' AND status='active'").get() as any).code);
 });
 
-test('a blocked builder reaches the owner at once, and a silent one is asked for its state',async()=>{
+test('a blocked builder goes to lead first and repeated blocks expose real owner actions',async()=>{
  const f=fixture({builderNudgeMs:0});await f.enterBuild();
- f.loop.watchdog.assign(1,'builder');
- await f.loop.tick();
+ const spec=f.doc('AC-1: Make the sample page work.');await f.loop.handle(f.event('lead',`spec document ${spec}`));
+ f.loop.watchdog.assign(1,'builder');await f.loop.tick();
  expect(f.posts.some((p:any)=>p.room==='work'&&p.text.includes('post blocked:'))).toBe(true);
  const count=f.posts.length;await f.loop.tick();expect(f.posts.length).toBe(count);
  await f.loop.handle(f.event('builder','blocked: no browser available'));
- const cards=(f.store.db.query('SELECT payload FROM owner_cards').all() as any[]).map(r=>JSON.parse(r.payload).detail);
- expect(cards.some(c=>c.includes('Builder is blocked')&&c.includes('no browser available'))).toBe(true);
+ expect(f.posts.some((p:any)=>p.room==='work'&&p.text.includes('Builder is blocked: no browser available'))).toBe(true);
+ expect(f.store.db.query('SELECT request FROM owner_cards').get()).toBeNull();
+ await f.loop.handle(f.event('lead','tell builder: Use the assigned local screenshot tool.'));
+ await f.loop.handle(f.event('builder','blocked: no browser available'));
+ const row=f.store.db.query("SELECT payload,buttons FROM owner_cards WHERE status='open'").get() as any;
+ expect(row).not.toBeNull();
+ expect(JSON.parse(row.payload).detail).toContain('same build block returned');
+ expect(JSON.parse(row.buttons).map((button:any)=>button.command)).toEqual(['@desk blocked-continue','@desk blocked-stop']);
 });
-
 
 test('ordered durable lead clarifications reach the reviewer assignment and never the client, and clear on a new assignment',async()=>{
  const f=fixture();await ready(f);

@@ -22,5 +22,8 @@ run_clean python3 scripts/repro/test-copy.py
 run_clean python3 scripts/repro/test-discord-status.py
 run_clean python3 scripts/repro/test-new-project.py
 run_clean python3 scripts/repro/test-studio-move.py
+run_clean python3 scripts/repro/test-provision-helper.py
+run_clean python3 scripts/repro/test-review-fixes.py
+run_clean python3 scripts/repro/test-lane-f.py
 run_clean bun --no-env-file scripts/repro/validate-template.ts
 run_clean bun --no-env-file test --dots desk/tests desk/harness receipt/build.test.ts desk/tests/adversarial deploy scripts/repro/repro.test.ts

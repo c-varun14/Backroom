@@ -11,13 +11,17 @@ let
     wantedBy = [ "multi-user.target" ];
     after = after;
     wants = [ "backroom-switch.service" ] ++ after;
-    unitConfig.ConditionPathExists = [ "/var/lib/backroom-agent/${name}/controller.db" "/srv/backroom/.switch-runtime/studio-move-ready" ];
+    unitConfig.ConditionPathExists = [ "/var/lib/backroom-agent/${name}/controller.db" "/srv/backroom/.switch-runtime/studio-move-ready" "!/var/lib/backroom/sync-incomplete" ];
     environment = {
       PATH = lib.mkForce servicePath; HOME = "/var/lib/backroom-agent";
       BROWSER_PATH = "${pkgs.chromium}/bin/chromium";
       # review-env detects Docker by PATH. This wrapper forces its local backend.
       BACKROOM_REVIEW_BACKEND = "local";
       GIT_NO_REPLACE_OBJECTS = "1";
+      GIT_AUTHOR_NAME = "Backroom Builder";
+      GIT_AUTHOR_EMAIL = "builder@backroom.invalid";
+      GIT_COMMITTER_NAME = "Backroom Builder";
+      GIT_COMMITTER_EMAIL = "builder@backroom.invalid";
     };
     serviceConfig = {
       User = "agent"; Group = "backroom"; UMask = "0007";
@@ -47,6 +51,7 @@ in {
   };
   nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 14d"; };
   programs.nix-ld.enable = true;
+  programs.git.enable = true;
   virtualisation.docker.enable = true; # Switch only; neither studio nor agent joins docker.
   environment.systemPackages = tools;
   environment.extraInit = ''
@@ -71,7 +76,9 @@ in {
     "d /srv/backroom/.secrets 0700 studio backroom -"
     "d /srv/backroom/.switch-runtime 0700 studio backroom -"
     "d /srv/backroom/workspaces 2770 studio backroom -"
+    "d /srv/backroom/.handoff-contracts 0750 studio backroom -"
     "d /var/lib/backroom-agent 0700 agent backroom -"
+    "d /var/lib/backroom-agent/.codex 0700 agent backroom -"
     "d /var/lib/backroom-agent/lead 0700 agent backroom -"
     "d /var/lib/backroom-agent/build 0700 agent backroom -"
     "d /opt/backroom 0755 root root -"
@@ -121,9 +128,9 @@ in {
   systemd.services.backroom-studio = {
     description = "Backroom door and per-project desks";
     wantedBy = [ "multi-user.target" ];
-    after = [ "backroom-controller-lead.service" "backroom-controller-build.service" ];
-    wants = [ "backroom-controller-lead.service" "backroom-controller-build.service" ];
-    unitConfig.ConditionPathExists = "/srv/backroom/.switch-runtime/studio-move-ready";
+    after = [ "backroom-controller-lead.service" "backroom-controller-build.service" "backroom-identity.service" "backroom-provision.service" ];
+    wants = [ "backroom-controller-lead.service" "backroom-controller-build.service" "backroom-identity.service" "backroom-provision.service" ];
+    unitConfig.ConditionPathExists = [ "/srv/backroom/.switch-runtime/studio-move-ready" "!/var/lib/backroom/sync-incomplete" ];
     environment = { PATH = lib.mkForce ("/opt/backroom/studio-bin:" + servicePath); HOME = "/home/studio"; BACKROOM_SUPERVISED = "1"; };
     serviceConfig = {
       User = "studio"; Group = "backroom"; UMask = "0007";
@@ -132,6 +139,72 @@ in {
       Restart = "always"; RestartSec = 5; KillMode = "control-group";
       NoNewPrivileges = true; PrivateDevices = true;
       StandardOutput = "journal"; StandardError = "journal";
+    };
+  };
+  systemd.services.backroom-identity = {
+    unitConfig.ConditionPathExists = "!/var/lib/backroom/sync-incomplete";
+    description = "Backroom Switch identity lookup socket";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "docker.service" "backroom-switch.service" ];
+    requires = [ "docker.service" ];
+    path = [ pkgs.docker pkgs.coreutils pkgs.python3 ];
+    environment = {
+      BACKROOM_IDENTITY_SOCKET = "/run/backroom-identity.sock";
+      BACKROOM_IDENTITY_GROUP = "backroom";
+    };
+    serviceConfig = {
+      Type = "simple";
+      User = "root";
+      Group = "backroom";
+      UMask = "0007";
+      ExecStart = "${pkgs.python3}/bin/python3 -I /srv/backroom/scripts/identity-helper.py";
+      Restart = "on-failure";
+      RestartSec = 2;
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      PrivateDevices = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      ReadWritePaths = [ "/run" ];
+      RestrictSUIDSGID = true;
+      ProtectKernelTunables = true;
+      ProtectKernelModules = true;
+      ProtectControlGroups = true;
+      StandardOutput = "journal";
+      StandardError = "journal";
+    };
+  };
+  systemd.services.backroom-provision = {
+    unitConfig.ConditionPathExists = "!/var/lib/backroom/sync-incomplete";
+    description = "Backroom fixed builder provisioning socket";
+    wantedBy = [ "multi-user.target" ];
+    before = [ "backroom-studio.service" ];
+    path = tools;
+    serviceConfig = {
+      Type = "simple";
+      User = "root";
+      Group = "backroom";
+      UMask = "0077";
+      ExecStart = "${pkgs.python3}/bin/python3 -I /srv/backroom/scripts/provision-helper.py";
+      Restart = "on-failure";
+      RestartSec = 2;
+      KillMode = "control-group";
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      PrivateDevices = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      ReadWritePaths = [ "/run" "/srv/backroom/workspaces" "/var/lib/backroom-agent/.codex" ];
+      InaccessiblePaths = [ "/srv/backroom/.secrets" "/srv/backroom/.switch-runtime" "/root" "/home/studio" "/run/docker.sock" ];
+      CapabilityBoundingSet = [ "CAP_CHOWN" "CAP_FOWNER" "CAP_DAC_OVERRIDE" "CAP_SETUID" "CAP_SETGID" "CAP_KILL" ];
+      RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" "AF_NETLINK" ];
+      ProtectKernelTunables = true;
+      ProtectKernelModules = true;
+      ProtectControlGroups = true;
+      RestrictSUIDSGID = true;
+      LockPersonality = true;
+      StandardOutput = "journal";
+      StandardError = "journal";
     };
   };
 }

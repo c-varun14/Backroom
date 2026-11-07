@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import socket
 import subprocess
 import sys
 import time
@@ -50,7 +51,32 @@ def real_instructions(role, c):
     return base + '\n\nREAL ROOM PROTOCOL (takes precedence over older example handoffs):\n' + protocol + f'''\nUse the configured harness and model; stop on low limits. No credential reads, environment dumps, other projects, other Docker containers, sudo, tunnels, external hosting or client posts.{honesty} Your room is {c['workRoomId']} only. Only builder may make bounded local commits inside its assigned product repository; never commit the outer Backroom repository or add AI attribution. Wait for desk's explicit task. {offline}{delivery}'''
 
 
+def prepare_builder(c, directory):
+    slug = c.get('projectId', '')
+    if str(directory) != '/srv/backroom/workspaces/' + slug:
+        raise SetupError('Builder preparation failed: workspace mismatch')
+    try:
+        with socket.socket(socket.AF_UNIX) as connection:
+            connection.settimeout(30)
+            connection.connect('/run/backroom-provision.sock')
+            connection.sendall(json.dumps({'operation': 'prepare-builder', 'project': slug}).encode() + b'\n')
+            with connection.makefile('rb') as response:
+                data = json.loads(response.readline(20001))
+        if data.get('ok') is True and data.get('category') == 'builder-prepared':
+            return
+        category = data.get('category')
+        allowed = {'bad-project', 'unsafe-path', 'unsafe-file', 'workspace-owner', 'workspace-changed',
+                   'shared-sandbox-policy', 'agent-config-conflict', 'caller-group', 'agent-identity', 'provision-failed'}
+        raise SetupError('Builder preparation failed: ' + (category if category in allowed else 'invalid-response'))
+    except SetupError:
+        raise
+    except Exception:
+        raise SetupError('Builder preparation failed: provision helper unavailable') from None
+
+
 def create_role(c, role, name, directory, desired='running'):
+    if role == 'builder':
+        prepare_builder(c, directory)
     from harness_config import role_config, command_role
     if role_config(role)['harness']=='command':
         return command_role(c,role,name,directory,desired)
@@ -153,6 +179,7 @@ if __name__=='__main__':
         if action=='setup':setup()
         elif action=='start-builder':
             c=json.loads(PUBLIC.read_text());s=lead_session()
+            prepare_builder(c, c['workspace'])
             call(s,'PATCH','/gateway/management/agents/'+c['builderId'],{'desired_state':'running'})
         elif action=='reviewer':fresh_reviewer(int(sys.argv[2]))
         elif action=='promote':promote(sys.argv[2])

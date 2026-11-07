@@ -20,7 +20,7 @@ def route(args, deploy_ip):
     return [SSH, *args]
 
 
-if __name__ == '__main__':
+def main():
     try:
         ip_file = Path('/srv/backroom/.secrets/backroom-demo-ip.txt')
         deploy_ip = ip_file.read_text().strip() if ip_file.exists() else ''
@@ -28,6 +28,13 @@ if __name__ == '__main__':
                           any(int(part) > 255 for part in deploy_ip.split('.'))):
             raise ValueError('invalid deploy address')
         os.execv(SSH, route(sys.argv[1:], deploy_ip))
+    except ValueError:
+        print('Deployment broker: bad-host', file=sys.stderr)
+        return 77
     except Exception:
         print('studio SSH: failed; details withheld', file=sys.stderr)
-        raise SystemExit(1) from None
+        return 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
