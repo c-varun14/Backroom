@@ -363,7 +363,7 @@ test('environment-blocked reviews reach the owner without consuming a round or r
  await f.loop.handle(f.event('builder','@desk review-retry'));expect(f.loop.get('reviewVerdict')).toBe('blocked');
  await f.loop.handle(f.event('owner','@desk review-retry'));
  expect(f.loop.get('reviewer').round).toBe(1);
- await f.loop.handle(f.event('reviewer-1',`review 1 ${'b'.repeat(40)} fail\nAC-1: FAIL - running form does not save`));
+ await f.loop.handle(f.event(f.loop.get('reviewer').name,`review 1 ${'b'.repeat(40)} fail\nAC-1: FAIL - running form does not save`));
  expect(f.loop.get('reviewRound')).toBe(1);expect(f.loop.get('reviewFailures')).toBe(1);
 });
 

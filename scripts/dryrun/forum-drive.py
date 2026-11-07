@@ -338,6 +338,8 @@ def start(name, args, token):
     if name == 'runtime':
         # Safe only in the original PID namespace after the exact PID is absent.
         (STATE / 'runtime.lock').unlink(missing_ok=True)
+        # A dead runtime's health must not be read as the new runtime's failure.
+        (STATE / 'health.json').unlink(missing_ok=True)
     # Debug output is error names and sanitized messages only, never credentials.
     log = (STATE / (name + '.log')).open('a') if os.environ.get('BACKROOM_DEBUG') else subprocess.DEVNULL
     p = subprocess.Popen(args, cwd=ROOT, stdout=log, stderr=log, start_new_session=True, env=process_env())
