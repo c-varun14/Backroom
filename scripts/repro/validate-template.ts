@@ -4,7 +4,7 @@ export function validateTemplate(text:string,pins:any){
  const d:any=Bun.YAML.parse(text),errors:string[]=[];
  const check=(ok:any,msg:string)=>{if(!ok)errors.push(msg);};
  check(d&&d.version===1,"template language must be 1");check(pins.server==="0.31.0"&&pins.console==="0.40.1"&&pins.controller==="0.31.0","tested runtime pins changed");
- check(pins.codexModel==="gpt-6.1-sol","Codex model pin changed");check(typeof pins.templateImported==="boolean","import status must be explicit");
+ check(JSON.stringify(pins.codexModels)===JSON.stringify(["gpt-6-luna","gpt-6.1-sol"]),"Codex model pin changed");check(typeof pins.templateImported==="boolean","import status must be explicit");
  check(Object.keys(d??{}).every(k=>["version","params","group","rooms"].includes(k)),"unexpected top-level field (no kickoff, links or agent creation allowed)");
  const params=d?.params??{};
  const required={desk:"agent",lead:"agent",builder:"agent",reviewer:"agent",client_room:"string",studio_room:"string",work_room:"string"};

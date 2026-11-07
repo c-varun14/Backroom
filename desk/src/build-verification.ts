@@ -10,5 +10,5 @@ export function buildVerification(workspace:string,required=false){
  if(typeof data.screenshot!=='string')throw new Error('Screenshot path required');
  const bytes=new Uint8Array(readFileSync(within(data.screenshot)));
  if(bytes.length>10*1024*1024||bytes.length<8||Buffer.from(bytes.slice(0,8)).toString('hex')!=='89504e470d0a1a0a')throw new Error('PNG screenshot required');
- return {url:url.toString(),sample:data.sample===true,name:'owner-verification.png',bytes};
+ return {url:url.toString(),sample:data.sample===true,name:'owner-verification.png',bytes,screenshotPath:data.screenshot as string};
 }

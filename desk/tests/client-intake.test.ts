@@ -16,7 +16,7 @@ test('Hii, a question, and an unlabelled file create no ticket or client line, a
  expect(f.store.db.query('SELECT count(*) AS n FROM tickets').get()).toEqual({n:0});expect(f.sent.filter(m=>m.room===c.clientRoomId)).toHaveLength(0);
  expect(f.loop.workflow.get(c.projectId)).toEqual(before);
  await f.loop.handle(f.event(c.studioRoomId,'verified-lead',messageProtocol(3,'reply','Thanks for the file.')));
- expect(f.sent.at(-1).text).toContain('A file arrived.');expect(f.sent.at(-1).text).toContain('@desk ticket');
+ expect(f.sent.at(-1).text).toContain('A file arrived.');expect(f.sent.at(-1).text).toContain('type: ticket');
 });
 
 for(const label of ['request:','feature:','bug:'])test(label+' opens one work ticket; a labelled follow-up joins it',async()=>{
@@ -40,7 +40,7 @@ test('question has its own reply code and preserves the pending work code, versi
  const reply=f.store.db.query('SELECT d.code,d.status,d.thread FROM conversation_drafts c JOIN drafts d ON c.id=d.id').get() as any;
  expect(reply.code).not.toBe(work.code);expect(reply.thread).toBe('conversation:2');
  expect(f.store.db.query('SELECT status FROM drafts WHERE code=?').get(work.code)).toEqual({status:'active'});
- expect(f.loop.workflow.get(c.projectId)).toEqual(before);expect(f.sent.at(-1).text).toContain('❓ Question #2');expect(f.sent.at(-1).text).toContain('question: when?');
+ expect(f.loop.workflow.get(c.projectId)).toEqual(before);expect(f.sent.at(-1).text).toContain('Question #2');expect(f.sent.at(-1).text).toContain('question: when?');
  await f.loop.handle(f.event(c.studioRoomId,'verified-owner','@desk send '+reply.code));
  expect(f.loop.workflow.get(c.projectId)).toEqual(before);expect(f.loop.latestDraft().code).toBe(work.code);
 });
@@ -74,8 +74,8 @@ test('intro is owner-only, exact fixed text, once per project even with a fresh 
 test('lead can suggest a ticket in internal notes without creating one; status separates questions and tickets',async()=>{
  const f=fixture(),c=f.config;await f.loop.handle(f.event(c.clientRoomId,'verified-client','Can we add a form'));
  await f.loop.handle(f.event(c.studioRoomId,'verified-lead',messageProtocol(1,'reply','I can help with that.','REQUEST_SUGGESTED: yes')));
- expect(f.loop.latestTicket()).toBeNull();expect(f.sent.at(-1).text).toContain('Looks like a request. Make it a ticket: @desk ticket');
+ expect(f.loop.latestTicket()).toBeNull();expect(f.sent.at(-1).text).toContain('To start a project from this, type: ticket');
  await f.loop.handle(f.event(c.clientRoomId,'verified-client','question: when?'));
  await f.loop.handle(f.event(c.studioRoomId,'verified-owner','@desk status'));
- expect(f.sent.at(-1).text).toContain('Open tickets: none');expect(f.sent.at(-1).text).toContain('Unanswered questions: 2');
+ expect(f.sent.at(-1).text).toContain('Waiting on you: Message #1');expect(f.sent.at(-1).text).toContain('questions 2');
 });

@@ -1,0 +1,9 @@
+{
+  "id": "bun-sqlite",
+  "name": "Bun HTTP server, HTML/CSS/JavaScript and SQLite",
+  "architecture": "Write a small architecture covering approved requirements, durable Bun/SQLite data, private owner access, file-injected runtime credentials, validation, no payments, and local Docker deployment. Distinguish the container listener (0.0.0.0 inside Docker) from the published host binding (127.0.0.1 only); binding the container listener to loopback prevents the published port from reaching it. State currency units explicitly and preserve an existing integer-INR menu unless approved scope requires a currency migration; do not invent a minor-unit migration. The bakery needs a responsive page instead of a native mobile app, ordinary durable records instead of blockchain, one app instance, and no payment provider for pay-at-pickup orders.",
+  "build": "Bun/SQLite, Dockerfile port 3210, /health, durable /data, committed backroom.deploy.json runtime contract; owner credentials only from a runtime file under /run/secrets. No secrets in source/builds. No payments. Preserve accepted data.",
+  "review": "Verify persistence, private owner access, trusted prices, validation, concurrency, runtime-file readiness and /health. Bakery checks: saved orders, forged-price rejection, date/cut-off boundaries, quantity validation, last-unit races, duplicate submissions, restart persistence, migration invariants, private owner/customer views and allergen visibility.",
+  "test": "Run bun test.",
+  "scaffold": ""
+}

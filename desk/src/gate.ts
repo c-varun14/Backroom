@@ -1,3 +1,4 @@
+import {leakWord} from './cards';
 import { createHash, randomUUID } from "node:crypto";
 import { Store } from "./store";
 import type { Attachment, Deployer, Draft, DraftInput, Message, Result, Transport } from "./types";
@@ -7,6 +8,7 @@ const SHA = /^[a-f0-9]{40}$/;
 const HASH = /^[a-f0-9]{64}$/;
 const canonical = (input: DraftInput) => JSON.stringify({
   project: input.project, threadId: input.threadId ?? "default", destinationRoomId: input.destinationRoomId,
+  ...(input.clientThread ? {clientThread:input.clientThread} : {}),
   text: input.text, attachments: input.attachments.map(a => ({ name: a.name, sha256: a.sha256 })),
 });
 const freeze = (draft: Draft): Readonly<Draft> => {
@@ -16,7 +18,7 @@ const freeze = (draft: Draft): Readonly<Draft> => {
 };
 
 export class Desk {
-  constructor(readonly store: Store, private transport: Transport, private deployer: Deployer) {}
+  constructor(readonly store: Store, private transport: Transport, private deployer: Deployer, private checkTalk: (text:string)=>string|undefined = ()=>"talk lane disabled", private checkPhase: (text:string,sources:string)=>string|undefined = ()=>"phase lane disabled") {}
 
   createDraft(input: DraftInput): Readonly<Draft> {
     const project = this.store.project(input.project);
@@ -24,7 +26,7 @@ export class Desk {
     if (typeof input.text !== "string" || !Array.isArray(input.attachments) ||
         input.attachments.some(a => !a.name || !HASH.test(a.sha256)) ||
         new Set(input.attachments.map(a => a.name)).size !== input.attachments.length ||
-        (input.threadId !== undefined && !input.threadId)) throw new Error("invalid draft");
+        (input.threadId !== undefined && !input.threadId) || (input.clientThread !== undefined && !input.clientThread)) throw new Error("invalid draft");
     const frozen = canonical(input);
     const contentHash = sha256(frozen);
     const id = randomUUID();
@@ -37,8 +39,8 @@ export class Desk {
     this.store.db.transaction(() => {
       this.store.db.query("UPDATE drafts SET status='superseded' WHERE project=? AND thread=? AND status='active'")
         .run(input.project, input.threadId ?? "default");
-      this.store.db.query("INSERT INTO drafts VALUES (?,?,?,?,?,?,'active')")
-        .run(id, input.project, input.threadId ?? "default", code, frozen, contentHash);
+      this.store.db.query("INSERT INTO drafts(id,project,thread,code,frozen,content_hash,status,client_thread) VALUES (?,?,?,?,?,?,'active',?)")
+        .run(id, input.project, input.threadId ?? "default", code, frozen, contentHash, input.clientThread ?? null);
     })();
     return freeze({ ...JSON.parse(frozen), id, code, contentHash });
   }
@@ -100,7 +102,7 @@ export class Desk {
           return reject("superseded code");
         }
         await this.transport.send({ deliveryId: intentId, draftId: draft.id, project: project.id,
-          destinationRoomId: draft.destinationRoomId, text, attachments });
+          destinationRoomId: draft.destinationRoomId, clientThread:draft.clientThread, text, attachments });
         this.store.db.transaction(() => {
           this.confirm(intentId);
           this.store.db.query("UPDATE drafts SET status='sent' WHERE id=?").run(draft.id);
@@ -127,6 +129,22 @@ export class Desk {
       this.uncertain(intentId, "deploy outcome uncertain", message.eventId, project.id);
       return { status: "uncertain", reason: "deploy outcome uncertain; fresh owner approval required" };
     }
+  }
+
+  /** Internal checked conversation lane. Never creates release drafts or approval codes. */
+  async sendTalk(input:{project:string;clientThread:string;text:string;eventId:string;sources?:string}):Promise<Result> {
+    const project=this.store.project(input.project);
+    const reason=!input.clientThread||!input.text.trim()?'empty talk':input.sources===undefined?this.checkTalk(input.text):this.checkPhase(input.text,input.sources);
+    if(reason){this.store.log('talk refused: '+reason,input.eventId,input.project);return {status:'rejected',reason};}
+    if(!input.eventId)throw new Error('Talk event required');
+    if(this.store.db.query('SELECT id FROM intents WHERE event_id=?').get(input.eventId))return {status:'duplicate'};
+    const id=this.intent(input.project,'talk',input.eventId,input.eventId);
+    if(!id)return {status:'duplicate'};
+    try {
+      await this.transport.send({deliveryId:id,project:input.project,destinationRoomId:project.clientRoomId,
+        clientThread:input.clientThread,text:input.text,attachments:[]});
+      this.confirm(id);return {status:'sent'};
+    }catch{this.uncertain(id,'talk outcome uncertain',input.eventId,input.project);return {status:'uncertain'};}
   }
 
   /** Trusted internal event path: one fixed line, numeric interpolation only. */

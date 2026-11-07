@@ -42,7 +42,7 @@ Memory propagation iterates a list of client projects, currently one SAMPLE bake
 The shell then stops only the `switch` service. The same native-message, protocol
 handoff, owner-release and package-attachment functions make real network attempts.
 Without Switch, no verified sender event reaches desk, so release refuses before
-creating a send intent. Four actual shortened errors appear in the receipt. After
+creating a send intent. Five actual shortened errors appear in the receipt. After
 restart, a real handoff succeeds and the client count confirms no outage delivery.
 
 `demo/out/receipt.json` and self-contained `receipt.html` contain scrubbed results,

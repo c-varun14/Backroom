@@ -37,7 +37,7 @@ for ((i=0;i<240;i++)); do
   sleep 1
 done
 if [[ $status == 0 ]]; then
-  echo 'Stopping Switch for four real dependency attempts...'
+  echo 'Stopping Switch for five real dependency attempts...'
   compose stop switch >/dev/null
   compose exec -T runner bun --no-env-file demo/control.ts off || status=$?
   compose up -d --no-deps switch >/dev/null

@@ -27,7 +27,7 @@ test('legacy import refuses reply documents and unknown text formats',()=>{
 });
 test('legacy import refuses corrupt frozen records and leaves authority absent',()=>{
  const f=legacy();try{
-  f.store.db.query("INSERT INTO drafts VALUES ('corrupt','sample','default','bad-code','{}',?,'active')").run('0'.repeat(64));
+  f.store.db.query("INSERT INTO drafts(id,project,thread,code,frozen,content_hash,status) VALUES ('corrupt','sample','default','bad-code','{}',?,'active')").run('0'.repeat(64));
   f.store.db.query("INSERT INTO visible_drafts VALUES ('corrupt','legacy-doc','brief')").run();
   expect(()=>f.snapshots.get('legacy-doc')).toThrow('Missing or corrupt');
   expect(f.store.db.query('SELECT count(*) AS n FROM document_snapshots').get()).toEqual({n:0});

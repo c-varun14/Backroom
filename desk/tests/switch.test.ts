@@ -19,7 +19,8 @@ export function fixture(workRoom = false){
   let document=0;
   const documents:any[]=[];
   const sockets:any[]=[];
-  const api={async post(room:string,text:string,attachments:any[]=[]){sent.push({room,text,attachments});return{ok:true,event_id:"SAMPLE-post-"+sent.length};},
+  const cards:any[]=[];
+  const api={async json(path:string,body:any){if(path.endsWith("/outcomes"))return [];if(path.endsWith("/approvals")){if(cards.some(c=>c.request_id===body.request_id))return {};cards.push(body);sent.push({room:body.room_id,text:body.detail,attachments:[]});}return {};},async post(room:string,text:string,attachments:any[]=[]){sent.push({room,text,attachments});return{ok:true,event_id:"SAMPLE-post-"+sent.length};},
     async operation(name:string,body:any,connection:string){
       if(name==="create_room_document"){documents.push(body);return{result:{document_id:"SAMPLE-document-"+(++document)}};}
       if(name==="load_internal_documents")return{result:body.ids.map((id:string)=>({content:documents[Number(id.split("-").at(-1))-1]?.content}))};
@@ -33,7 +34,7 @@ export function fixture(workRoom = false){
   const loop=new VisibleLoop(store,api,transport,localConfig,()=>identities);
   let n=0;
   const event=(room:string,sender:string,body:string,id?:string)=>({room_id:room,payload:{sender,message_id:id ?? "SAMPLE-"+(++n),body,attachments:[]}});
-  return{dir,store,sent,loop,event,identities,documents,sockets,config:localConfig,api};
+  return{dir,store,sent,loop,event,identities,documents,sockets,config:localConfig,api,cards};
 }
 test("verified identity fails closed; display names and platform notices cannot become humans",()=>{
   const f=fixture();expect(verifiedSender("SAMPLE-owner",f.identities)).toBeUndefined();

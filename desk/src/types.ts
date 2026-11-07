@@ -1,4 +1,8 @@
 export interface Project {
+  github?: import("./github").GitHubConfig;
+  clientSurface?: "forum";
+  stack?: string;
+  videoEnabled?: boolean;
   id: string;
   ownerId: string;
   studioRoomId: string;
@@ -12,6 +16,7 @@ export interface DraftInput {
   /** Omit for the project's default conversation thread. */
   threadId?: string;
   destinationRoomId: string;
+  clientThread?: string;
   text: string;
   attachments: Attachment[];
 }
@@ -29,6 +34,7 @@ export interface Delivery extends PreparedContent {
   deliveryId: string;
   project: string;
   destinationRoomId: string;
+  clientThread?: string;
   draftId?: string;
 }
 export interface Transport {
@@ -39,6 +45,11 @@ export interface Transport {
 }
 export interface Deployer {
   deploy(input: { project: string; commitSha: string; intentId: string }): Promise<void>;
+}
+export interface CurrentDeployment { url: string; commitSha: string; intentId: string }
+export interface ManagedDeployer extends Deployer {
+  current(project: string): Promise<CurrentDeployment | null>;
+  checkHealth(project: string): Promise<void>;
 }
 export interface Message {
   senderId: string;

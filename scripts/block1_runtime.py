@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
-from block1_setup import ROOT, BASE, PUBLIC, bootstrap, configure_lead, owner_session, lead_session, call, SetupError
+from block1_setup import ROOT, BASE, PUBLIC, bootstrap, configure_lead, owner_session, lead_session, call, SetupError, env_field
 
 os.umask(0o077)
 
@@ -59,8 +59,12 @@ def status():
         print('Stage 1: ticket='+str(health['ticket'])+'; state='+str(health['ticketStatus'])+'; brief version='+str(health['briefVersion']))
         if health.get('draftCode'):print('Current frozen draft code: '+health['draftCode'])
     users=call(admin,'GET',f'/gateway/collaborations/{config["bridgeId"]}/users')
-    linked=any(any(c['user_id']==config['ownerId'] for c in u['claimed_by']) for u in users)
-    print('Varun Discord account: '+('linked (identity test still needs a real message)' if linked else 'not linked — follow reports/try-it.md'))
+    owner_ids={u['external_user_id'] for u in users if any(c['user_id']==config['ownerId'] for c in u['claimed_by'])}
+    from discord_status import discord_visibility
+    lines,owner_seen=discord_visibility(config,env_field(ROOT/'.secrets/discord.env','DISCORD_BOT_TOKEN'),env_field(ROOT/'.secrets/discord.env','DISCORD_GUILD_ID'),owner_ids)
+    for line in lines:print(line)
+    linked='linked; real owner Discord message seen' if owner_seen else 'linked (identity test still needs a real message)'
+    print('Varun Discord account: '+(linked if owner_ids else 'not linked — follow reports/try-it.md'))
 
 
 def up():

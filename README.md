@@ -2,31 +2,74 @@
 
 **A one-person agency that never makes the same mistake twice.**
 
-Clients talk to one person in one chat. Behind that chat, AI teammates on [Switch](https://github.com/sandbox-quantum/switch) write the brief, build, review and deploy. The owner releases every step, and each approved lesson carries into the next project.
+A client opens a project in Discord and talks naturally. Answers come back in seconds. Behind that conversation, AI teammates on [Switch](https://github.com/sandbox-quantum/switch) find the conflicts in the client's documents, write the plan, build a real app, review it independently and deploy it to a public link. The owner makes only the decisions that bind the business, and each approved lesson carries into the next project.
 
 ```sh
 bash demo.sh
 ```
 
-That one command needs only Docker. It starts a real Switch server and runs two fictional clients with scripted agents. A lesson approved on one client reaches the other as a Switch package, while the second client gets real refusals on the first client's rooms and documents. Then it turns Switch off to show what breaks. It takes about 2 minutes once images are pulled, and needs no accounts.
+That one command needs only Docker. It starts a real Switch server, runs two fictional clients with scripted agents through 49 live steps, shows real refusals between clients, then turns Switch off to show what breaks. It takes about 2 minutes once images are pulled, and needs no accounts.
 
-- **Live sample app:** [Morrowcrumb Bakery](https://98-91-25-101.sslip.io/)
-- **Proof page, no login:** [one client change, start to finish](https://98-91-25-101.sslip.io/proof/)
+**Live now, no login:**
 
-![Simulated rehearsal montage: brief and review evidence from the public receipt, then a separate fresh fictional bakery app saving a sample pre-order.](docs/media/backroom-demo.gif)
+- **[Request a Quote](https://base-demo.98-91-25-101.sslip.io/request-a-quote):** a full-stack app that Backroom's real agents built, reviewed and shipped from a sample client's conflicting documents
+- **[Morrowcrumb Bakery](https://98-91-25-101.sslip.io/):** a fictional bakery app from the first rehearsal
+- **[Proof page](https://98-91-25-101.sslip.io/proof/):** one client change, start to finish
 
-*Simulated rehearsal montage. Receipt evidence and a separate fresh local app run; no live client handoff is shown.*
+![Rehearsal montage: brief and review evidence from the public receipt, then a fresh fictional bakery app saving a sample pre-order.](docs/media/backroom-demo.gif)
+
+*Rehearsal montage with simulated approvals.*
+
+## From a client's post to a live app
+
+Real agents took a sample client from a Phase post to a live public app, through all seven steps on real Switch, and every step is recorded in [the rehearsal report](reports/rehearsal-forum.md).
+
+| Step | What happened | Time |
+| --- | --- | ---: |
+| 1. Client posts two conflicting documents | `lead` found the phone-versus-email conflict and asked the client | 22 s |
+| 2. Client answers | `lead` wrote the final document | 9 s |
+| 3. Owner releases it, client presses Looks right | The approval binds to that exact version | 6 s |
+| 4. Technical plan | `lead` chose the stack and wrote acceptance criteria for the owner to approve | 33 s |
+| 5. Build | `builder` built on the shared app base and proved each criterion with a report and screenshot | 2 h 7 m |
+| 6. Independent review | A fresh `reviewer` tested the running app for each attempt and sent failures back to the builder, over five review passes. After the three-round limit, the owner chose to keep going | 2 h 21 m |
+| 7. Deploy, send, accept | The exact reviewed commit went live on NixOS | 10 s |
+
+**The review earned its place.** The reviewer caught real bugs the builder had missed, including a wrong admin route and a request list that went stale on navigation, and sent them back until the app passed. The run also exposed bugs in Backroom itself, which we fixed during it, so the build and review times include those stops.
+
+**The live app holds up to real checks.** `/ready` confirms its database schema matches the release. A real form submit stored a row in Postgres. A normal user gets 403 on admin data, unsigned hub calls get 401, a 1.5 MB body gets 413, and sign-in rate-limits at 20 attempts. Both of its services score 1.4 (OK) on `systemd-analyze security`.
+
+The client, owner and client presses in this run were labelled sample fixtures, and the agents were real.
+
+## The client studio
+
+Each project gets one private Discord forum. One post is one conversation, and its tag says what it is.
+
+| The client posts | What happens | The owner |
+| --- | --- | --- |
+| A question or chat | `front` answers in seconds, as the team | Nothing |
+| Anything about price, dates or promises | The client hears "we'll confirm that", and it waits | Answers one card |
+| A bug or small change | Reproduced, fixed, reviewed, and shipped by itself if plain code rules it small and safe | Nothing |
+| A feature request | Stays a conversation until it is agreed | Confirms it |
+| A Phase with documents | Conflicts raised, final doc, technical plan, build, review, deploy | Reviews the final doc, approves the plan, presses Deploy and Send |
+
+- **Start a project:** the client presses one button in `#start-a-project`, and plain code creates the private forum, repo, agents and rooms.
+- **Conversation is checked by plain code.** Greetings are fixed. Money, dates, promises and internal words are blocked. Asked directly, the bot never claims to be human: that question goes to the owner.
+- **Buttons, not typed agreement.** Typing "yes" never approves anything. Every press is signed and bound to one project.
+- **GitHub holds agreed work only.** A Phase becomes a milestone with an issue and a pull request. Only `desk` holds a GitHub token, and it fast-forwards `main` to the exact reviewed commit, so the approved commit is the one that ships.
+- **Small fixes ship without the owner.** Plain code decides from the diff: checks and review pass, the change is under a size limit, and it touches no auth, permissions, payments, migrations, dependencies or infrastructure. A failed health check rolls back automatically.
+- **Enterprise base from day one.** New apps start from a private base with SvelteKit, oRPC, Postgres, Better Auth, Polar, guard tests and a shared admin for users, pricing, orders, help and audit. The technical plan can propose another stack.
+- **NixOS without Docker.** Each app gets a sandboxed systemd service, its own Postgres role, Caddy, encrypted secrets and a pinned commit, through [`NixDeployer`](deploy/nix-deployer.ts). A failed build leaves the live server untouched, and a failed health check rolls back.
+
+Client privacy on real Discord and Switch was tested live, along with the forum bridge, the instant greeting, the hold on commitments and the handoff of a direct AI question to the owner.
 
 ## Quick answers
 
 | Question | Answer | Check it |
 | --- | --- | --- |
 | Is Switch central? Would it stop working without it? | Yes. With Switch off, client messages don't arrive, handoffs stop, the owner can't be verified so nothing is released, and lessons can't reach a project. Each is a real failed call, followed by recovery | `bash demo.sh`, and [how Backroom uses Switch](docs/SWITCH.md) |
-| Does it run? Can someone clone and reproduce it? | Yes. One command runs 40 live checks against a real Switch server, and `bash scripts/repro/test-all.sh` runs the code suite | |
-| Is it a fresh idea for a real problem? | A small agency owner spends the day carrying messages between clients and AI tools. Backroom removes the carrying but keeps the owner's decision, and lessons learned on one project improve the next | [Six stages](#six-stages) |
-| How is Switch used? | Rooms are the wall, handoffs run through mentions and documents, verified sender identity is the release gate, and packages carry memory | [Feature table](docs/SWITCH.md) |
-
-A solo agency owner is tired of carrying conflicting client documents between people and AI tools. The client talks only to plain-code `desk`, which forwards work into a private Switch studio. `lead` writes the plan, `builder` builds it, a fresh `reviewer` checks it, and nothing reaches the client until the owner releases that exact version.
+| Does it run? Can someone clone and reproduce it? | Yes. One command runs 49 live steps against a real Switch server, and `bash scripts/repro/test-all.sh` runs the code suite with no accounts | [Verify after cloning](#verify-after-cloning) |
+| Is it a fresh idea for a real problem? | A small agency owner spends the day carrying messages between clients and AI tools. Backroom removes the carrying and keeps the owner's decision, and lessons learned on one project improve the next | [The client studio](#the-client-studio) |
+| How is Switch used? | Rooms are the wall, handoffs run through mentions and documents, verified sender identity is the release gate, the Discord bridge carries client conversation, and packages carry memory | [Feature table](docs/SWITCH.md) |
 
 ## Verify after cloning
 
@@ -39,15 +82,14 @@ bash demo.sh
 It pulls pinned Switch 0.31.0 images anonymously, provisions disposable native
 SAMPLE accounts and private rooms from the template, and runs the real desk
 against real Switch. Role CLIs and human decisions are explicitly scripted;
-there are no AI/model calls. It checks rejected sends, a reviewed exact-commit
+there are no AI/model calls, so it proves the workflow rather than AI reasoning. It checks rejected sends, a reviewed exact-commit
 bakery deployment, a client revision, and a package promotion. A second client,
 Fernline Books, then receives the lesson as the same package, cites it by ID and
 version in its architecture, and is refused on the first client's rooms and
 documents by live Switch. It then stops
-Switch, attempts four operations, prints their real errors, restarts Switch,
+Switch, attempts five operations, prints their real errors, restarts Switch,
 and checks recovery. Open `demo/out/receipt.html` and the printed loopback bakery
-URL. The synthetic video is only an exact-file gate fixture. This demo does not
-prove AI reasoning or production video quality. [Demo details](demo/README.md).
+URL. [Demo details](demo/README.md).
 
 `bash demo.sh --down` removes only the `backroom-judge-demo` containers, network
 and volumes. No host Bun, Python, accounts or keys are needed for this demo.
@@ -71,7 +113,7 @@ For a product-only demo, run `bun --no-env-file rehearsal/bakery/demo.ts` and op
 `desk` only speaks Switch's protocol, so it never knows which AI sits behind a role. Each role is one line in [`backroom.yaml`](backroom.yaml):
 
 ```diff
--builder: {harness: codex, model: gpt-6.1-sol}
+-builder: {harness: codex, model: gpt-6-luna}
 +builder: {harness: opencode, model: opencode/deepseek-v4.1-flash-free}
 ```
 
@@ -79,16 +121,18 @@ Allowed harnesses are `claude`, `codex`, `opencode`, and `command` for any other
 
 ## Six stages
 
+Under the conversation, every project moves through six stages, and each approval binds to one exact version.
+
 | Stage | Work | Who closes it |
 | --- | --- | --- |
 | Brief | Translate messy documents, retain conflicts, freeze an identified brief | Owner releases it; client approves that version |
-| Architecture | Choose a small stack and cite approved lessons | Owner |
-| Build | Brand, implement, fresh review, exact-commit local deploy | Owner |
+| Architecture | Choose the stack and cite approved lessons | Owner |
+| Build | Implement, review independently, deploy the exact commit | Owner, or plain code for a small fix |
 | Client review | Deliver the approved link; questions stay open, changes create versions | Client accepts the deployed commit |
 | Video | Produce a walkthrough only on request; review its exact file hash | Owner, then client |
 | Learn | Propose de-identified lessons; promote only approved versions; separately authorize older-project fixes | Owner |
 
-Questions preserve the stage. Suggestions create a version. Scope changes reopen affected later approvals. All its owner/client commands were SIMULATION actions. The  covers the pickup-session model change with same-session implementation/review. Block2's native revision loop concerns the confirmation heading; these are separate checks.
+Questions preserve the stage. Suggestions create a version. Scope changes reopen affected later approvals.
 
 ## How Backroom uses Switch
 
@@ -98,15 +142,15 @@ See [docs/SWITCH.md](docs/SWITCH.md) for each feature, its job, and its failing 
 
 Git holds source, [studio playbooks](studio-kit/agents/), [sample lessons](studio-memory/), and [projects.yaml](projects.yaml). Desk keeps SQLite send intents/deduplication/stage state locally. Docker Compose owns local app deployment, port leases and persistent volumes; the bakery's SQLite stores orders. File-mounted runtime credentials, provider login state, video tooling and static HTML receipts live outside Switch. A lesson file enters room context only after the operator attaches its approved package version.
 
-## Limits to keep with the result
-
-- Everything here uses a **fictional client** and sample data. Native rehearsal owner/client approvals are **simulated**. Human Discord intake, linked-owner release and client review were not proved by bot activity; Discord card/attachment rendering remained unverified.
-- Same-machine CLI agents are **not a strong sandbox**. Separate Switch owners/private rooms mitigate the demonstrated room breach, but do not isolate an OS user.
-- Client app deployments in the workflow are **localhost-only**, with downtime and incomplete crash/migration rollback. A passing health check alone does not prove configured readiness or durability. . The public sample app is a separate fictional demo on a small [NixOS host](deploy/nixos/configuration.nix), with no secrets or AI logins on it.
-- The final reviewer identity/session was fresh, but the final review was bounded to its stated finding and historical room context could remain visible. A local fix branch/description is not a submitted PR.
-- Generated videos, the accepted live workspace, raw room histories and runtime state stay local. The [public proof page](receipt/public.html) exports the fictional request, approved versions/reply, exact reviewed deployment, embedded bakery screenshot, blocked-send reason and older-project diff without requiring those files. The bundled sample receipt remains a separate fixture. The reported video had technical QC, but no human listening/ASR pass.
-- The registry can lag the later local fix; use the exact evidence/code under test rather than treating its original fixture status as current release authority. No clean-copy test establishes a complete real-client deployment or universal prompt-injection resistance.
-
 ## Public proof without an account
 
-Open [receipt/public.html](receipt/public.html) directly. [docs/index.html](docs/index.html) embeds the same self-contained page so GitHub Pages can publish from the `/docs` folder, with no build or backend. Pages hosting has not been enabled by this task. All evidence uses fictional data and labels simulated approvals; source-run notes keep the native rehearsal, gate probe and hand rehearsal separate.
+Open the [live proof page](https://98-91-25-101.sslip.io/proof/) or [receipt/public.html](receipt/public.html). It is a self-contained page showing the fictional request, approved versions, the exact reviewed deployment, a blocked send and an older-project fix.
+
+## Limits
+
+- **Sample data:** every client is fictional. Rehearsal owner and client presses were labelled sample actions. A full run with presses from real Discord accounts, including Start a project, is the next step.
+- **Tested with fakes so far:** desk's GitHub layer and the client hub connection pass their tests against fake clients. The private repos themselves are real, and the sample app's GitHub run has not happened yet.
+- **Deployment:** `NixDeployer` passes its tests and the app above runs live on NixOS, but that release was relayed between the two servers by hand rather than run by desk.
+- **Private repos:** the app base and fleet configuration are private, so the live app and [the reports](reports/fleet.md) are the public evidence for them.
+- **Sandboxing:** agents run as CLI tools under one machine user. Separate Switch owners and private rooms block the room breach we demonstrated, but they are not an operating-system sandbox.
+- **The earlier text-channel path:** it deploys to localhost only.

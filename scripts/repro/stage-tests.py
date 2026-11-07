@@ -14,3 +14,7 @@ for name in roots:
    if path.is_symlink():continue
    if path.suffix not in {'.ts','.js','.json','.yaml','.sh','.py','.md'} and path.relative_to(source).as_posix() != 'rehearsal/bakery/morrowcrumb-logo.png':continue
    target=dest/name/rel;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
+
+# Read-only bot diagnostics are tested offline with injected HTTP responses.
+for name in ['scripts/discord_status.py','scripts/new_project.py','studio-kit/stacks/better-t-stack.json','studio-kit/stacks/bun-sqlite.json']:
+ target=dest/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source/name,target)

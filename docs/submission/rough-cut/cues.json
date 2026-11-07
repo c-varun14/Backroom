@@ -1,0 +1,138 @@
+[
+  {
+    "id": "cue-00",
+    "anchor": "overview",
+    "offset": 0.25,
+    "start": 10.25,
+    "duration": 8.2,
+    "text": "This is Backroom. A client has one point of contact. Behind it, Switch carries the brief, build and review. I decide what leaves."
+  },
+  {
+    "id": "cue-01",
+    "anchor": "overview",
+    "offset": 8.75,
+    "start": 18.75,
+    "duration": 6.15,
+    "text": "This bakery is fictional, and the completed rehearsal used simulated owner and client approvals."
+  },
+  {
+    "id": "cue-02",
+    "anchor": "revision-native",
+    "offset": 0.25,
+    "start": 30.25,
+    "duration": 7.5,
+    "text": "Here is a revision. A question keeps the stage open. A change creates a new version and reopens the approvals it affects."
+  },
+  {
+    "id": "cue-03",
+    "anchor": "revision-native",
+    "offset": 8.05,
+    "start": 38.05,
+    "duration": 7.1,
+    "text": "The completed native rehearsal changed the confirmation heading. A separate hand rehearsal changed pickup sessions."
+  },
+  {
+    "id": "cue-04",
+    "anchor": "architecture-question",
+    "offset": 0.25,
+    "start": 50.25,
+    "duration": 7.35,
+    "text": "The architecture has its own decision. Asking a question does not approve it. Changing it replaces the approval target."
+  },
+  {
+    "id": "cue-05",
+    "anchor": "architecture-stale",
+    "offset": 0.25,
+    "start": 60.25,
+    "duration": 2.85,
+    "text": "An old code cannot release the replacement."
+  },
+  {
+    "id": "cue-06",
+    "anchor": "handoff",
+    "offset": 0.25,
+    "start": 70.25,
+    "duration": 5.375,
+    "text": "Switch carries the handoff into the build and back to review. The rehearsal needed corrections."
+  },
+  {
+    "id": "cue-07",
+    "anchor": "review",
+    "offset": 0.25,
+    "start": 80.25,
+    "duration": 6.3,
+    "text": "The final fresh review accepted the recorded commit, with that review bounded to its stated finding."
+  },
+  {
+    "id": "cue-08",
+    "anchor": "release",
+    "offset": 0.25,
+    "start": 90.25,
+    "duration": 8.325,
+    "text": "The release refers to the reviewed commit. The owner approves delivery, then the client accepts that deployment. The app saves a pre-order."
+  },
+  {
+    "id": "cue-09",
+    "anchor": "product-proof",
+    "offset": 0.1,
+    "start": 106.1,
+    "duration": 3.75,
+    "text": "A health response alone is not proof that the product works."
+  },
+  {
+    "id": "cue-10",
+    "anchor": "blocked-send",
+    "offset": 0.25,
+    "start": 110.25,
+    "duration": 7.35,
+    "text": "Plain-code desk checks who approved the frozen content. An agent-authored send was rejected in the earlier test."
+  },
+  {
+    "id": "cue-11",
+    "anchor": "video",
+    "offset": 0.25,
+    "start": 121.25,
+    "duration": 6.8,
+    "text": "The product video has a separate gate: owner approval, delivery, then client acceptance of the exact file."
+  },
+  {
+    "id": "cue-12",
+    "anchor": "prices",
+    "offset": 0.25,
+    "start": 135.25,
+    "duration": 5.025,
+    "text": "Memory must change the work. The sample price lesson puts prices on the server."
+  },
+  {
+    "id": "cue-13",
+    "anchor": "privacy",
+    "offset": 0.25,
+    "start": 145.25,
+    "duration": 4.325,
+    "text": "A later privacy lesson was approved and attached through a Switch package."
+  },
+  {
+    "id": "cue-14",
+    "anchor": "backward-fix",
+    "offset": 0.25,
+    "start": 155.25,
+    "duration": 6.025,
+    "text": "It led to a local fix branch for the earlier sample shop. No hosted pull request was opened."
+  },
+  {
+    "id": "cue-15",
+    "anchor": "receipt",
+    "offset": 0.25,
+    "start": 165.25,
+    "duration": 6.475,
+    "text": "Switch carries the handoffs. I keep the release decisions. This is a local demo, not a strong sandbox."
+  },
+  {
+    "id": "cue-16",
+    "anchor": "outro",
+    "offset": 1.025,
+    "start": 172.025,
+    "duration": 3.9,
+    "text": "The receipt shows what was tested and what still needs a real run."
+  }
+]

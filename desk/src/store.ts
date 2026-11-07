@@ -1,5 +1,7 @@
 import { Database } from "bun:sqlite";
 import type { Project } from "./types";
+import {validateGitHubConfig} from "./github";
+import {defaultStack} from './stacks';
 
 export class Store {
   readonly db: Database;
@@ -40,14 +42,22 @@ export class Store {
         SELECT event_id,project,'restart recovered uncertain intent' FROM intents WHERE status='pending';
       UPDATE intents SET status='uncertain' WHERE status='pending';
     `);
+    if (!(this.db.query("PRAGMA table_info(drafts)").all() as {name:string}[]).some(c=>c.name==='client_thread'))
+      this.db.exec('ALTER TABLE drafts ADD COLUMN client_thread TEXT');
+    this.db.exec(`CREATE TRIGGER IF NOT EXISTS immutable_client_thread BEFORE UPDATE OF client_thread ON drafts
+      BEGIN SELECT RAISE(ABORT, 'immutable client thread'); END;`);
   }
-  register(project: Project) {
+  register(input: Project) {
+    if(input.clientSurface==='forum'&&input.github)validateGitHubConfig(input.github);
+    const project:Project={...input,stack:input.stack??defaultStack(input.clientSurface==='forum'),...(input.clientSurface==='forum'?{videoEnabled:input.videoEnabled??false}:{})};
     if (!project.id || !project.ownerId || !project.studioRoomId || !project.clientRoomId ||
         project.studioRoomId === project.clientRoomId || !project.clientIds.length ||
         project.clientIds.includes(project.ownerId)) throw new Error("invalid project configuration");
     const existing = this.db.query("SELECT config FROM projects WHERE id=?").get(project.id) as { config: string } | null;
     if (existing) {
-      if (existing.config !== JSON.stringify(project)) throw new Error("project configuration is immutable");
+      const prior:Project=JSON.parse(existing.config),normalizedPrior:Project={...prior,stack:prior.stack??defaultStack(prior.clientSurface==='forum'),...(prior.clientSurface==='forum'?{videoEnabled:prior.videoEnabled??false}:{})};
+      if (JSON.stringify(normalizedPrior) !== JSON.stringify(project)) throw new Error("project configuration is immutable");
+      if(existing.config!==JSON.stringify(project))this.db.query('UPDATE projects SET config=? WHERE id=?').run(JSON.stringify(project),project.id);
       return;
     }
     const configs = this.db.query("SELECT config FROM projects").all() as { config: string }[];

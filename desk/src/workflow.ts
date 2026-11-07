@@ -59,14 +59,15 @@ export class StageMachine {
       const role = this.role(config, actor);
       if (!role || !closers[stage].includes(role)) throw new Error("wrong stage approver");
       if (record.approvals.includes(role)) return state;
-      const expected = closers[stage][record.approvals.length];
+      const required=this.closers(config,stage);
+      const expected = required[record.approvals.length];
       if (role !== expected) throw new Error("owner approval required first");
       if (artifact.kind === "commit" && !this.store.db.query("SELECT sha FROM deployments WHERE project=? AND sha=?").get(project, artifact.sha)) {
         throw new Error("app acceptance requires the deployed commit");
       }
       record.approvals.push(role);
       // Preserved approvals still close unaffected later stages after a revision.
-      while (state.stages[state.stage].artifact && closers[state.stage].every(closer => state.stages[state.stage].approvals.includes(closer))) {
+      while (state.stages[state.stage].artifact && this.closers(config,state.stage).every(closer => state.stages[state.stage].approvals.includes(closer))) {
         const nextIndex = STAGES.indexOf(state.stage) + 1;
         if (nextIndex === STAGES.length) { state.completed = true; break; }
         state.stage = STAGES[nextIndex];
@@ -75,6 +76,29 @@ export class StageMachine {
       return state;
     })();
   }
+  /** Trusted deterministic small-change adapter, after eligibility and deployment checks.
+   * This records automation honestly instead of impersonating an owner approval. */
+  shipSmallChange(project:string,sha:string):Workflow {
+    return this.store.db.transaction(()=>{
+      const config=this.store.project(project),state=this.get(project);
+      const review=this.store.db.query('SELECT verdict FROM reviews WHERE project=? AND sha=? ORDER BY seq DESC LIMIT 1').get(project,sha) as any;
+      if(config.clientSurface!=='forum'||state.stage!=='build'||review?.verdict!=='pass'||!this.store.db.query('SELECT sha FROM deployments WHERE project=? AND sha=?').get(project,sha))throw new Error('Reviewed deployed forum change required');
+      this.validateArtifact('build',{kind:'commit',sha});
+      state.stages.build={version:state.stages.build.version+1,artifact:{kind:'commit',sha},approvals:['automatic']};
+      state.stages.client_review={version:state.stages.client_review.version+1,artifact:{kind:'commit',sha},approvals:[]};
+      state.stage='client_review';state.completed=false;this.save(project,state);return state;
+    })();
+  }
+  /** Skip the optional video stage for a forum project that has video disabled. */
+  skipOptionalVideo(project:string):Workflow {
+    return this.store.db.transaction(()=>{
+      const config=this.store.project(project),state=this.get(project);
+      if(config.clientSurface!=='forum'||config.videoEnabled===true||state.stage!=='video')throw new Error('video stage is not disabled for this project');
+      state.stages.video.version++;state.stages.video.approvals=[];state.stage='learn';state.completed=false;
+      this.save(project,state);return state;
+    })();
+  }
+  private closers(config:Project,stage:Stage){return config.clientSurface==='forum'&&stage==='brief'?['client'] as const:closers[stage];}
   private role(config: Project, actor: StageActor): "owner" | "client" | undefined {
     if (actor.senderId === config.ownerId && actor.roomId === config.studioRoomId) return "owner";
     if (config.clientIds.includes(actor.senderId) && actor.roomId === config.clientRoomId) return "client";

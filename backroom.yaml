@@ -1,6 +1,7 @@
-# Runtime role selection. Codex work must use this model and stop on low limits.
+# Runtime role selection. Luna for routine work, Sol for reviews. Stop on low limits.
+front: {harness: claude, model: sonnet}
 lead: {harness: claude, model: sonnet}
-builder: {harness: codex, model: gpt-6.1-sol}
+builder: {harness: codex, model: gpt-6-luna}
 reviewer: {harness: codex, model: gpt-6.1-sol}
 # demo.sh overlays only the harness/argv; all roles remain scripted and labelled.
 demo:

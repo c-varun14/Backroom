@@ -36,15 +36,15 @@ export class SwitchAPI {
   /** Only the studio adapter calls this, before freezing an approval code.
    * An upload acknowledgement does not prove Discord bridged its attachment,
    * so always publish the lossless numbered fallback as well. */
-  async publishApprovalText(studioRoom: string, ticket: number, text: string, label = "outgoing") {
+  async publishApprovalText(studioRoom: string, ticket: number, text: string, label = "outgoing", name: "Ticket" | "Message" | "Question" = "Ticket") {
     if (!/^[a-z_-]+$/.test(label)) throw new Error("Invalid approval label");
     const bytes = new TextEncoder().encode(text);
     const hash = sha256(bytes);
-    const caption = `Ticket #${ticket} · exact ${label} text · SHA-256 ${hash}`;
-    try { await this.post(studioRoom, caption, [{ name: `ticket-${ticket}-${label}.md`, bytes }]); }
+    const caption = `${name} #${ticket} · exact ${label} text`;
+    try { await this.post(studioRoom, caption, [{ name: `${name.toLowerCase()}-${ticket}-${label}.md`, bytes }]); }
     catch { /* The numbered fallback must still complete before any code. */ }
     const parts = approvalTextParts(text);
-    for (let i = 0; i < parts.length; i++) await this.post(studioRoom, `Ticket #${ticket} · ${label} text ${i + 1}/${parts.length}\n${parts[i]}`);
+    for (let i = 0; i < parts.length; i++) await this.post(studioRoom, `${name} #${ticket} · ${label} text ${i + 1}/${parts.length}\n${parts[i]}`);
     return hash;
   }
   async download(room: string, uri: string) {
@@ -61,7 +61,8 @@ export class SwitchAPI {
 }
 
 export class SwitchTransport implements Transport {
-  constructor(private api: SwitchAPI, private filesDirectory: string) { mkdirSync(filesDirectory, { recursive: true, mode: 0o700 }); }
+  constructor(private api: SwitchAPI, private filesDirectory: string, private connection?: (room:string)=>string) { mkdirSync(filesDirectory, { recursive: true, mode: 0o700 }); }
+  bindConnections(connection:(room:string)=>string){this.connection=connection;}
   cache(bytes: Uint8Array): string {
     const hash = sha256(bytes);
     writeFileSync(join(this.filesDirectory, hash), bytes, { mode: 0o600 });
@@ -73,8 +74,14 @@ export class SwitchTransport implements Transport {
       return { name: a.name, bytes: new Uint8Array(readFileSync(join(this.filesDirectory, a.sha256))) };
     }) };
   }
+  onDelivered?:(delivery:Delivery)=>void;
   async send(delivery: Delivery) {
     // Exactly the verified snapshot. No text prefixing, re-fetching, or retry.
-    await this.api.post(delivery.destinationRoomId, delivery.text, delivery.attachments);
+    if(delivery.clientThread){
+      if(delivery.attachments.length)throw new Error('Forum media thread parameter unavailable; owner action required');
+      if(!this.connection)throw new Error('Client thread connection unavailable');
+      await this.api.thread(delivery.text,delivery.clientThread,this.connection(delivery.destinationRoomId));
+    } else await this.api.post(delivery.destinationRoomId, delivery.text, delivery.attachments);
+    this.onDelivered?.(delivery);
   }
 }
