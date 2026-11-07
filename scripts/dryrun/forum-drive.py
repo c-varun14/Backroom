@@ -651,8 +651,13 @@ def step_work(index):
         if h.get('reviewPaused'):
             # Labelled SAMPLE owner decision: findings were reviewed and the loop should continue.
             owner_press('owner-keep-going', '@desk review-continue')
-        h = wait_for('fresh independent review (failures route back automatically)',
-                     lambda h: h.get('reviewVerdict') == 'pass' and active(h, 'build') is not None)
+        def reviewed(h):
+            if h.get('reviewVerdict') == 'blocked':
+                # Labelled SAMPLE owner decision, as a person would press Retry review.
+                owner_press('owner-retry-' + str((h.get('reviewer') or {}).get('id')), '@desk review-retry')
+                return False
+            return h.get('reviewVerdict') == 'pass' and active(h, 'build') is not None
+        h = wait_for('fresh independent review (failures route back automatically)', reviewed)
         if not (h.get('reviewer') or {}).get('id') or h['reviewer']['sha'] != h['candidate']:
             raise SetupError('SAMPLE fresh reviewer identity or exact SHA mismatch')
         return {'reviewer': h['reviewer'], 'commit': h['candidate']}
