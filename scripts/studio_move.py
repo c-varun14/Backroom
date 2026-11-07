@@ -24,6 +24,9 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 HOST = 'backroom-dev'
 REMOTE = '/srv/backroom'
+AGENT_HOME = Path('/var/lib/backroom-agent')
+IMPORT_BACKUPS = Path('/var/lib/backroom/studio-backups')
+SWITCH_ENV = Path('/etc/backroom/switch.env')
 SECRETS = ('switch.env', 'discord.env', 'block1-credentials.json',
            'real-stage-credentials.json', 'studio-door-webhook',
            'backroom-demo-ip.txt', 'spike-state.json', 'keys-signing-key', 'projects')
@@ -168,63 +171,72 @@ def rewrite_sqlite(path, old_root):
 
 
 def install_payload(stage, old_root):
-    """Root-only server-side action, never invoked by offline tests."""
+    """Root-only server-side action; offline tests redirect all paths/owners."""
     import pwd
     import grp
     studio = pwd.getpwnam('studio').pw_uid
     agent = pwd.getpwnam('agent').pw_uid
     group = grp.getgrnam('backroom').gr_gid
-    backup = Path('/var/lib/backroom/studio-backups') / str(time.time_ns())
+    backup = IMPORT_BACKUPS / str(time.time_ns())
     backup.mkdir(mode=0o700, parents=True)
     # These are agent-writable trees. Hide their parent before replacing them,
     # so old symlinks cannot redirect root's import to protected files.
-    home = Path('/var/lib/backroom-agent')
+    home = AGENT_HOME
     os.chown(home, 0, 0)
     home.chmod(0o700)
-    try:
-        for sub in ('.secrets', '.switch-runtime', 'controllers', 'workspaces'):
-            source = stage / sub
-            if not source.exists():
+    # On failure keep the parent private; do not expose a partial import.
+    for sub in ('.secrets', '.switch-runtime', 'controllers', 'workspaces'):
+        source = stage / sub
+        if not source.exists():
+            continue
+        target = home if sub == 'controllers' else Path(REMOTE) / sub
+        if sub == 'controllers':
+            for name in CONTROLLERS.values():
+                previous = target / name
+                if previous.exists() or previous.is_symlink():
+                    previous.rename(backup / ('controller-' + name))
+        elif target.exists() or target.is_symlink():
+            # Rename the entry only. Never inspect studio-owned children,
+            # including .secrets and .switch-runtime destination links.
+            target.rename(backup / sub)
+        if sub != 'controllers':
+            target.mkdir(mode=0o700)
+        # Keep fresh directories root-private. copytree would copy source
+        # directory modes too, possibly exposing them before validation.
+        for relative in regular_tree(source, Path('.')):
+            incoming = source / relative
+            output = target / relative
+            output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            shutil.copyfile(incoming, output)
+            output.chmod(0o700 if incoming.stat().st_mode & 0o111 else 0o600)
+        roots = [target / name for name in CONTROLLERS.values()] if sub == 'controllers' else [target]
+        for tree in roots:
+            if not tree.exists():
                 continue
-            target = home if sub == 'controllers' else Path(REMOTE) / sub
-            if sub == 'controllers':
-                for name in CONTROLLERS.values():
-                    previous = target / name
-                    if previous.exists() or previous.is_symlink():
-                        previous.rename(backup / ('controller-' + name))
-            elif sub == 'workspaces' and (target.exists() or target.is_symlink()):
-                target.rename(backup / 'workspaces')
-            target.mkdir(mode=0o700, exist_ok=True)
-            # All incoming members were extracted as regular files. The fresh
-            # agent-writeable targets have no old symlinks to follow.
-            shutil.copytree(source, target, dirs_exist_ok=True)
-            roots = [target / name for name in CONTROLLERS.values()] if sub == 'controllers' else [target]
-            for tree in roots:
-                if not tree.exists():
-                    continue
-                for base, dirs, files in os.walk(tree, topdown=False, followlinks=False):
-                    directory = Path(base)
-                    if directory.is_symlink() or any((directory / d).is_symlink() for d in dirs):
+            for base, dirs, files in os.walk(tree, topdown=False, followlinks=False):
+                directory = Path(base)
+                if directory.is_symlink() or any((directory / d).is_symlink() for d in dirs):
+                    raise ValueError('destination symlink refused')
+                for name in files:
+                    file = directory / name
+                    if file.is_symlink():
                         raise ValueError('destination symlink refused')
-                    for name in files:
-                        file = directory / name
-                        if file.is_symlink():
-                            raise ValueError('destination symlink refused')
-                        if sub in {'.switch-runtime', 'controllers'} and file.suffix == '.json':
-                            file.write_text(json.dumps(rewrite(json.loads(file.read_text()), old_root), indent=2))
-                        if sub in {'.switch-runtime', 'controllers'} and file.suffix in {'.db', '.sqlite'}:
-                            rewrite_sqlite(file, old_root)
-                        os.chown(file, agent if sub == 'controllers' else studio, group)
-                        file.chmod((0o770 if file.stat().st_mode & 0o111 else 0o660) if sub == 'workspaces' else 0o600)
-                    os.chown(directory, agent if sub == 'controllers' else studio, group)
-                    directory.chmod(0o2770 if sub == 'workspaces' else 0o700)
-    finally:
-        os.chown(home, agent, group)
-        home.chmod(0o700)
+                    if sub in {'.switch-runtime', 'controllers'} and file.suffix == '.json':
+                        file.write_text(json.dumps(rewrite(json.loads(file.read_text()), old_root), indent=2))
+                    if sub in {'.switch-runtime', 'controllers'} and file.suffix in {'.db', '.sqlite'}:
+                        rewrite_sqlite(file, old_root)
+                    file.chmod((0o770 if file.stat().st_mode & 0o111 else 0o660) if sub == 'workspaces' else 0o600)
+                    os.chown(file, agent if sub == 'controllers' else studio, group)
+                directory.chmod(0o2770 if sub == 'workspaces' else 0o700)
+                # Bottom-up handoff: no privileged traversal after the
+                # outer directory becomes accessible to its final owner.
+                os.chown(directory, agent if sub == 'controllers' else studio, group)
+    home.chmod(0o700)
+    os.chown(home, agent, group)
     # Compose never reads studio-owned env files, including after a restart.
     switch_env = stage / '.secrets/switch.env'
     if switch_env.exists():
-        target = Path('/etc/backroom/switch.env')
+        target = SWITCH_ENV
         shutil.copyfile(switch_env, target)
         os.chown(target, 0, 0)
         target.chmod(0o600)

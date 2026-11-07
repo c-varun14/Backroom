@@ -13,6 +13,7 @@ import sys
 import tarfile
 import tempfile
 import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -110,6 +111,76 @@ class MoveTests(unittest.TestCase):
             (root / '.secrets').mkdir()
             (root / '.secrets/projects').symlink_to(root / 'outside', target_is_directory=True)
             with self.assertRaises(ValueError): list(move.payload_files(root))
+
+    def test_import_replaces_studio_trees_before_copying_planted_destination_links(self):
+        for linked_root in (False, True):
+            with self.subTest(linked_root=linked_root), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                server = root / 'server'; server.mkdir()
+                home = root / 'agent-home'; home.mkdir()
+                stage = root / 'payload'; stage.mkdir()
+                broker_file = write(root, 'protected/broker.py', 'fictional root broker')
+                secret_file = write(root, 'protected/env', 'fictional root env')
+                write(stage, '.switch-runtime/studio.json', '{"workspace":"/old/workspaces/sample"}')
+                write(stage, '.secrets/projects/sample/door.key', 'fictional incoming key')
+                write(stage, '.secrets/switch.env', 'fictional incoming env')
+                write(stage, 'controllers/lead/watchers/current.json', '{"path":"/old/file"}')
+                executable = write(stage, 'workspaces/sample/run.sh', '#!/bin/sh\nexit 0\n')
+                executable.chmod(0o700)
+                old_inodes = {}
+                for sub, name, victim in (('.switch-runtime', 'studio.json', broker_file),
+                                          ('.secrets', 'switch.env', secret_file)):
+                    target = server / sub
+                    old = root / ('old-' + sub) if linked_root else target
+                    old.mkdir(mode=0o770)
+                    if linked_root:
+                        target.symlink_to(old, target_is_directory=True)
+                    (old / name).symlink_to(victim)
+                    old_inodes[sub] = target.lstat().st_ino
+                # Also retain the earlier controller/workspace replacement rule.
+                write(home, 'lead/old', 'fictional stale controller')
+                write(server, 'workspaces/old', 'fictional stale workspace')
+                copied = set()
+                handed_over = set()
+                copy = shutil.copyfile
+                def private_copy(source, destination, **kwargs):
+                    destination = Path(destination)
+                    for sub in ('.secrets', '.switch-runtime', 'workspaces'):
+                        target = server / sub
+                        if destination.is_relative_to(target):
+                            self.assertNotIn(sub, handed_over)
+                            self.assertFalse(target.is_symlink())
+                            self.assertEqual(target.stat().st_mode & 0o777, 0o700)
+                            if sub in old_inodes:
+                                self.assertNotEqual(target.lstat().st_ino, old_inodes[sub])
+                            copied.add(sub)
+                    return copy(source, destination, **kwargs)
+                def chown(path, uid, gid):
+                    path = Path(path)
+                    for sub in ('.secrets', '.switch-runtime', 'workspaces'):
+                        if path == server / sub and uid == 10001:
+                            handed_over.add(sub)
+                with patch.object(move, 'REMOTE', str(server)), \
+                     patch.object(move, 'AGENT_HOME', home), \
+                     patch.object(move, 'IMPORT_BACKUPS', root / 'backups'), \
+                     patch.object(move, 'SWITCH_ENV', root / 'protected/switch.env'), \
+                     patch('pwd.getpwnam', side_effect=lambda name: SimpleNamespace(pw_uid=10001 if name == 'studio' else 10002)), \
+                     patch('grp.getgrnam', return_value=SimpleNamespace(gr_gid=10003)), \
+                     patch.object(move.os, 'chown', side_effect=chown), \
+                     patch.object(move.shutil, 'copyfile', side_effect=private_copy), \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    move.install_payload(stage, '/old')
+                self.assertEqual(copied, {'.secrets', '.switch-runtime', 'workspaces'})
+                self.assertEqual(handed_over, copied)
+                self.assertEqual(broker_file.read_text(), 'fictional root broker')
+                self.assertEqual(secret_file.read_text(), 'fictional root env')
+                self.assertEqual(json.loads((server / '.switch-runtime/studio.json').read_text()),
+                                 {'workspace': str(server / 'workspaces/sample')})
+                self.assertEqual((server / '.secrets/switch.env').read_text(), 'fictional incoming env')
+                self.assertEqual((root / 'protected/switch.env').stat().st_mode & 0o777, 0o600)
+                self.assertEqual((server / 'workspaces/sample/run.sh').stat().st_mode & 0o777, 0o770)
+                self.assertFalse((server / 'workspaces/old').exists())
+                self.assertFalse((home / 'lead/old').exists())
 
     def make_cutover_fixture(self, root):
         (root / '.switch-runtime').mkdir(exist_ok=True)

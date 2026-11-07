@@ -5,6 +5,7 @@ Linux dirfds pin each untrusted directory; O_NOFOLLOW rejects symlink swaps.
 Only verified object bytes, direct ordinary refs and a validated HEAD cross.
 """
 import contextlib
+import ctypes
 import fcntl
 import hashlib
 import os
@@ -14,6 +15,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 
 SHA = re.compile(r'[0-9a-f]{40}\Z')
 REF = re.compile(r'refs/(?:heads|tags|remotes)/[A-Za-z0-9_/-]+(?:\.[A-Za-z0-9_-]+)*\Z')
@@ -83,6 +85,42 @@ def checked(shadow, workspace, args):
     return result.stdout
 
 
+def metadata(shadow, args, data=None):
+    # Validation must not discover or inspect anything in the worktree.
+    result = subprocess.run(['git', '--git-dir=' + str(shadow), '-c', 'core.bare=true', *args],
+                            env=env(), cwd=shadow, input=data,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode:
+        raise ValueError('Shadow Git validation failed')
+    return result.stdout
+
+
+def reject_gitlinks(shadow):
+    # Check every tree, including historical and unreachable objects: later
+    # checkout/read-tree commands can select any imported object, not just HEAD.
+    objects = metadata(shadow, ['cat-file', '--batch-all-objects',
+                               '--batch-check=%(objectname) %(objecttype)'])
+    trees = [line.split()[0] for line in objects.splitlines() if line.endswith(b' tree')]
+    if not trees:
+        return
+    batch = metadata(shadow, ['cat-file', '--batch'], b'\n'.join(trees) + b'\n')
+    offset = 0
+    for sha in trees:
+        end = batch.index(b'\n', offset)
+        name, kind, size = batch[offset:end].split()
+        if name != sha or kind != b'tree':
+            raise ValueError('Invalid tree response')
+        offset = end + 1
+        tree = batch[offset:offset + int(size)]
+        offset += int(size) + 1
+        entry = 0
+        while entry < len(tree):
+            mode_end = tree.index(b' ', entry)
+            if int(tree[entry:mode_end], 8) == 0o160000:
+                raise ValueError('Gitlinks refused')
+            entry = tree.index(b'\0', mode_end) + 21  # NUL plus SHA-1 bytes
+
+
 def import_workspace(workspace, shadow):
     refs = {}
     try:
@@ -148,7 +186,7 @@ def import_workspace(workspace, shadow):
         # fsck verifies object hashes/pack indexes and all reachable refs before use.
         for name, sha in refs.items(): put(shadow / name, (sha + '\n').encode())
         put(shadow / 'HEAD', (head + '\n').encode())
-        checked(shadow, workspace, ['fsck', '--full', '--strict', '--no-reflogs'])
+        metadata(shadow, ['fsck', '--full', '--strict', '--no-reflogs'])
         return True
     finally:
         os.close(source)
@@ -171,6 +209,7 @@ def repository(workspace):
             subprocess.run(['git', 'init', '--bare', '--template=', str(shadow)], env=env(),
                            cwd=root, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         imported = import_workspace(workspace, shadow)
+        reject_gitlinks(shadow)
         # Rebuild our index from the real commit, never copy an agent's index.
         if imported:
             try:
@@ -178,6 +217,36 @@ def repository(workspace):
             except ValueError:
                 checked(shadow, workspace, ['read-tree', '--empty'])
         yield shadow, workspace
+
+
+def publish_directory(source, target_fd):
+    # Linux renameat2 with RENAME_NOREPLACE atomically refuses even an empty
+    # destination planted immediately before publication. EXDEV fails closed.
+    libc = ctypes.CDLL(None, use_errno=True)
+    rename = libc.renameat2
+    rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    rename.restype = ctypes.c_int
+    if rename(-100, os.fsencode(source), target_fd, b'.git', 1):
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+
+
+def export_initial(shadow, workspace):
+    # The completed tree stays behind a private parent even while its final
+    # group permissions are set. Publication is the last operation on it.
+    with tempfile.TemporaryDirectory(prefix='export-', dir=shadow.parent) as temporary:
+        staged = Path(temporary) / 'git'
+        shutil.copytree(shadow, staged,
+                        ignore=shutil.ignore_patterns('boundary.lock', '*.incoming'))
+        for base, dirs, files in os.walk(staged):
+            os.chmod(base, 0o2770)
+            for name in files:
+                os.chmod(os.path.join(base, name), 0o660)
+        fd = directory(workspace)
+        try:
+            publish_directory(staged, fd)
+        finally:
+            os.close(fd)
 
 
 def main():
@@ -188,21 +257,7 @@ def main():
             github_env['GIT_DIR'] = str(shadow)
             return subprocess.run(['gh', *args[1:]], env=github_env, cwd=shadow).returncode
         if args == ['--export-initial']:
-            # mkdir relative to a pinned workspace; no existing metadata is ever
-            # overwritten. All Git has already run against the protected shadow.
-            fd = directory(workspace)
-            try:
-                os.mkdir('.git', 0o770, dir_fd=fd)
-                target = os.open('.git', DIR, dir_fd=fd)
-                try:
-                    shutil.copytree(shadow, '/proc/self/fd/' + str(target), dirs_exist_ok=True,
-                                    ignore=shutil.ignore_patterns('boundary.lock', '*.incoming'))
-                    # Plain exported files are agent metadata from this point on.
-                    for base, dirs, files in os.walk('/proc/self/fd/' + str(target)):
-                        os.chmod(base, 0o2770)
-                        for name in files: os.chmod(os.path.join(base, name), 0o660)
-                finally: os.close(target)
-            finally: os.close(fd)
+            export_initial(shadow, workspace)
             return 0
         # Setup uses init in the protected directory too. No external template.
         if args and args[0] == 'init': args += ['--template=']

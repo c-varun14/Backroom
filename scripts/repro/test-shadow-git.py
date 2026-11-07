@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 BOUNDARY = ROOT / 'scripts/shadow_git.py'
@@ -102,6 +103,107 @@ class ShadowTests(unittest.TestCase):
                 self.assertNotEqual(self.run_boundary('show',self.approved,check=False).returncode,0)
                 break
         self.assertFalse(self.marker.exists())
+
+    def test_gitlink_fsmonitor_is_refused_before_worktree_operations(self):
+        child = self.repo / 'nested'
+        subprocess.run(['git', 'init', '-q', '--template=', str(child)], env=self.env, check=True)
+        (child / '.git/config').write_text('[core]\n fsmonitor = '+str(self.attack)+'\n')
+        # Plant a real gitlink to an existing commit; no network or submodule
+        # helper is needed. Suppress the parent's already-planted fsmonitor.
+        def plant(*args):
+            return self.git('-c', 'core.fsmonitor=false', *args)
+        plant('update-index', '--add', '--cacheinfo', '160000,'+self.approved+',nested')
+        plant('-c', 'user.name=Sample', '-c', 'user.email=sample@example.invalid',
+              '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Fictional gitlink attack')
+        # Demonstrate the exploit really runs when privileged status recurses.
+        plant('status', '--porcelain', '--ignore-submodules=none')
+        self.assertTrue(self.marker.exists())
+        self.marker.unlink()
+        self.assertNotEqual(self.run_boundary('status', '--porcelain', check=False).returncode, 0)
+        self.assertFalse(self.marker.exists())
+        with patch.dict(os.environ, self.env), patch.object(shadow, 'checked') as worktree_git:
+            with self.assertRaisesRegex(ValueError, 'Gitlinks refused'):
+                with shadow.repository(self.repo):
+                    self.fail('gitlink repository was admitted')
+            worktree_git.assert_not_called()
+        # Removing the current gitlink must not admit an older attack commit.
+        plant('reset', '--mixed', self.approved)
+        self.marker.unlink(missing_ok=True)  # reset itself may inspect the child
+        self.assertNotEqual(self.run_boundary('status', check=False).returncode, 0)
+        self.assertFalse(self.marker.exists())
+
+    def test_export_stays_private_and_never_traverses_after_publication(self):
+        protected = next((self.home / '.backroom-git').glob('*.git'))
+        workspace = self.root / 'new-workspace'; workspace.mkdir()
+        victim = self.root / 'outside-config'
+        victim.write_text('fictional protected bytes'); victim.chmod(0o600)
+        original_copy = shadow.shutil.copytree
+        original_publish = shadow.publish_directory
+        original_walk = shadow.os.walk
+        original_chmod = shadow.os.chmod
+        events = []
+        published = False
+        def copying(source, destination, *args, **kwargs):
+            if Path(source) == protected:
+                events.append('copy')
+                # Plant the original destination race whenever it is exposed.
+                if (workspace / '.git').exists():
+                    (workspace / '.git/config').symlink_to(victim)
+                self.assertFalse((workspace / '.git').exists())
+                self.assertEqual(Path(destination).parent.stat().st_mode & 0o777, 0o700)
+            return original_copy(source, destination, *args, **kwargs)
+        def publishing(source, fd):
+            nonlocal published
+            events.append('publish')
+            self.assertTrue((source / 'objects').is_dir())
+            self.assertEqual((source / 'config').stat().st_mode & 0o777, 0o660)
+            self.assertEqual(source.stat().st_mode & 0o7777, 0o2770)
+            original_publish(source, fd)
+            published = True
+            # At handoff the agent can replace any child. A later chmod walk
+            # would follow this link and change the protected victim's mode.
+            (workspace / '.git/config').unlink()
+            (workspace / '.git/config').symlink_to(victim)
+        def no_published_access(path):
+            if published:
+                self.assertFalse(Path(os.path.abspath(path)).is_relative_to(workspace / '.git'),
+                                 'privileged traversal after publication')
+        def walking(path, *args, **kwargs):
+            no_published_access(path)
+            return original_walk(path, *args, **kwargs)
+        def chmod(path, *args, **kwargs):
+            no_published_access(path)
+            return original_chmod(path, *args, **kwargs)
+        with patch.object(shadow.shutil, 'copytree', side_effect=copying), \
+             patch.object(shadow, 'publish_directory', side_effect=publishing), \
+             patch.object(shadow.os, 'walk', side_effect=walking), \
+             patch.object(shadow.os, 'chmod', side_effect=chmod):
+            shadow.export_initial(protected, workspace)
+        self.assertEqual(events, ['copy', 'publish'])
+        self.assertEqual(victim.read_text(), 'fictional protected bytes')
+        self.assertEqual(victim.stat().st_mode & 0o777, 0o600)
+
+    def test_export_atomically_refuses_destination_planted_at_publication(self):
+        protected = next((self.home / '.backroom-git').glob('*.git'))
+        workspace = self.root / 'new-workspace'; workspace.mkdir()
+        original_publish = shadow.publish_directory
+        for kind in ('empty-directory', 'symlink'):
+            with self.subTest(kind=kind):
+                def race(source, fd):
+                    if kind == 'symlink':
+                        (workspace / '.git').symlink_to(self.root / 'outside')
+                    else:
+                        (workspace / '.git').mkdir()
+                    original_publish(source, fd)
+                with patch.object(shadow, 'publish_directory', side_effect=race):
+                    with self.assertRaises(FileExistsError):
+                        shadow.export_initial(protected, workspace)
+                if kind == 'symlink':
+                    self.assertTrue((workspace / '.git').is_symlink())
+                    (workspace / '.git').unlink()
+                else:
+                    self.assertEqual(list((workspace / '.git').iterdir()), [])
+                    (workspace / '.git').rmdir()
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)

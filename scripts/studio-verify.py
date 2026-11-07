@@ -117,7 +117,7 @@ def main():
         # Require immediate denial (REJECT), not a network timeout that could
         # falsely suggest a firewall on a machine without metadata connectivity.
         code = ('import errno,socket,sys; s=socket.socket(socket.' + family + '); s.settimeout(3); '
-                'r=s.connect_ex((sys.argv[1],80)); sys.exit(0 if r in (errno.EPERM,errno.EACCES,errno.ECONNREFUSED) else 1)')
+                'r=s.connect_ex((sys.argv[1],80)); sys.exit(0 if r in (errno.EPERM,errno.EACCES,errno.ECONNREFUSED,errno.ENETUNREACH,errno.EHOSTUNREACH) else 1)')
         check('metadata denied ' + family, command(['runuser', '-u', 'agent', '--', 'python3', '-c', code, address]))
     for tool in ('iptables', 'ip6tables'):
         check('Switch database firewall ' + tool, command([tool, '-C', 'OUTPUT', '-m', 'owner', '--uid-owner', 'agent', '-p', 'tcp', '--dport', '5432', '-j', 'REJECT']))
