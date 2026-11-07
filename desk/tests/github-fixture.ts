@@ -39,7 +39,9 @@ export async function githubFixture(kind='phase',previousDeployment=false){
  const doc=(text:string)=>{const id=randomUUID();documents.set(id,text);return id;};
  store.db.query("INSERT INTO posts(switch_thread,discord_thread,title,tag,author_id,text,files) VALUES ('sample-post','discord-post','SAMPLE form','Phase','client','Save a contact form','[]')").run();
  store.db.query("INSERT INTO tickets(event_id,simulated,status,post,kind,client_text) VALUES ('sample-ticket',0,'in-progress','sample-post',?,'Save a contact form')").run(kind);
- await loop.brief.onForumTicket!(loop.latestTicket(),true);
+ // A client's request creates nothing on GitHub. Work is recorded when it is agreed.
+ const requestCalls=github.calls.filter(c=>['createIssue','createMilestone'].includes(c.method)).length;
+ await (loop as any).recordAgreedWork();
  for(const stage of ['brief','architecture'] as const){
   const text=stage==='brief'?'Client requires a contact form.':'Stack: better-t-stack\nApproved form architecture.',id=doc(text),artifact={kind:'document' as const,id};
   loop.brief.snapshots.remember(id,text);const state=loop.state.suggest(config.projectId,stage,artifact);
@@ -50,5 +52,5 @@ export async function githubFixture(kind='phase',previousDeployment=false){
  writeFileSync(join(root,'screen.png'),Buffer.from('89504e470d0a1a0a00000000','hex'));
  writeFileSync(join(root,'build-verification.json'),JSON.stringify({url:'http://127.0.0.1:3210',screenshot:'screen.png'}));
  const code=()=>(store.db.query("SELECT code FROM stage_artifacts WHERE stage='build' AND status='active'").get() as any)?.code;
- return {root,store,github,loop,posts,documents,event,gitCalls,deployed,code,sha:()=>sha,setSha:(next:string)=>{sha=next;}};
+ return {requestCalls,root,store,github,loop,posts,documents,event,gitCalls,deployed,code,sha:()=>sha,setSha:(next:string)=>{sha=next;}};
 }

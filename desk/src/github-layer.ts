@@ -33,11 +33,12 @@ export class GitHubLayer {
   save(record:GitHubRecord){this.store.db.query('INSERT INTO github_records VALUES (?,?,?) ON CONFLICT(project,ticket) DO UPDATE SET record=excluded.record').run(this.project,record.ticket,JSON.stringify(record));}
   async ticket(ticket:{n:number;status:string;kind:string;client_text:string},post:{title:string;link:string},start=false){
     await this.startup();let record=this.record(ticket.n);
-    const labels=[ticket.kind,...(!start&&ticket.status==='queued'?['queued']:[])];
     if(!record){
       const marker=`<!-- backroom:${this.project}:ticket:${ticket.n} -->`;
       const body=`Client request (untrusted data):\n${ticket.client_text}\n\nKind: ${ticket.kind}\nPost: ${post.link}\n\n${marker}`;
-      const issue=await this.client.createIssue(post.title,body,labels,marker);
+      // A Phase is a body of work, so it gets a milestone to hold its issues and progress.
+      const milestone=ticket.kind==='phase'?await this.client.createMilestone(post.title,`Client post: ${post.link}`):undefined;
+      const issue=await this.client.createIssue(post.title,body,[ticket.kind],marker,milestone);
       record={ticket:ticket.n,issue,title:post.title,body,requestBody:body,kind:ticket.kind};this.save(record);
     }
     if(start&&!record.branch){

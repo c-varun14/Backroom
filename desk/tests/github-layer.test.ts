@@ -9,12 +9,12 @@ function layerFixture(){
  const layer=new GitHubLayer(store,'sample',{repo:'WebbyWasp/sample',allowedAuthors:['sample-owner']},fake,(...args)=>{gitCalls.push(args);return '';});
  return {store,fake,layer,gitCalls};
 }
-test('ticket issue is durable; queued work has no branch; started spec adds criteria',async()=>{
+test('agreed work gets one durable issue and a branch; a Phase also gets a milestone',async()=>{
  const f=layerFixture();try{
-  const ticket={n:1,status:'queued',kind:'feature',client_text:'SAMPLE contact form'},post={title:'Contact form',link:'https://discord.com/channels/sample/post'};
-  await f.layer.ticket(ticket,post);expect(f.gitCalls).toHaveLength(0);
-  expect(f.fake.calls.find(c=>c.method==='createIssue')!.args).toEqual([post.title,expect.stringContaining(ticket.client_text),['feature','queued'],expect.any(String)]);
+  const ticket={n:1,status:'in-progress',kind:'feature',client_text:'SAMPLE contact form'},post={title:'Contact form',link:'https://discord.com/channels/sample/post'};
   await f.layer.ticket(ticket,post,true);expect(f.layer.record(1)?.branch).toBe('issue-1');
+  expect(f.fake.calls.find(c=>c.method==='createIssue')!.args).toEqual([post.title,expect.stringContaining(ticket.client_text),['feature'],expect.any(String),undefined]);
+  expect(f.fake.calls.some(c=>c.method==='createMilestone')).toBe(false);
   await f.layer.ticket(ticket,post,true);expect(f.fake.calls.filter(c=>c.method==='createIssue')).toHaveLength(1);
   await f.layer.spec(1,'AC-1: Save a form.\nAC-2: Validate email.');
   expect(f.fake.calls.filter(c=>c.method==='updateIssue').at(-1)!.args[1]).toContain('- [ ] AC-2: Validate email.');
@@ -111,7 +111,7 @@ test('only allowed authors on assigned open PRs reach builders; comment prompts 
 });
 
 test('forum integration: spec branch, exact PR update, CI tick, independent review and verified Deploy',async()=>{
- const f=await githubFixture();expect(f.posts.some(p=>p.text.includes('Work only on branch issue-1'))).toBe(true);
+ const f=await githubFixture();expect(f.requestCalls).toBe(0);expect(f.github.calls.filter(c=>c.method==='createMilestone')).toHaveLength(1);expect(f.posts.some(p=>p.text.includes('Work only on branch issue-1'))).toBe(true);
  expect(f.github.calls.some(c=>c.method==='updateIssue'&&c.args[1].includes('- [ ] AC-1'))).toBe(true);
  f.github.checks={state:'pending',noChecks:false,failures:[]};
  await f.loop.handle(f.event('builder','build-ready build-report.md'));await f.loop.handle(f.event('builder','build-ready build-report.md'));
@@ -200,3 +200,10 @@ test('workspace bootstrap cannot switch the enclosing Backroom repository',async
   expect(calls.filter(c=>c[0]==='switch')).toHaveLength(0);
  }finally{store.close();}
 });
+
+test('nothing reaches GitHub for a client request until the plan is agreed',async()=>{
+ const f=await githubFixture('feature');
+ expect(f.requestCalls).toBe(0);expect(f.github.calls.some(c=>c.method==='createMilestone')).toBe(false);
+ expect(f.github.calls.filter(c=>c.method==='createIssue')).toHaveLength(1);
+});
+

@@ -11,7 +11,8 @@ export interface GitHubComment { id:string; author:string; body:string; issue:nu
 export interface GitHub {
   verifyRepo():Promise<void>;
   createRepo(template?:string):Promise<void>;
-  createIssue(title:string,body:string,labels:string[],marker:string):Promise<number>;
+  createMilestone(title:string,description:string):Promise<number>;
+  createIssue(title:string,body:string,labels:string[],marker:string,milestone?:number):Promise<number>;
   updateIssue(issue:number,body:string,labels:string[]):Promise<void>;
   pushBranch(branch:string,sha:string):Promise<void>;
   /** Repeated calls edit the open PR for this branch. */
@@ -43,7 +44,7 @@ export class GhGitHub implements GitHub {
     const args=['gh','api','--hostname','github.com','--method',method,`repos/${this.config.repo}${path}`];
     for(const [key,value] of Object.entries(fields)){
       if(Array.isArray(value)){for(const entry of value)args.push('-f',`${key}[]=${entry}`);}
-      else args.push(typeof value==='boolean'?'-F':'-f',`${key}=${value}`);
+      else args.push(typeof value==='boolean'||typeof value==='number'?'-F':'-f',`${key}=${value}`);
     }
     try{return JSON.parse(await this.command(args));}catch{throw new Error('GitHub operation failed; response withheld');}
   }
@@ -60,15 +61,21 @@ export class GhGitHub implements GitHub {
   private async pages(path:string):Promise<any[]>{
     const rows:any[]=[];for(let page=1;;page++){const batch=await this.api(`${path}${path.includes('?')?'&':'?'}per_page=100&page=${page}`);if(!Array.isArray(batch))throw new Error('GitHub list refused');rows.push(...batch);if(batch.length<100)return rows;}
   }
-  async createIssue(title:string,body:string,labels:string[],marker:string){
+  async createMilestone(title:string,description:string){
+    await this.verifyRepo();
+    const found=(await this.pages('/milestones?state=all')).find(m=>m.title===title);
+    if(found)return found.number;
+    return (await this.api('/milestones','POST',{title,description})).number;
+  }
+  async createIssue(title:string,body:string,labels:string[],marker:string,milestone?:number){
     await this.verifyRepo();
     const login=await this.login();
     const found=(await this.pages('/issues?state=all')).find(i=>!i.pull_request&&i.user?.login?.toLowerCase()===login&&i.body?.includes(marker));
     if(found)return found.number;
     // Ensure project-owned labels exist; no dependency on an org label preset.
     const existing=await this.pages('/labels');
-    for(const name of ['phase','feature','bug','change','queued'])if(!existing.some(l=>l.name===name))await this.api('/labels','POST',{name,color:'ededed'});
-    return (await this.api('/issues','POST',{title,body,labels})).number;
+    for(const name of ['phase','feature','bug','change'])if(!existing.some(l=>l.name===name))await this.api('/labels','POST',{name,color:'ededed'});
+    return (await this.api('/issues','POST',{title,body,labels,...(milestone?{milestone}:{})})).number;
   }
   async updateIssue(issue:number,body:string,labels:string[]){await this.api(`/issues/${issue}`,'PATCH',{body,labels});}
   async pushBranch(branch:string,sha:string){
@@ -154,7 +161,8 @@ export class FakeGitHub implements GitHub {
   private record(method:string,...args:any[]){this.calls.push({method,args});}
   async verifyRepo(){this.record('verifyRepo');if(!this.privateRepo)throw new Error('Private WebbyWasp repository required');}
   async createRepo(template?:string){this.record('createRepo',template);}
-  async createIssue(title:string,body:string,labels:string[],marker:string){this.record('createIssue',title,body,labels,marker);if(!this.issues.has(marker))this.issues.set(marker,this.issues.size+1);return this.issues.get(marker)!;}
+  async createMilestone(title:string,description:string){this.record('createMilestone',title,description);return 7;}
+  async createIssue(title:string,body:string,labels:string[],marker:string,milestone?:number){this.record('createIssue',title,body,labels,marker,milestone);if(!this.issues.has(marker))this.issues.set(marker,this.issues.size+1);return this.issues.get(marker)!;}
   async updateIssue(...args:Parameters<GitHub['updateIssue']>){this.record('updateIssue',...args);}
   async pushBranch(...args:Parameters<GitHub['pushBranch']>){this.record('pushBranch',...args);}
   async openPullRequest(branch:string,body:string,title:string){this.record('openPullRequest',branch,body,title);if(!this.prs.has(branch))this.prs.set(branch,this.prs.size+10);return this.prs.get(branch)!;}

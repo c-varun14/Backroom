@@ -37,10 +37,6 @@ export class RealStagesLoop extends StagesLoop {
     this.watchdog=new Watchdog(store,real.projectId,realControl.now??Date.now,real.watchdogMs);
     if(real.clientSurface==='forum'&&real.github){
       this.github=new GitHubLayer(store,real.projectId,real.github,realControl.github??new GhGitHub(real.github,real.workspace),(...args)=>this.git(...args),real.workspace);
-      this.brief.onForumTicket=async(ticket,start)=>{
-        const post=this.brief.talk!.post(ticket.post)!;
-        await this.github!.ticket(ticket,{title:post.title,link:`https://discord.com/channels/${real.discordGuildId}/${post.discord_thread}`},start);
-      };
     }
     this.recoverDeliveries();
     this.journal=new EventJournal(store,"real:"+real.projectId);
@@ -219,7 +215,14 @@ export class RealStagesLoop extends StagesLoop {
     this.set("architectureRequested",true);
     await this.card("architecture","Brief closed by the client; architecture is with lead.","@desk status","🔵");
   }
+  /** GitHub holds agreed work only. A client's request stays in Discord until it reaches a build. */
+  private async recordAgreedWork(){
+    const ticket=this.latestTicket(),post=ticket?.post?this.brief.talk?.post(ticket.post):null;
+    if(!this.github||!post)return;
+    await this.github.ticket(ticket,{title:post.title,link:`https://discord.com/channels/${this.real.discordGuildId}/${post.discord_thread}`},true);
+  }
   async buildTask(reason="initial build",jobId?:string){
+    await this.recordAgreedWork();
     if(this.real.clientSurface==='forum')await this.realControl.prepareBuild?.();
     const state=this.state.get(this.real.projectId);
     const sources=await this.buildSources(false);

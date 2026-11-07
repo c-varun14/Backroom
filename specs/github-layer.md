@@ -16,6 +16,7 @@ Project config gains `github:{repo,allowedAuthors:[...]}`. The repo must match `
 
 ## 2. Issues and branches
 
+- GitHub holds agreed work only: nothing is created for a client's request until it reaches a build. A Phase gets a milestone holding one issue. A confirmed Feature or Bug gets one issue. A later version can split a Phase into several issues.
 - A ticket that starts work creates one issue. Title from the post. Body: what the client asked, the kind, and the post link. Labels: `phase`, `feature`, `bug`, `change`.
 - When lead's spec arrives, desk writes its `AC-` criteria into the issue body as a checklist.
 - Work happens on branch `issue-<n>` in the project workspace. The builder prompt names that branch. A queued ticket creates its issue with the label `queued`, and no branch until it starts.
