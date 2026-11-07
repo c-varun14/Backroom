@@ -48,6 +48,8 @@ export interface Deployer {
 }
 export interface CurrentDeployment { url: string; commitSha: string; intentId: string }
 export interface ManagedDeployer extends Deployer {
+  declaredKeys?(project:string,commitSha:string):Promise<string[]>;
+  missingKeys?(project:string,names:string[]):Promise<string[]>;
   current(project: string): Promise<CurrentDeployment | null>;
   checkHealth(project: string): Promise<void>;
 }

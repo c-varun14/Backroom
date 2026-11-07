@@ -1,3 +1,5 @@
+import {AppKeys} from './app-keys';
+import {planKeys} from '../../deploy/app-keys';
 import {GitHubLayer} from './github-layer';
 import {GhGitHub} from './github';
 import {CLIENT_LINES,DELIVERY_RULE} from './talk';
@@ -25,6 +27,7 @@ export interface RealConfig extends RehearsalConfig {mode:"real";workRoomId:stri
  * Rehearsal entry points retain their existing defaults and services. */
 export class RealStagesLoop extends StagesLoop {
   readonly watchdog:Watchdog;
+  readonly keys:AppKeys;
   readonly github?:GitHubLayer;
   private pending=Promise.resolve();
   private combinedRelease=false;
@@ -34,6 +37,7 @@ export class RealStagesLoop extends StagesLoop {
     super(store,api,transport,real,deployer,identitySource,realControl,projectRoot);
     store.db.exec(`CREATE TABLE IF NOT EXISTS small_change_releases(id TEXT PRIMARY KEY,project TEXT,sha TEXT,base TEXT,status TEXT,post TEXT,url TEXT,message TEXT);
       CREATE TABLE IF NOT EXISTS delivery_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT,project TEXT,ticket INTEGER,sha TEXT,action TEXT,line TEXT);`);
+    this.keys=new AppKeys(store,real.projectId,deployer);
     this.watchdog=new Watchdog(store,real.projectId,realControl.now??Date.now,real.watchdogMs);
     if(real.clientSurface==='forum'&&real.github){
       this.github=new GitHubLayer(store,real.projectId,real.github,realControl.github??new GhGitHub(real.github,real.workspace),(...args)=>this.git(...args),real.workspace);
@@ -141,7 +145,7 @@ export class RealStagesLoop extends StagesLoop {
     if(this.state.get(this.real.projectId).stage==='brief'&&ticket?.status==='with-lead')await this.brief.remindLead(ticket,text);
     else await this.api.post(this.real.workRoomId,`@${this.real.leadName} ${text}`);
   }
-  async tick(){await this.pollGitHub();await this.brief.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
+  async tick(){await this.pollGitHub();await this.tickKeys();await this.brief.tick();await this.nudgeLead();await this.watchdog.poll(async(ticket,role)=>{await this.card(this.state.get(this.real.projectId).stage,`${role} has made no progress within the configured time. Check the assignment.`,"@desk status","⚠️");});}
   async card(stage:Stage,summary:string,command="@desk status",icon="🟡",files:{name:string;bytes:Uint8Array}[]=[]) {
     if(this.real.clientSurface==='forum'&&icon==='🔵')return;
     if(files.length)await this.api.post(this.real.studioRoomId,'Files for your review',files);
@@ -262,6 +266,8 @@ export class RealStagesLoop extends StagesLoop {
       await this.journal.step(id,"video-request",()=>this.mention(this.real.builderName,videoTask));
       await this.card("video","Product video requested; waiting for the exact file and QC report.","@desk status","🔵");
     }else if(job.stage==="architecture"){
+      const text=this.brief.snapshots.get((artifact as {id:string}).id).content;
+      try{await this.keys.approvePlan(text);}catch{this.store.log('Keys status deferred; names only',undefined,this.real.projectId);}
       if(!this.get("specDocument"))await this.buildTask(job.reason,id);
     }else if(!this.get("outgoing")&&!this.get("delivered")){
       if(job.stage==="build"){
@@ -359,6 +365,7 @@ export class RealStagesLoop extends StagesLoop {
     if(!review||review.sources!==await this.buildSources()||review.generation!==this.get("assignmentGeneration"))throw new Error("Stale independent review assignment");
   }
   private invalidate(stage:Stage){
+    this.keys.cancel();
     this.store.db.query("UPDATE stage_artifacts SET status='superseded' WHERE stage=? AND status='active'").run(stage);
     this.store.db.query("UPDATE drafts SET status='superseded' WHERE project=? AND status='active'").run(this.real.projectId);
     this.set("outgoing",null);this.set("delivered",null);
@@ -498,6 +505,7 @@ export class RealStagesLoop extends StagesLoop {
               catch(error){await this.mention(this.real.leadName,`Architecture returned for correction: ${String(error instanceof Error?error.message:'invalid stack')}. Use only a known profile and put Stack: <id> on the first line. ${DELIVERY_RULE}`);return;}
               this.set('proposedStack',selected);
             }
+            planKeys(content);
             await this.publish("architecture",{kind:"document",id:ref[2]},content);
           }
           else if(ref[1]==="spec"&&state.stage==="build"){
@@ -746,6 +754,7 @@ export class RealStagesLoop extends StagesLoop {
     if(!smallChange({files,linesChanged,ticketKind:kind}))return false;
     await this.requireCurrentReview();
     if(this.git('rev-parse','HEAD')!==sha||this.git('status','--porcelain'))throw new Error('Clean reviewed checkpoint required for automatic delivery');
+    if(await this.waitForKeys(sha,{kind:'small'}))return true;
     const id=sha256(JSON.stringify({project:this.real.projectId,sha,base:previous.commitSha,sources:await this.buildSources(),generation:this.get('assignmentGeneration')}));
     const old=this.store.db.query('SELECT status FROM small_change_releases WHERE id=?').get(id) as any;
     if(old)return true;
@@ -795,6 +804,29 @@ export class RealStagesLoop extends StagesLoop {
     })();
     return true;
   }
+  private keysBinding(){
+    const state=this.state.get(this.real.projectId);
+    return JSON.stringify({stage:state.stage,version:state.stages.build.version,candidate:this.get('candidate'),review:this.get('reviewer'),verdict:this.get('reviewVerdict'),generation:this.get('assignmentGeneration')});
+  }
+  private async waitForKeys(sha:string,release:any){
+    if(!this.deployer.declaredKeys||!this.deployer.missingKeys)return false;
+    const missing=await this.keys.declaration(sha);
+    if(!missing.length){this.keys.cancel();return false;}
+    this.keys.wait({...release,sha,binding:this.keysBinding()});
+    return true;
+  }
+  private async tickKeys(){
+    const prior=this.keys.get();if(!prior.open)return;
+    const missing=await this.keys.refresh();
+    const wait=this.keys.get().waiting;if(!wait)return;
+    // A changed scope, review round or checkout revokes the deferred release.
+    if(wait.binding!==this.keysBinding()||this.git('rev-parse','HEAD')!==wait.sha){this.keys.cancel();return;}
+    if(missing.length)return;
+    this.keys.takeWait(); // reserve once before any external effect
+    await this.requireCurrentReview();
+    if(wait.kind==='owner')await this.ownerEvent(wait.event,'deploy '+wait.sha);
+    else if(wait.kind==='small')await this.shipSmallChange(wait.sha);
+  }
   private async currentClientLink(out:any){
     const current=await this.deployer.current(this.real.projectId);
     const row=this.store.db.query('SELECT frozen FROM drafts WHERE id=?').get(out.draftId) as any;
@@ -842,6 +874,7 @@ export class RealStagesLoop extends StagesLoop {
       if(stage!=="build"||m[1]!==this.get("candidate")||this.get("reviewVerdict")!=="pass")throw new Error("Reviewed exact candidate required");
       await this.requireCurrentReview();
       if(this.github&&await this.mergeGitHub(m[1],true)!=='merged')return;
+      if(await this.waitForKeys(m[1],{kind:'owner',event}))return;
       const result=await this.gate.handleMessage({...this.ownerActor(),body:event.payload.body,eventId:id});
       if(result.status!=="deployed"){await this.card(stage,`Deployment ${result.status}; inspect status before retrying.`);return;}
       const row=this.activeArtifact("build");if(!row)throw new Error("Build approval artifact missing");
@@ -866,6 +899,7 @@ export class RealStagesLoop extends StagesLoop {
       const row=this.activeArtifact(stage);if(!row||row.stage!==m[1]||row.code!==m[2])throw new Error("Stale or wrong-stage approval");
       const artifact=JSON.parse(row.artifact) as Artifact;
       if(artifact.kind==="document"&&sha256(await this.loadDocument(artifact.id))!==row.content_hash)throw new Error("Changed document");
+      if(stage==="architecture"&&artifact.kind==="document")planKeys(await this.loadDocument(artifact.id));
       if(stage==="build")await this.requireCurrentReview();
       if(stage==="build"&&(artifact.kind!=="commit"||(await this.deployer.current(this.real.projectId))?.commitSha!==artifact.sha||this.get("candidate")!==artifact.sha||this.get("reviewVerdict")!=="pass"))throw new Error("Current deployed reviewed commit required");
       if(stage==="video"&&(artifact.kind!=="video"||sha256(readFileSync(this.get("video").path))!==artifact.sha256))throw new Error("Changed video");

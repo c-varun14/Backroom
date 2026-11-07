@@ -13,3 +13,5 @@ Return the candidate commit/tree, filled spec, criteria covered and report to le
 A real browser is available: `bun studio-kit/tools/screenshot.ts --url <url> --out <file.png> [--cookie name=value] [--wait-for "text"]`. Use it for every criterion that needs a screenshot.
 
 If you cannot finish, say so straight away with `blocked: <what is missing and what would unblock you>`. Never fake evidence, and never stop silently. Plain text is not delivered, so send it with the post_message tool.
+
+When a feature needs a third-party key, add its NAME to the app repo root `.env.required`, one name per line with optional # comments. Commit this names-only declaration (unignore that exact filename if needed). Read values only from the server environment; use fictional test values locally. Never ask for, write, print or pass a real value to a model, agent, build or report. Automatic platform names do not belong in this declaration. For Polar, preserve or add an optional public sandbox/production setting when the assigned adapter needs one; default to its existing behavior.

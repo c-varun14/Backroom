@@ -153,6 +153,10 @@ class ProvisionTests(unittest.TestCase):
         self.assertEqual(result['studioThread'], 'switch-studio-T')
         self.assertEqual(result['studioRoomId'], 'studio-room')
         self.assertIn('studioBoardMessage', result)
+        self.assertEqual(result['studioKeysThread'], shared['keysThread'])
+        self.assertEqual(result['studioKeysMessage'], shared['keysMessage'])
+        self.assertTrue(any(method == 'PUT' and '/pins/' in path for method, path, _ in calls))
+        self.assertTrue(any(method == 'PUT' and '/permissions/bot' in path and int(body['allow']) & module.MANAGE_MESSAGES for method, path, body in calls))
         forum = next(body for method, path, body in calls if method == 'POST' and path.endswith('/channels'))
         self.assertEqual({o['id'] for o in forum['permission_overwrites']}, {'guild', 'bot', 'lead', 'team'})
 

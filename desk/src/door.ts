@@ -1,3 +1,5 @@
+import {keysLink,type KeysConfig} from './keys-token';
+import {keyNames} from '../../deploy/app-keys';
 import {hubText,hubDigest,type HubConfig,type HubDigestProject} from './hub';
 import {Database} from 'bun:sqlite';
 import {readFileSync,readdirSync,mkdirSync} from 'node:fs';
@@ -8,7 +10,7 @@ import {signDoor,type DoorPayload} from './door-protocol';
 
 export const DOOR_INTENTS=1|512|32768;
 export const KIND_TAGS=['Phase','Feature','Bug/Change','Question','Chat'];
-export type DoorProject={hub?:HubConfig;projectId:string;discordForumId:string;discordGuildId:string;discordClientRoleId:string;discordClientIds?:string[];discordBotId:string;doorWebhookId:string;doorWebhookFile:string;doorKeyFile:string;databasePath:string;tagIds:Record<string,string>;guideThread?:string;chatThread?:string;studioThread?:string;studioTagIds?:Record<string,string>;studioForumId?:string;studioDiscordThread?:string;studioBoardThread?:string;studioBoardMessage?:string;studioPriority?:'High'|'Medium'};
+export type DoorProject={keys?:KeysConfig;discordOwnerId?:string;projectName?:string;studioKeysThread?:string;studioKeysMessage?:string;hub?:HubConfig;projectId:string;discordForumId:string;discordGuildId:string;discordClientRoleId:string;discordClientIds?:string[];discordBotId:string;doorWebhookId:string;doorWebhookFile:string;doorKeyFile:string;databasePath:string;tagIds:Record<string,string>;guideThread?:string;chatThread?:string;studioThread?:string;studioTagIds?:Record<string,string>;studioForumId?:string;studioDiscordThread?:string;studioBoardThread?:string;studioBoardMessage?:string;studioPriority?:'High'|'Medium'};
 export type CreationConfig={guild:string;channel:string;baseConfig:string;create:(input:{name:string;purpose:string;userId:string;slug:string})=>Promise<{forumId:string}>};
 export type DiscordIO={request:(method:string,path:string,body?:unknown,webhook?:boolean)=>Promise<any>;sleep:(ms:number)=>Promise<void>;now:()=>number;log:(message:string)=>void};
 /** No sockets or credentials at import time. All Discord effects have a fakeable boundary. */
@@ -18,7 +20,7 @@ export class Door {
   private opening=new Set<string>();
   private typing=new Map<string,{until:number;project:DoorProject;last:number}>();
   private pending=new Set<Promise<unknown>>();
-  constructor(readonly db:Database,public projects:DoorProject[],readonly io:DiscordIO,public creation?:CreationConfig){
+  constructor(readonly db:Database,public projects:DoorProject[],readonly io:DiscordIO,public creation?:CreationConfig,private mint?:(project:DoorProject,scope:string,names:string[])=>string){
     db.exec(`CREATE TABLE IF NOT EXISTS hub_created(project TEXT,event TEXT,thread TEXT UNIQUE,PRIMARY KEY(project,event));
       CREATE TABLE IF NOT EXISTS hub_digest_state(role TEXT PRIMARY KEY,day TEXT);
       CREATE TABLE IF NOT EXISTS hub_digest_cursors(project TEXT PRIMARY KEY,cursor INTEGER);
@@ -27,6 +29,7 @@ export class Door {
       CREATE TABLE IF NOT EXISTS handled_interactions(id TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS creations(user TEXT,day TEXT,interaction TEXT UNIQUE,slug TEXT,PRIMARY KEY(user,interaction));
       CREATE TABLE IF NOT EXISTS project_forms(id TEXT PRIMARY KEY,user TEXT,guild TEXT,ts INTEGER);
+      CREATE TABLE IF NOT EXISTS keys_messages(id TEXT PRIMARY KEY,message TEXT NOT NULL,signature TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS board_state(id TEXT PRIMARY KEY,value TEXT);`);
   }
   private project(thread:string){return this.projects.find(p=>p.discordForumId===thread);}
@@ -114,6 +117,7 @@ export class Door {
     }
   }
   async pollOutbox(){
+    await this.pollKeys();
     for(const project of this.projects){
       let source:Database;try{source=new Database(project.databasePath,{readonly:true});}catch{continue;}
       try{
@@ -264,6 +268,55 @@ export class Door {
       if(previous?.value!==value){await this.io.request('PATCH',`/channels/${project.studioBoardThread}/messages/${project.studioBoardMessage}`,payload);this.db.query('INSERT OR REPLACE INTO board_state VALUES (?,?)').run(id,value);}
     }
   }
+  /** Reuses the studio's local-state polling and Discord message edit pattern. */
+  async pollKeys(){
+    const sharedHandled=new Set<string>();
+    for(const project of this.projects){
+      if(!project.keys||!project.studioDiscordThread||!project.discordOwnerId)continue;
+      let state:any=null,source:Database|undefined;
+      try{source=new Database(project.databasePath,{readonly:true});
+        const exists=source.query("SELECT name FROM sqlite_master WHERE type='table' AND name='project_keys'").get();
+        const row=exists?source.query('SELECT state FROM project_keys WHERE project=?').get(project.projectId) as any:null;
+        state=row?JSON.parse(row.state):null;
+      }catch{continue;}finally{source?.close();}
+      const names=keyNames([...(state?.plan??[]),...(state?.declared??[])]),missing=keyNames(state?.missing??[]);
+      const title=missing.length?`${project.projectName??project.projectId} needs ${missing.length} ${missing.length===1?'key':'keys'}`:state?.checked===false?'Checking project keys…':state&&names.length?'Keys added ✓':'Project keys';
+      const button=(scope:string,label:string)=>({type:2,style:2,label,custom_id:`door:${sha256(project.projectId).slice(0,12)}:keys:${scope}`});
+      const payload={content:title,allowed_mentions:{parse:[]},components:[{type:1,components:[...(missing.length?[button('app','Add keys')]:[]),button('app','Update keys')]}]};
+      await this.keysMessage('project:'+project.projectId,project.studioDiscordThread,payload);
+      if(project.studioKeysThread&&project.studioKeysMessage&&!sharedHandled.has(project.studioKeysThread)){
+        sharedHandled.add(project.studioKeysThread);
+        const shared={content:'Keys',allowed_mentions:{parse:[]},components:[{type:1,components:[button('shared','Update shared keys')]}]};
+        await this.keysMessage('shared:'+project.studioForumId,project.studioKeysThread,shared,project.studioKeysMessage);
+      }
+    }
+  }
+  private async keysMessage(id:string,thread:string,payload:any,fixed?:string){
+    const row=this.db.query('SELECT message,signature FROM keys_messages WHERE id=?').get(id) as any,signature=JSON.stringify(payload);
+    if(row?.signature===signature)return;
+    let message=row?.message??fixed;
+    if(message)await this.io.request('PATCH',`/channels/${thread}/messages/${message}`,payload);
+    else{const result=await this.io.request('POST',`/channels/${thread}/messages`,{...payload,enforce_nonce:true,nonce:sha256('keys:'+id).slice(0,24)});message=result.id;}
+    this.db.query('INSERT OR REPLACE INTO keys_messages VALUES (?,?,?)').run(id,message,signature);
+  }
+  private async keysInteraction(data:any){
+    const match=/^door:([a-f0-9]{12}):keys:(app|shared)$/.exec(data.data?.custom_id??'');if(!match)return false;
+    const project=this.projects.find(p=>sha256(p.projectId).slice(0,12)===match[1]);
+    const scope=match[2]==='shared'?'shared':project?.projectId;
+    // A client press receives no link and creates no signed signal or approval.
+    if(!project?.keys||!project.discordOwnerId||data.member?.user?.id!==project.discordOwnerId||data.member?.user?.bot||data.guild_id!==project.discordGuildId||data.channel_id!==(scope==='shared'?project.studioKeysThread:project.studioDiscordThread))return true;
+    let source:Database|undefined;
+    try{
+      source=new Database(project.databasePath,{readonly:true});
+      const exists=source.query("SELECT name FROM sqlite_master WHERE type='table' AND name='project_keys'").get();
+      const row=exists?source.query('SELECT state FROM project_keys WHERE project=?').get(project.projectId) as any:null;
+      const state=row?JSON.parse(row.state):null;
+      const names=scope==='shared'?[]:keyNames([...(state?.plan??[]),...(state?.declared??[])]);
+      const url=this.mint?this.mint(project,scope!,names):keysLink(project.keys,readFileSync(project.keys.signingKeyFile),scope!,scope==='shared'?'Shared studio keys':project.projectName??project.projectId,names,this.io.now());
+      await this.io.request('POST',`/interactions/${data.id}/${data.token}/callback`,{type:4,data:{content:'Your private keys page. This link works for 10 minutes.',flags:64,allowed_mentions:{parse:[]},components:[{type:1,components:[{type:2,style:5,label:'Open keys page',url}]}]}});
+    }catch{this.io.log('keys link unavailable; details withheld');}finally{source?.close();}
+    return true;
+  }
   async startButton(){
     if(!this.creation)return;
     const payload={content:'Start a project with us.',allowed_mentions:{parse:[]},components:[{type:1,components:[{type:2,style:1,label:'Start a project',custom_id:'door:start'}]}]};
@@ -303,6 +356,7 @@ export class Door {
   async interaction(data:any){
     const custom=data.data?.custom_id;if(typeof custom!=='string'||!custom.startsWith('door:'))return;
     if(!this.db.query('INSERT OR IGNORE INTO handled_interactions VALUES (?)').run(data.id).changes)return;
+    if(await this.keysInteraction(data))return;
     if(await this.creationInteraction(data))return;
     const match=/^door:([a-z0-9-]+):(approve|change):([a-f0-9]{64})$/.exec(custom);
     const project=match?this.projects.find(p=>p.projectId===match[1]||sha256(p.projectId).slice(0,12)===match[1]):undefined;

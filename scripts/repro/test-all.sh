@@ -24,5 +24,6 @@ run_clean() { env -i PATH="$PATH" HOME="$work/home" TMPDIR="$work/tmp" XDG_CACHE
 run_clean python3 scripts/repro/test-copy.py
 run_clean python3 scripts/repro/test-discord-status.py
 run_clean python3 scripts/repro/test-new-project.py
+run_clean python3 scripts/repro/test-studio-move.py
 run_clean bun --no-env-file scripts/repro/validate-template.ts
 run_clean bun --no-env-file test --dots desk/tests harness receipt/build.test.ts tests/adversarial deploy/local-compose.test.ts deploy/runtime-contract.test.ts rehearsal/bakery sample-projects/old-shop scripts/repro/repro.test.ts

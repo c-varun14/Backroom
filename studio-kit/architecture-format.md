@@ -6,6 +6,8 @@ SAMPLE template. Architecture starts from an approved brief version, not from un
 
 Project ID, architecture version/status, approved brief version/hash, source references, date. List requirement IDs covered. Owner approval applies to this exact architecture version.
 
+For any new third-party key, include exactly one names-only line: `Keys: POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET`. Omit it when none are needed. Never include values or automatic platform names. Names already supplied by shared studio keys need no owner action. The builder also declares needed names in the app root `.env.required`.
+
 ## Design and boundaries
 
 Choose from `stack-menu.md`. Describe pages, request flow, trusted server responsibilities, database tables, private/public routes and deployment/storage. Keep it small enough to reproduce. State who authenticates to the owner view and how unauthorised requests fail.

@@ -19,6 +19,7 @@ STATUSES = ['Received', 'In progress', 'Ready for you', 'Done']
 VIEW = 1 << 10
 TALK = VIEW | (1 << 11) | (1 << 14) | (1 << 15) | (1 << 16) | (1 << 35) | (1 << 38)
 MANAGE_THREADS = 1 << 34
+MANAGE_MESSAGES = 1 << 13
 
 
 def project_slug(name):
@@ -262,6 +263,9 @@ def provision_studio(c, shared, discord, switch, webhook, pause, save_shared, sa
     if not shared.get('room'):
         room = switch('POST', '/gateway/rooms', {'name': 'studio', 'description': 'Owner decisions for all projects', 'bridge_id': c['bridgeId'], 'external_channel_id': shared['forum'], 'agent_ids': [c['deskId']], 'read_visibility': 'private', 'write_visibility': 'private'})
         remember('room', room['id'])
+    # The keys starter is a pinned message; only the studio bot needs this permission.
+    discord('PUT', f"/channels/{shared['forum']}/permissions/{c['discordBotId']}",
+            {'type': 1, 'allow': str(TALK | MANAGE_THREADS | MANAGE_MESSAGES), 'deny': '0'})
     # The owner reads this room to find the anchor, and is a member of every studio room.
     switch('POST', f"/gateway/chats/{shared['room']}/members", {'userId': c['ownerId']})
     if not shared.get('webhook'):
@@ -272,6 +276,13 @@ def provision_studio(c, shared, discord, switch, webhook, pause, save_shared, sa
         post = discord('POST', f"/channels/{shared['forum']}/threads", {'name': 'Board', 'applied_tags': [shared['tagIds']['New']], 'message': {'content': 'Studio project board', 'allowed_mentions': {'parse': []}}})
         remember('boardThread', post['id'])
         remember('boardMessage', post.get('message', {}).get('id', post['id']))
+    if not shared.get('keysThread'):
+        post = discord('POST', f"/channels/{shared['forum']}/threads", {'name': 'Keys', 'message': {'content': 'Update shared keys privately from this post.', 'allowed_mentions': {'parse': []}}})
+        remember('keysThread', post['id'])
+        remember('keysMessage', post.get('message', {}).get('id', post['id']))
+    # Discord supports one pinned forum post; retain the Board anchor, and pin
+    # the Keys starter message as well. Verify forum presentation when applied.
+    discord('PUT', f"/channels/{shared['keysThread']}/pins/{shared['keysMessage']}")
     discord('PATCH', f"/channels/{shared['boardThread']}", {'flags': 2})
     if not c.get('studioDiscordThread'):
         post = discord('POST', f"/channels/{shared['forum']}/threads", {'name': c['projectName'], 'applied_tags': [shared['tagIds']['New'], shared['tagIds']['Medium']], 'message': {'content': 'Project decisions and progress.', 'allowed_mentions': {'parse': []}}})
@@ -296,7 +307,9 @@ def provision_studio(c, shared, discord, switch, webhook, pause, save_shared, sa
         for line in lines:
             if line.get('author', {}).get('id') == c['discordBotId'] and marker[1:] in line.get('content', ''):
                 discord('DELETE', f"/channels/{c['studioDiscordThread']}/messages/{line['id']}")
-    c.update(studioRoomId=shared['room'], studioForumId=shared['forum'], studioTagIds=shared['tagIds'], studioBoardThread=shared['boardThread'], studioBoardMessage=shared['boardMessage'])
+    if c.get('discordOwnerId') is None and shared.get('discordOwnerId'):
+        c['discordOwnerId'] = shared['discordOwnerId']
+    c.update(studioRoomId=shared['room'], studioForumId=shared['forum'], studioTagIds=shared['tagIds'], studioBoardThread=shared['boardThread'], studioBoardMessage=shared['boardMessage'], studioKeysThread=shared['keysThread'], studioKeysMessage=shared['keysMessage'])
     save_project(c)
     return c
 
@@ -313,6 +326,8 @@ def deployment_settings(config, private, project_dir):
         secret.write_text(secrets.token_hex(32))
         secret.chmod(0o600)
     domain = config['projectId'] + '.' + ip.replace('.', '-') + '.sslip.io'
+    config['keys'] = {'host': 'keys.' + ip.replace('.', '-') + '.sslip.io',
+                      'signingKeyFile': str(ROOT / '.secrets/keys-signing-key')}
     config.update(deployTarget='nix', videoEnabled=False, nixDeploy={
         'buildHost': 'backroom-dev', 'deployHost': 'root@' + ip, 'fleetPath': '/var/lib/backroom/fleet',
         'serverPort': server, 'webPort': server + 1, 'memoryMax': '512M', 'environment': {},
@@ -334,7 +349,7 @@ def main():
     args = parser.parse_args()
     if args.github_owner != 'WebbyWasp':
         raise ValueError('Only WebbyWasp is allowed')
-    os.umask(0o077)
+    os.umask(0o007 if os.environ.get('BACKROOM_SUPERVISED') == '1' else 0o077)
     import fcntl
     runtime = ROOT / '.switch-runtime'
     runtime.mkdir(parents=True, exist_ok=True)
@@ -351,7 +366,7 @@ def main():
                      if (lambda c: c.get('projectName') == args.name.strip() and c.get('discordClientIds') == [args.client_id])(json.loads(p.read_text()))), None)
     slug = args.slug or existing or unique_slug(args.name, {p.stem for p in project_dir.glob('*.json')})
     project_slug(args.name)
-    if not re.fullmatch(r'[a-z0-9-]{1,60}', slug):
+    if slug == 'shared' or not re.fullmatch(r'[a-z0-9-]{1,60}', slug):
         raise ValueError('Invalid slug')
     state_path = ROOT / '.switch-runtime/provision' / (slug + '.json')
     completed_path = project_dir / (slug + '.json')
@@ -365,6 +380,8 @@ def main():
              'filesPath': str(private / 'files'), 'workspace': str(ROOT / 'workspaces' / slug),
              'healthFile': str(ROOT / '.switch-runtime/project-state' / slug / 'health.json'), 'simulateRequest': str(ROOT / '.switch-runtime/project-state' / slug / 'simulate.request')}
     state.update(paths)
+    if base.get('discordOwnerId'):
+        state['discordOwnerId'] = base['discordOwnerId']
     for name in ['databasePath', 'healthFile', 'simulateRequest']:
         Path(paths[name]).parent.mkdir(parents=True, exist_ok=True)
     Path(paths['workspace']).mkdir(parents=True, exist_ok=True)
@@ -410,7 +427,7 @@ def main():
     config = provision_studio(config, shared, discord.call, lambda method, path, body=None: call(session, method, path, body), studio_webhook, time.sleep, save_shared, save)
     config = deployment_settings(config, private, project_dir)
     write_json(project_dir / (slug + '.json'), config)
-    if not args.no_start:
+    if not args.no_start and os.environ.get('BACKROOM_SUPERVISED') != '1':
         pid = ROOT / '.switch-runtime/project-state' / slug / 'desk.pid'
         from block1_runtime import pid_is_ours
         if not pid_is_ours(pid, str(project_dir / (slug + '.json'))):

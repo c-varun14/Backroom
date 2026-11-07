@@ -18,6 +18,8 @@ try:
         print('No identity was linked.');raise SystemExit(0)
     config=json.loads(PUBLIC.read_text());admin,_=owner_session()
     call(admin,'POST',f'/gateway/collaborations/{config["bridgeId"]}/identities',{'external_user_id':user_id,'username':member['username']})
+    config['discordOwnerId'] = user_id
+    PUBLIC.write_text(json.dumps(config, indent=2) + '\n')
     print('Your selected account is linked to the desk owner. No Discord user message or approval was sent.')
 except SetupError as error:
     print(str(error));raise SystemExit(1)

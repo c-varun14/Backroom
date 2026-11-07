@@ -33,6 +33,7 @@ studio-kit/video/artifacts/
 .env.*
 !.env.example
 !.env.template
+!.env.required
 auth.json
 credentials.json
 .credentials.json

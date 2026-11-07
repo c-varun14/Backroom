@@ -1,3 +1,5 @@
+import {keyNames, requiredKeys, MissingKeysError} from "./app-keys";
+export {MissingKeysError} from "./app-keys";
 import {readFileSync} from "node:fs";
 import type { ManagedDeployer, CurrentDeployment } from "../desk/src/types";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
@@ -60,7 +62,7 @@ export class NixDeployer implements ManagedDeployer {
     if (!/^\/[A-Za-z0-9_/-]+$/.test(options.fleetPath) || options.fleetPath.split("/").includes("..")) throw new Error("Invalid fleet path");
   }
   private config(project: string) {
-    if (!/^[a-z][a-z0-9-]{0,23}$/.test(project) || !Object.hasOwn(this.projects, project)) throw new Error("Unknown Nix project");
+    if (project === "shared" || !/^[a-z][a-z0-9-]{0,23}$/.test(project) || !Object.hasOwn(this.projects, project)) throw new Error("Unknown Nix project");
     const c = this.projects[project];
     if ([c.serverPort, c.webPort].some(p => !Number.isInteger(p) || p < 1024 || p > 65535 || p === 3210) || c.serverPort === c.webPort) throw new Error("Invalid Nix app ports");
     if (c.domain && !DOMAIN.test(c.domain)) throw new Error("Invalid app domain");
@@ -121,6 +123,33 @@ export class NixDeployer implements ManagedDeployer {
     if (!current) throw new Error("No current Nix deployment");
     await this.health(current.url);
   }
+  async declaredKeys(project: string, commitSha: string): Promise<string[]> {
+    const c = this.config(project);
+    if (!SHA.test(commitSha)) throw new Error("Exact commit SHA required");
+    const repo = resolve(c.repoPath);
+    const sha = (await this.checked({args:["git", "-C", repo, "rev-parse", "--verify", commitSha + "^{commit}"]})).stdout.trim();
+    if (sha !== commitSha) throw new Error("Commit mismatch");
+    const listing = (await this.checked({args:["git", "-C", repo, "ls-tree", "--name-only", commitSha, "--", ".env.required"]})).stdout.trim();
+    if (!listing) return [];
+    if (listing !== ".env.required") throw new Error("Invalid key declaration");
+    return requiredKeys((await this.checked({args:["git", "-C", repo, "show", `${commitSha}:.env.required`]})).stdout);
+  }
+  async missingKeys(project: string, names: string[]): Promise<string[]> {
+    this.config(project);
+    const safe = keyNames(names);
+    const result = await this.command({host:this.options.deployHost,args:["backroom-env", "check", project, ...safe]});
+    if (result.code === 0 && !result.stdout.trim()) return [];
+    if (result.code !== 3) throw new Error("Keys check failed; diagnostics withheld");
+    const missing = result.stdout.trim().split("\n").map(line=>/^missing: ([A-Za-z_][A-Za-z0-9_]*)$/.exec(line)?.[1]);
+    if (!missing.length || missing.some(n=>!n || !safe.includes(n))) throw new Error("Keys check failed; diagnostics withheld");
+    return keyNames(missing as string[]);
+  }
+  async preflightKeys(project: string, commitSha: string): Promise<string[]> {
+    const names = await this.declaredKeys(project, commitSha);
+    const missing = await this.missingKeys(project, names);
+    if (missing.length) throw new MissingKeysError(missing);
+    return names;
+  }
   async deploy(input: { project: string; commitSha: string; intentId: string }): Promise<void> {
     // Explicit fields only: neither untrusted extra fields nor branch names enter fleet.
     const { project, commitSha, intentId } = input;
@@ -138,6 +167,7 @@ export class NixDeployer implements ManagedDeployer {
         throw new Error("Intent already attempted; inspect failed or interrupted release before issuing a new intent");
       }
       if (Object.values(state.intents).some(i => ["preparing", "activating", "uncertain"].includes(i.status))) throw new Error("Interrupted Nix release requires operator reconciliation");
+      await this.preflightKeys(project, commitSha);
       state.intents[intentKey] = { commitSha, status: "preparing" };
       await this.save(project, state);
       let owned = false, activating = false, activated = false, previousClosure = "";
@@ -151,6 +181,7 @@ export class NixDeployer implements ManagedDeployer {
         if (!settings.configured || !SHA.test(settings.nixpkgsRevision) || settings.nixpkgsRevision !== metadata.nixpkgsRevision || !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(settings.deployIp) || settings.deployIp.split(".").some((n: string) => Number(n) > 255)) throw new Error("Fleet host settings and exact nixpkgs pin must be configured first");
         const domain = c.domain ?? `${project}.${settings.deployIp.replaceAll(".", "-")}.sslip.io`;
         if (!DOMAIN.test(domain)) throw new Error("Invalid app domain");
+        if (domain === `keys.${settings.deployIp.replaceAll(".", "-")}.sslip.io`) throw new Error("App domain must preserve the private keys hostname");
         const url = "https://" + domain;
         const repo = resolve(c.repoPath);
         const sha = (await this.checked({ args: ["git", "-C", repo, "rev-parse", "--verify", commitSha + "^{commit}"] })).stdout.trim();

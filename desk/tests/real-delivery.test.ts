@@ -196,7 +196,7 @@ test('Send to client stops on approval refusal or send gate refusal and refuses 
 test('smallChange protects release-sensitive paths and rejects oversized or invalid diffs',()=>{
  const eligible=(files:string[],linesChanged=20,ticketKind='bug')=>smallChange({files,linesChanged,ticketKind});
  expect(eligible(['apps/web/src/routes/contact.svelte'])).toBe(true);expect(eligible(['styles/main.css'],200,'change')).toBe(true);
- for(const path of ['src/auth.ts','src/authMiddleware.ts','src/authorization/check.ts','src/session.ts','permissions/check.ts','src/permissionChecks.ts','billing.ts','payments/price.ts','src/stripe.ts','src/checkout.ts','database/schema.ts','src/schema.ts','migrations/001.sql','drizzle.config.ts','prisma/schema.prisma','src/db.ts','src/models/order.ts','pnpm-lock.yaml','bun.lockb','nested/package.json','package-lock.json','flake.nix','.github/workflows/build.yml','src/env.ts','.env.example','src/environment-schema.ts','src/envSchema.ts']){
+ for(const path of ['src/auth.ts','src/authMiddleware.ts','src/authorization/check.ts','src/session.ts','permissions/check.ts','src/permissionChecks.ts','billing.ts','payments/price.ts','src/stripe.ts','src/checkout.ts','database/schema.ts','src/schema.ts','migrations/001.sql','drizzle.config.ts','prisma/schema.prisma','src/db.ts','src/models/order.ts','pnpm-lock.yaml','bun.lockb','nested/package.json','package-lock.json','flake.nix','.github/workflows/build.yml','src/env.ts','.env.example','src/environment-schema.ts','src/envSchema.ts','.env.required']){
   expect(eligible([path])).toBe(false);
  }
  expect(PROTECTED_PATHS).toHaveLength(8);
@@ -375,3 +375,18 @@ test('a review of an older commit is ignored, approves nothing and does not stop
  expect((f.loop as any).get('reviewVerdict')??null).toBeNull();
 });
 
+
+
+test('keys: eligible small change waits and resumes once through the existing automatic checks',async()=>{
+ const f=await automaticFixture();let missing=['TOKEN'];
+ f.deployer.declaredKeys=async(_project:string,sha:string)=>{expect(sha).toBe('b'.repeat(40));return ['TOKEN'];};
+ f.deployer.missingKeys=async()=>missing;
+ await f.loop.handle(f.verdict);expect(f.deployments).toHaveLength(0);expect(f.loop.keys.get().waiting.kind).toBe('small');
+ missing=[];await f.loop.tick();await f.loop.tick();await f.loop.handle(f.verdict);
+ expect(f.deployments).toEqual(['b'.repeat(40)]);expect(f.posts.filter(p=>p.room==='client-room')).toHaveLength(1);expect(f.loop.state.get(f.config.projectId).stages.build.approvals).toEqual(['automatic']);
+});
+test('keys: moved small change cancels wait without deploying or sending',async()=>{
+ const f=await automaticFixture();let missing=['TOKEN'];f.deployer.declaredKeys=async()=>['TOKEN'];f.deployer.missingKeys=async()=>missing;
+ await f.loop.handle(f.verdict);(f.loop as any).git=(...args:string[])=>args[0]==='status'?'':'c'.repeat(40);missing=[];await f.loop.tick();
+ expect(f.deployments).toHaveLength(0);expect(f.posts.filter(p=>p.room==='client-room')).toHaveLength(0);expect(f.loop.keys.get().waiting).toBeNull();
+});

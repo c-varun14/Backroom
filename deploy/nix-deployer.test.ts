@@ -20,6 +20,8 @@ class Fake {
   failEndOnce = false;
   wrongPin = false;
   healthBody = "";
+  required = "";
+  missing: string[] = [];
   lockfile = "fictional lockfile\n";
   current = oldClosure;
   previous = oldClosure;
@@ -30,10 +32,12 @@ class Fake {
     const fail = () => ({ code: 1, stdout: "", stderr: "fictional diagnostic must stay private" });
     if (a[0] === "git") {
       if (a.includes("rev-parse")) return ok(a.at(-1)!.slice(0, 40));
-      if (a.includes("show")) return ok(this.lockfile);
+      if (a.includes("ls-tree")) return ok(this.required ? ".env.required" : "");
+      if (a.includes("show")) return ok(a.at(-1)!.endsWith(":.env.required") ? this.required : this.lockfile);
       if (a.includes("archive")) return { ...ok(), bytes: new TextEncoder().encode("fictional exact-commit tar") };
       throw new Error("Unexpected git mutation");
     }
+    if (a[0] === "backroom-env") return this.missing.length ? {code:3,stdout:this.missing.map(n=>"missing: "+n).join("\n"),stderr:""} : ok();
     if (a[0] === "test") return fail();
     if (a[0] === "cat") {
       if (a[1] === "hosts/settings.json") return ok(JSON.stringify({ configured: true, deployIp: "192.0.2.10", nixpkgsRevision: first }));
@@ -97,7 +101,7 @@ test("Nix: a failed build never contacts or activates the target and retains cur
   await expect(d.deploy(input(second, "failed-build"))).rejects.toThrow("previous deployment retained");
   expect(await d.current("sample")).toEqual(current);
   expect(activates(f)).toHaveLength(0); expect(rollbacks(f)).toHaveLength(0);
-  expect(f.calls.some(c => c.host === "root@deploy.example.test")).toBe(false);
+  expect(f.calls.some(c => c.host === "root@deploy.example.test" && c.args[0] !== "backroom-env")).toBe(false);
   expect(f.calls.some(c => c.args[1] === "scripts/entry.py" && c.args[2] === "restore")).toBe(true);
 }));
 
@@ -184,4 +188,26 @@ test("Nix: cleanup failure after health rolls back and restores persisted curren
   f.calls = []; f.failEndOnce = true;
   await expect(d.deploy(input(second, "failed-cleanup"))).rejects.toThrow("previous deployment retained");
   expect(await d.current("sample")).toEqual(previous); expect(rollbacks(f)).toHaveLength(1);
+}));
+
+
+test("Nix: exact-commit keys block before any fleet change/build and retry the same intent", async () => fixture(async (d,f) => {
+  f.required = "# fictional declaration\nPOLAR_ACCESS_TOKEN\n"; f.missing = ["POLAR_ACCESS_TOKEN"];
+  await expect(d.deploy(input())).rejects.toMatchObject({name:"MissingKeysError",names:["POLAR_ACCESS_TOKEN"]});
+  expect(f.calls.find(c=>c.args.includes("show"))!.args.at(-1)).toBe(first+":.env.required");
+  expect(f.calls.some(c=>["python3","nix","nixos-rebuild"].includes(c.args[0]))).toBe(false);
+  expect(f.writes).toHaveLength(0);
+  f.missing=[]; await d.deploy(input()); expect((await d.current("sample"))?.commitSha).toBe(first);
+}));
+test("Nix: shell names refused before helper and missing declaration still checks empty names", async () => fixture(async(d,f)=>{
+  f.required="TOKEN;id"; await expect(d.deploy(input())).rejects.toThrow("Invalid required key name");
+  expect(f.calls.some(c=>c.args[0]==="backroom-env")).toBe(false);
+  f.calls=[]; f.required=""; await d.deploy(input());
+  expect(f.calls.find(c=>c.args[0]==="backroom-env")!.args).toEqual(["backroom-env","check","sample"]);
+}));
+
+test("Nix: apps cannot claim the private keys hostname", async()=>fixture(async(d,f,_root,config)=>{
+  config.sample.domain="keys.192-0-2-10.sslip.io";
+  await expect(d.deploy(input())).rejects.toThrow("diagnostics withheld");
+  expect(f.archives).toHaveLength(0);expect(f.writes).toHaveLength(0);expect(activates(f)).toHaveLength(0);
 }));

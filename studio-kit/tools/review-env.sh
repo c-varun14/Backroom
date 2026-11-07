@@ -161,7 +161,7 @@ chmod 700 "$runtime/run"
 run() { env -i PATH="$PATH" HOME="$HOME" "$runtime/run" "$@"; }
 # Read only our generated configuration, not any workspace .env files.
 source "$runtime/config.sh"
-if command -v docker >/dev/null; then
+if [[ "${BACKROOM_REVIEW_BACKEND:-auto}" != local ]] && command -v docker >/dev/null; then
   container=backroom-review-${key:0:12}-$(basename "$runtime" | cut -d. -f2)
   printf '%s\n' "$container" > "$runtime/container"
   # An env file keeps the throwaway DB password out of argv and process listings.
