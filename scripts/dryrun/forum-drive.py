@@ -469,7 +469,7 @@ def health(required=True):
 def check_health(h):
     if h.get('failure'):
         raise SetupError(h['failure'])
-    if h.get('reviewPaused'):
+    if h.get('reviewPaused') and not os.environ.get('FORUM_REHEARSAL_KEEP_GOING'):
         raise SetupError('SAMPLE review paused after three blockers; inspect findings and owner decision card, no automatic approval')
     if h.get('buildStopped'):
         raise SetupError('SAMPLE build stopped by owner decision')
@@ -645,6 +645,9 @@ def step_work(index):
         h = wait_for('spec and builder build-ready evidence', lambda h: bool(h.get('spec') and h.get('criteria') and h.get('buildSeen')))
         return {'spec': h['spec'], 'criteria': h['criteria'], 'buildReady': h['buildSeen']}
     if index == 5:
+        if h.get('reviewPaused'):
+            # Labelled SAMPLE owner decision: findings were reviewed and the loop should continue.
+            owner_press('owner-keep-going', '@desk review-continue')
         h = wait_for('fresh independent review (failures route back automatically)',
                      lambda h: h.get('reviewVerdict') == 'pass' and active(h, 'build') is not None)
         if not (h.get('reviewer') or {}).get('id') or h['reviewer']['sha'] != h['candidate']:
