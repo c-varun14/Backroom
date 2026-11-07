@@ -275,3 +275,17 @@ migration failure: cleanup/down PASS; generated credentials kept out of test out
 ```
 
 Position: both gaps implemented and requested checks complete. Real Postgres provisioning, dependency installation and application login were not exercised against an actual product in this session; the additional lifecycle check used mocks. No real Switch/Discord server was contacted, no `.secrets/` directory was read, no repository commits were made, and `desk/src/gate.ts` is unchanged.
+
+## Overnight result (Nov 7)
+
+**Works end to end.** Real agents took a SAMPLE Phase through all seven rehearsal steps on the real stack, and the reviewed commit runs live at https://base-demo.98-91-25-101.sslip.io/request-a-quote. Owner and client presses in the rehearsal were labelled SAMPLE fixtures, not real people.
+
+Live checks on the deployment server: `/ready` confirms the schema matches the release, a real form submit stored one row in Postgres, a normal user gets 403 on admin data, the hub refuses unsigned calls with 401, a 1.5 MB body gets 413, sign-in rate limits at 20 attempts, and the sandbox exposure score is 1.4.
+
+Real failures found only by running it, all fixed: session cookie lost on first sign-in; migration history moved so a redeploy replayed everything; review results for older commits crashed the loop; approved scope changes never reached the reviewer; reviewers had no test environment; builders had no browser and could stall silently; a Docker-era file was still required.
+
+Model note: Luna handled contained tasks well, but stopped early twice on cross-cutting wiring, so that work moved to Sol.
+
+**Not proven:** a press from a real client account, the Start a project button, an owner press inside a forum post, the GitHub layer against real GitHub, and `NixDeployer` run by desk. The deploys used a manual relay through the laptop.
+
+**Needs Varun:** allow pushing to private WebbyWasp repos, allow the dev server to reach the deployment server, apply the AGENTS.md rule change, approve lessons, and log in on `backroom-dev`.
