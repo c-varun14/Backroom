@@ -321,7 +321,10 @@ export class RealStagesLoop extends StagesLoop {
     this.invalidate("build");this.set("candidate",sha);this.set("reviewVerdict",null);
     const round=(this.get("reviewRound")??0)+1;
     if(this.real.clientSurface!=='forum')this.set("reviewRound",round);
-    const reviewer=await this.realControl.freshReviewer(round);
+    // Independence means a new session every time, even when a restarted review keeps its round.
+    const attempt=this.real.clientSurface==='forum'?(this.get('reviewAttempt')??0)+1:round;
+    if(this.real.clientSurface==='forum')this.set('reviewAttempt',attempt);
+    const reviewer=await this.realControl.freshReviewer(attempt);
     this.real.reviewerId=reviewer.id;this.real.reviewerName=reviewer.name;this.real.reviewerIds.push(reviewer.id);
     this.set("reviewer",{...reviewer,round,sha,sources,generation:this.get("assignmentGeneration")});
     this.github?.assignReview(this.ticket(),sha,reviewer.id,round);
