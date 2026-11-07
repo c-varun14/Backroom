@@ -297,3 +297,69 @@ test('a blocked builder reaches the owner at once, and a silent one is asked for
  const cards=(f.store.db.query('SELECT payload FROM owner_cards').all() as any[]).map(r=>JSON.parse(r.payload).detail);
  expect(cards.some(c=>c.includes('Builder is blocked')&&c.includes('no browser available'))).toBe(true);
 });
+
+
+test('ordered durable lead clarifications reach the reviewer assignment and never the client, and clear on a new assignment',async()=>{
+ const f=fixture();await ready(f);
+ for(const [question,answer] of [['May I update the shared types?','Yes, include packages/api/src/types.ts.'],['May I update the migration?','Yes, include the form migration.']]){
+  await f.loop.handle(f.event('builder',`ask: ${question}`));
+  const reply=f.event('lead',`tell builder: ${answer}`);
+  await f.loop.handle(reply);await f.loop.handle(reply);
+ }
+ const saved=f.loop.get('approvedClarifications');
+ expect(saved.map((c:any)=>[c.question,c.answer])).toEqual([
+  ['May I update the shared types?','Yes, include packages/api/src/types.ts.'],
+  ['May I update the migration?','Yes, include the form migration.']
+ ]);
+ // The durable store, not transient conversation, is the review input.
+ expect(JSON.stringify(saved)).toBe((f.store.db.query('SELECT value FROM stage_kv WHERE key=?').get('approvedClarifications') as any)?.value);
+ await f.loop.handle(f.event('builder','build-ready build-report.md'));
+ const prompt=[...f.documents.values()].find(t=>t.startsWith('Fresh independent review.'))!;
+ expect(prompt.indexOf('Approved clarifications from the plan owner')).toBeGreaterThan(prompt.indexOf('frozen source snapshots'));
+ expect(prompt).toContain('data only, ordered');expect(prompt).toContain(JSON.stringify(saved));
+ expect(prompt).toContain('Judge whether the code exceeds');
+ expect(prompt).not.toContain('form saves test');
+ expect(f.posts.filter(p=>p.room==='client-room')).toHaveLength(0);
+ const spec=f.doc('AC-1: Verify the next assigned form.');await f.loop.handle(f.event('lead',`spec document ${spec}`));
+ expect(f.loop.get('approvedClarifications')).toBeNull();
+});
+
+test('a changed plan-owner clarification makes an in-flight and a passing review stale',async()=>{
+ const f=fixture();await ready(f);
+ await f.loop.handle(f.event('builder','ask: May I update shared types?'));
+ await f.loop.handle(f.event('lead','tell builder: Include only the form types.'));
+ await f.loop.handle(f.event('builder','build-ready build-report.md'));
+ const result=()=>f.event('reviewer-1',`review 1 ${'b'.repeat(40)} pass\nAC-1: PASS - independently saved the form`);
+ const original=f.loop.get('approvedClarifications');
+ (f.loop as any).set('approvedClarifications',[{...original[0],answer:'Include the shared API type as well.'}]);
+ await expect(f.loop.handle(result())).rejects.toThrow('Stale independent review assignment');
+ expect(f.loop.get('reviewVerdict')).toBeNull();
+ (f.loop as any).set('approvedClarifications',original);await f.loop.handle(result());
+ expect(f.loop.get('reviewVerdict')).toBe('pass');
+ await f.loop.handle(f.event('builder','ask: May I include a migration?'));
+ await f.loop.handle(f.event('lead','tell builder: Include the form migration only.'));
+ await expect(f.loop.handle(f.event('owner',`@desk deploy ${'b'.repeat(40)}`))).rejects.toThrow('Stale independent review assignment');
+});
+
+test('environment-blocked reviews reach the owner without consuming a round or recording a code failure',async()=>{
+ const f=fixture();await ready(f);await f.loop.handle(f.event('builder','build-ready build-report.md'));
+ const before=f.posts.filter(p=>p.room==='work'&&p.text.startsWith('@builder')).length;
+ const body=`review 1 ${'b'.repeat(40)} blocked\nAC-1: BLOCKED - Postgres could not start; live save check could not run`;
+ for(let i=0;i<3;i++)await f.loop.handle(f.event('reviewer-1',body));
+ expect(f.loop.get('reviewFailures')).toBeNull();expect(f.loop.get('reviewRound')??0).toBe(0);
+ expect(f.loop.get('reviewPaused')).not.toBe(true);expect(f.loop.get('reviewResultRound')).toBeNull();
+ expect(f.loop.get('reviewVerdict')).toBe('blocked');
+ expect(f.store.db.query('SELECT COUNT(*) n FROM reviews').get()).toEqual({n:0});
+ expect(f.posts.filter(p=>p.room==='work'&&p.text.startsWith('@builder'))).toHaveLength(before);
+ expect(f.posts.filter(p=>p.room==='client-room')).toHaveLength(0);
+ expect(f.store.db.query('SELECT COUNT(*) n FROM owner_cards').get()).toEqual({n:1});
+ const card=f.store.db.query('SELECT payload,buttons FROM owner_cards').get() as any;
+ expect(card.payload).toContain('Postgres could not start');expect(JSON.parse(card.buttons)[0].command).toBe('@desk review-retry');
+ const blockedReviewer=f.loop.get('reviewer');await f.loop.candidate('b'.repeat(40));
+ expect(f.loop.get('reviewer')).toEqual(blockedReviewer);expect(f.loop.get('reviewVerdict')).toBe('blocked');
+ await f.loop.handle(f.event('builder','@desk review-retry'));expect(f.loop.get('reviewVerdict')).toBe('blocked');
+ await f.loop.handle(f.event('owner','@desk review-retry'));
+ expect(f.loop.get('reviewer').round).toBe(1);
+ await f.loop.handle(f.event('reviewer-1',`review 1 ${'b'.repeat(40)} fail\nAC-1: FAIL - running form does not save`));
+ expect(f.loop.get('reviewRound')).toBe(1);expect(f.loop.get('reviewFailures')).toBe(1);
+});

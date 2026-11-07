@@ -230,3 +230,48 @@ output=""
 Implementation and offline checks are finished. Actual public-link delivery, Discord/Switch integration and human interaction remain for Claude's live checks. The local Compose adapter still yields loopback URLs; those correctly receive no unattended client delivery. `bash demo.sh` was left for Claude as required by the spec; its documented path reads generated private demo state and is unsuitable under this turn's no-secrets-read constraint.
 
 No dependencies, commits, pushes, live AI agents, Discord calls, real Switch calls or .secrets/ reads were made. Gate rules were unchanged except removing `sendBrief`. Unrelated untracked spec files were left untouched. Final position: parts 4–6 complete; ready for Claude's code review, demo and live checks.
+
+## Rehearsal gaps — approved clarifications and a repeatable review environment
+
+Implemented both requested forum workflow fixes. The pre-existing changes to `reports/rehearsal-forum.md` were left untouched.
+
+Lead's valid `tell builder:` answers now persist as an ordered list of question/answer pairs in the durable assignment state, with event IDs to prevent duplicate entries during event recovery. Each independent assignment includes **Approved clarifications from the plan owner**, marked as ordered data after the frozen sources. Those clarifications participate in source freshness checks, so additions or edits invalidate an earlier review, including at deployment. New build assignments clear the list. Reviewers still judge excess scope and receive neither builder reports nor room conversation; clarifications never go to the client.
+
+Added `studio-kit/tools/review-env.sh <workspace> [up|down|status]`. It exports committed regular files into a private temporary directory without opening `.secrets` or `.env` blobs, installs dependencies there, selects free loopback ports, provisions its own disposable Postgres using Docker when available or PATH `initdb`/`pg_ctl` otherwise, runs `pnpm --dir packages/db db:migrate`, and launches API/web services. It signs up a fictional owner and normal user through `/api/auth/sign-up/email`, then promotes only the owner through SQL using app-base's `owner` role. It emits one private JSON line containing URLs, generated credentials, DATABASE_URL, source SHA and restart/down commands. Status and repeated up reuse healthy services; teardown targets only its own processes/container and removes the database volume. Failure cleanup retains private diagnostics without printing their contents.
+
+The implementation reads app-base's checked-in env schemas, server configuration/listener, Vite proxy, auth signup configuration, roles and database migration scripts. Only the disposable copy receives listener/proxy port wiring; the supplied workspace stays read-only. Generated services start with a small environment that excludes inherited provider credentials. The Unix socket directory stays short enough for local Postgres.
+
+The Better-T-Stack review profile and reviewer playbook require this tool for live checks. Forum assignment documents resolve the actual Backroom tool path and authorize temporary review artifacts. Checks that cannot run are BLOCKED with reasons. `review <round> <sha> blocked` creates one owner card with Retry review, records no gate/GitHub code failure, returns no findings to the builder, and consumes no completed review round. Repeated blocked results do not create repeated cards; polling does not automatically provision another reviewer. Owner retry uses the same unconsumed round with a fresh reviewer identity. Legacy parsing retains pass/fail only.
+
+Regression coverage in `desk/tests/real-delivery.test.ts` verifies ordered/durable clarifications, duplicate delivery handling, assignment inclusion and client exclusion, clearing on replacement assignment, stale in-flight reviews and deployment refusal after clarification changes, and blocked results without code failures or round consumption, including owner-only retry.
+
+Final required desk command and actual output:
+
+```text
+cd desk && bun test
+bun test v1.3.14 (0d9b296a)
+
+ 338 pass
+ 0 fail
+ 1582 expect() calls
+Ran 338 tests across 16 files. [1.64s]
+```
+
+Final shell syntax/whitespace/protected-file checks (actual captured result):
+
+```text
+bash -n studio-kit/tools/review-env.sh && git diff --check && git diff --exit-code -- desk/src/gate.ts
+exit_code=0
+output=""
+```
+
+Additional isolated lifecycle verification used a temporary harness with mocked git, Docker, Postgres and pnpm commands, plus actual localhost HTTP listeners. It verifies both backend branches, signup requests, promotion/migration calls, environment scrubbing, exclusion of secret/env blobs, workspace cleanliness, idempotent up/down, service restarts, and migration-failure cleanup. This command needed the approved localhost-listener sandbox escalation; its first sandboxed attempt was denied socket creation. An intermediate run exposed failure diagnostics being redirected into the private command log; the script now preserves a dedicated diagnostic descriptor. Final command and actual output:
+
+```text
+python3 /tmp/backroom-review-env-smoke.py
+docker: up/status/idempotent up/restart API/restart web/down PASS; no source writes or excluded blob reads
+local: up/status/idempotent up/restart API/restart web/down PASS; no source writes or excluded blob reads
+migration failure: cleanup/down PASS; generated credentials kept out of test output
+```
+
+Position: both gaps implemented and requested checks complete. Real Postgres provisioning, dependency installation and application login were not exercised against an actual product in this session; the additional lifecycle check used mocks. No real Switch/Discord server was contacted, no `.secrets/` directory was read, no repository commits were made, and `desk/src/gate.ts` is unchanged.
