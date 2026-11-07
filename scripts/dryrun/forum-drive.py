@@ -722,7 +722,15 @@ def resume():
     owner = login('owner')
     current = health(False).get('reviewer', {}).get('id') if health(False).get('reviewer') else None
     for aid in [c['frontId'], c['leadId'], c['builderId']] + ([current] if current else []):
-        scoped_call(owner, 'PATCH', '/gateway/management/agents/' + aid, {'desired_state': 'running'})
+        # A restarted controller takes a moment to report its providers.
+        for attempt in range(40):
+            try:
+                scoped_call(owner, 'PATCH', '/gateway/management/agents/' + aid, {'desired_state': 'running'})
+                break
+            except SetupError as error:
+                if 'provider_not_installed' not in str(error) or attempt == 39:
+                    raise
+                time.sleep(3)
     start('runtime', ['bun', '--no-env-file', str(RUNTIME)], str(RUNTIME))
     wait_for('SAMPLE client/studio connections', lambda h: h['connectedRooms'] == 2)
     d = driver()
