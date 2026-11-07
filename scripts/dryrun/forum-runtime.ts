@@ -135,7 +135,7 @@ async function main(){
       await originalHandle(event);
       if(loop.get('buildReady')&&loop.get('candidate'))loop.set('sampleBuildSeen',{sha:loop.get('candidate'),at:new Date().toISOString()});
     }catch(error){
-      if(process.env.BACKROOM_DEBUG)console.error('runtime failure:',String((error as Error)?.message).slice(0,200),String((error as Error)?.stack).split('\n').slice(1,5).map(l=>l.trim().split('/').pop()).join(' < '));fail(error instanceof Error&&error.message==='SAMPLE usage limit; stop without fallback'?error.message:'SAMPLE loop operation failed; details withheld');throw error;
+      writeFileSync(join(state,'last-error.txt'),String((error as Error)?.message).slice(0,200)+' @ '+String((error as Error)?.stack).split('\n').slice(1,6).map(l=>l.trim().split('/').pop()).join(' < ')+'\n');fail(error instanceof Error&&error.message==='SAMPLE usage limit; stop without fallback'?error.message:'SAMPLE loop operation failed; details withheld');throw error;
     }finally{health();}
   };
   function health(){

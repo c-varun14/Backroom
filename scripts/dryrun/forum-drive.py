@@ -711,6 +711,7 @@ def resume():
     # Health written by a runtime that has since stopped says nothing about this run.
     if not pid_running('runtime', str(RUNTIME)):
         (STATE / 'health.json').unlink(missing_ok=True)
+        (STATE / 'failure.json').unlink(missing_ok=True)
     check_health(health(False))
     verify()
     roles()
