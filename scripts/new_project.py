@@ -160,7 +160,9 @@ def provision(name, purpose, client_id, slug, base, discord, switch, create_agen
         remember('discordClientRoleId', role['id'])
     if not c.get('discordForumId'):
         # The bot's member overwrite MUST be in the creation call, before any deny.
-        body = {'name': slug, 'type': 15, 'topic': purpose[:1024], 'permission_overwrites': [
+        layout = ROOT / '.switch-runtime/discord-layout.json'
+        parent = json.loads(layout.read_text()).get('projectsCategory') if layout.exists() else None
+        body = {'name': slug, 'type': 15, 'topic': purpose[:1024], **({'parent_id': parent} if parent else {}), 'permission_overwrites': [
             {'id': guild, 'type': 0, 'allow': '0', 'deny': str(VIEW)},
             {'id': c['discordBotId'], 'type': 1, 'allow': str(TALK | MANAGE_THREADS), 'deny': '0'},
             {'id': c['discordClientRoleId'], 'type': 0, 'allow': str(TALK), 'deny': '0'},
