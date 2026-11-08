@@ -63,15 +63,39 @@ class LaneDTests(unittest.TestCase):
                 sync.ROOT = old_root
 
     def test_canary_reports_first_injected_failure(self):
-        for failed in canary.HOPS:
-            calls = []
-            checks = {hop: (lambda hop=hop: calls.append(hop) or hop != failed)
-                      for hop in canary.HOPS}
+        for failed in canary.SERVER_HOPS:
+            calls, lines = [], []
+            def check(hop):
+                calls.append(hop)
+                return hop != failed, 'fictional detail'
             with self.subTest(failed=failed):
-                with contextlib.redirect_stdout(io.StringIO()):
-                    self.assertFalse(canary.run_canary('/tmp', checks))
-                self.assertEqual(calls, list(canary.HOPS[:canary.HOPS.index(failed) + 1]))
+                self.assertFalse(canary.run_canary(check, lambda hop: (True, 'probe'), out=lines.append))
+                self.assertEqual(calls, list(canary.SERVER_HOPS[:canary.SERVER_HOPS.index(failed) + 1]))
+                self.assertEqual(lines[-1], 'FAIL first broken hop: ' + failed)
 
+    def test_canary_never_passes_unrun_conversation_hops(self):
+        lines = []
+        self.assertTrue(canary.run_canary(lambda hop: (True, 'ok'), lambda hop: (None, 'needs room'), out=lines.append))
+        self.assertIn('NOT RUN Discord door — needs room', lines)
+        self.assertEqual(lines[-1], 'PASS server path (conversation hops not run)')
+        self.assertFalse(any(line.startswith('PASS Discord door') for line in lines))
+        lines.clear()
+        self.assertFalse(canary.run_canary(lambda hop: (True, 'ok'), lambda hop: (None, 'needs room'),
+                                           require_conversation=True, out=lines.append))
+        self.assertTrue(lines[-1].startswith('FAIL conversation hops not run'))
+        lines.clear()
+        self.assertFalse(canary.run_canary(lambda hop: (True, 'ok'), lambda hop: (hop != 'lead reply', 'probe'), out=lines.append))
+        self.assertEqual(lines[-1], 'FAIL first broken hop: lead reply')
+
+    def test_canary_hop_errors_are_failures_and_every_server_hop_has_a_probe(self):
+        lines = []
+        def broken(hop):
+            raise OSError('fictional /srv/secret-path')
+        self.assertFalse(canary.run_canary(broken, out=lines.append))
+        self.assertEqual(lines[0], 'FAIL Switch — OSError')
+        for hop in canary.SERVER_HOPS:
+            name = 'hop_' + canary.re.sub(r'[^a-z]+', '_', hop.lower()).strip('_')
+            self.assertTrue(callable(getattr(canary.Server, name, None)), hop)
 
 if __name__ == '__main__':
     unittest.main()
