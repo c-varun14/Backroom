@@ -291,6 +291,40 @@ class ProvisionTests(unittest.TestCase):
         self.assertNotIn('S_ISUID', source)
         self.assertNotIn('0o4', source)
 
+    def test_build_task_refreshes_existing_lead_and_builder_instructions(self):
+        # Live 2026-11-08: Cedar's day-old lead and builder still ran yesterday's
+        # playbook and kept hitting problems already fixed for new projects.
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        previous = os.umask(0o022)
+        try:
+            setup = load('real_setup', 'scripts/real_setup.py')  # sets a private umask on import
+        finally:
+            os.umask(previous)
+        config = {'leadId': 'lead-1', 'builderId': 'builder-1', 'workRoomId': 'room', 'clientSurface': 'forum',
+                  'projectId': 'sample', 'workspace': '/srv/fictional', 'buildControllerId': 'controller'}
+        agents = [{'agent_id': 'lead-1', 'definition': {'instructions': 'old lead', 'provider': 'claude'}},
+                  {'agent_id': 'builder-1', 'definition': {'instructions': 'old builder', 'provider': 'codex', 'model': 'm'}}]
+        calls = []
+        def call(_session, method, path, body=None):
+            calls.append((method, path, body))
+            return agents if method == 'GET' else {}
+        with patch.object(setup, 'call', side_effect=call), patch.object(setup, 'real_instructions', side_effect=lambda role, c: 'current ' + role):
+            self.assertEqual(setup.refresh_instructions(None, config), ['lead', 'builder'])
+            patches = [c for c in calls if c[0] == 'PATCH']
+            self.assertEqual(patches[1], ('PATCH', '/gateway/management/agents/builder-1',
+                                          {'definition': {'instructions': 'current builder', 'provider': 'codex', 'model': 'm'}}))
+            agents[0]['definition']['instructions'] = 'current lead'
+            agents[1]['definition']['instructions'] = 'current builder'
+            calls.clear()
+            self.assertEqual(setup.refresh_instructions(None, config), [])
+            self.assertFalse([c for c in calls if c[0] == 'PATCH'])
+            agents.pop()
+            with self.assertRaises(setup.SetupError):
+                setup.refresh_instructions(None, config)
+        source = (ROOT / 'scripts/real_setup.py').read_text().split("elif action=='start-builder':", 1)[1].split('elif', 1)[0]
+        self.assertLess(source.index('prepare_builder('), source.index('refresh_instructions('))
+        self.assertLess(source.index('refresh_instructions('), source.index("'desired_state':'running'"))
+
     def test_socket_uses_peer_credentials_and_bounds_input(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = str(Path(temporary) / 'socket')

@@ -151,6 +151,23 @@ def setup():
     print('Real stages configured: lead plus separate non-admin configured builder/reviewer; work room only. No client posts or releases.')
 
 
+def refresh_instructions(s, c):
+    """Existing lead and builder pick up the current studio playbook at each build task.
+    Reviewers are created fresh every round; these two live as long as the project."""
+    agents = {a['agent_id']: a for a in call(s, 'GET', '/gateway/management/agents')}
+    refreshed = []
+    for role, key in (('lead', 'leadId'), ('builder', 'builderId')):
+        agent = agents.get(c.get(key))
+        if agent is None:
+            raise SetupError('Project ' + role + ' agent not found')
+        instructions = real_instructions(role, c)
+        if agent['definition'].get('instructions') != instructions:
+            call(s, 'PATCH', '/gateway/management/agents/' + agent['agent_id'],
+                 {'definition': {**agent['definition'], 'instructions': instructions}})
+            refreshed.append(role)
+    return refreshed
+
+
 def fresh_reviewer(round):
     if not 1<=round<=1000:raise SetupError('Invalid real review round')
     c=json.loads(PUBLIC.read_text());s=lead_session()
@@ -180,6 +197,7 @@ if __name__=='__main__':
         elif action=='start-builder':
             c=json.loads(PUBLIC.read_text());s=lead_session()
             prepare_builder(c, c['workspace'])
+            refresh_instructions(s, c)
             call(s,'PATCH','/gateway/management/agents/'+c['builderId'],{'desired_state':'running'})
         elif action=='reviewer':fresh_reviewer(int(sys.argv[2]))
         elif action=='promote':promote(sys.argv[2])
