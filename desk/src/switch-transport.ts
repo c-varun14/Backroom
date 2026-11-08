@@ -8,7 +8,7 @@ import { approvalTextParts } from "./cards";
 /** Endpoint shape for logs: ids become :id and the query string is dropped. */
 export const switchRoute = (path: string) => path.split('?')[0]
   .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ':id')
-  .replace(/\b(?:sw_|\$)?[A-Za-z0-9_-]{20,}/g, ':id');
+  .replace(/\b(?=[A-Za-z0-9_$-]*\d)[A-Za-z0-9_$-]{20,}/g, ':id');
 
 export class SwitchAPI {
   constructor(readonly base: string, readonly agentId: string, private key: string) {}

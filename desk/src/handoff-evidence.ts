@@ -1,3 +1,4 @@
+import {isProtectedFile} from './file-protection';
 import {createHash, randomUUID} from 'node:crypto';
 import {constants, closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync, unlinkSync, fsyncSync, fchmodSync} from 'node:fs';
 import {join, resolve} from 'node:path';
@@ -77,14 +78,28 @@ export function collectHandoffEvidence(contract: HandoffContract, git: GitRead =
   const flags = ['--no-ext-diff', '--no-textconv', '--no-renames'];
   const changedFiles = git('diff', ...flags, '--name-only', '-z', contract.base, head, '--').split('\0').filter(Boolean);
   const diffText = git('diff', ...flags, '--unified=0', contract.base, head, '--');
+  // Two tree listings instead of four git calls per file: on a 45-file change
+  // the per-file calls blocked desk for ~30s and Switch dropped its connections.
+  // Content is read only for protected files, the only rule that compares it.
+  const tree = (commit: string) => {
+    const entries = new Map<string, {mode: string; type: string; oid: string}>();
+    for (const record of git('ls-tree', '-r', '-z', '--full-tree', commit).split('\0')) {
+      const tab = record.indexOf('\t');
+      if (tab < 0) continue;
+      const [mode, type, oid] = record.slice(0, tab).split(' ');
+      entries.set(record.slice(tab + 1), {mode, type, oid});
+    }
+    return entries;
+  };
+  const trees = {base: tree(contract.base), head: tree(head)};
   const sourceChanges: SourceChange[] = changedFiles.map(file => {
-    const blob = (commit: string) => {
-      const listing = git('ls-tree', '-z', commit, '--', file);
-      if (!listing) return {content:null,oid:null};
-      if (!/^100(?:644|755) blob [a-f0-9]{40}\t/.test(listing)) throw new Error('Non-regular changed source refused.');
-      return {content:git('show', `${commit}:${file}`),oid:listing.split('\t')[0].split(' ')[2]};
+    const blob = (commit: string, entries: typeof trees.base) => {
+      const entry = entries.get(file);
+      if (!entry) return {content:null,oid:null};
+      if (!/^100(?:644|755)$/.test(entry.mode) || entry.type !== 'blob' || !/^[a-f0-9]{40}$/.test(entry.oid)) throw new Error('Non-regular changed source refused.');
+      return {content:isProtectedFile(file) ? git('show', `${commit}:${file}`) : null, oid:entry.oid};
     };
-    const before=blob(contract.base),after=blob(head);
+    const before=blob(contract.base,trees.base),after=blob(head,trees.head);
     return {file,before:before.content,after:after.content,beforeOid:before.oid,afterOid:after.oid};
   });
   return {changedFiles, diffText, sourceChanges, scopeText: contract.scopeText, gitStatus: git('status', '--porcelain')};

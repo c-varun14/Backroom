@@ -28,6 +28,7 @@ test('desk errors keep the HTTP status code, which carries no secret', () => {
 test('Switch errors name the endpoint shape without ids or query', () => {
   expect(switchRoute('/gateway/rooms/206c5581-6b7e-4964-af40-57ec7b8384ed/messages?token=fictional')).toBe('/gateway/rooms/:id/messages');
   expect(switchRoute('/v1/threads/sw_0566fb2c41c958817d13d15a5a138bce/reply')).toBe('/v1/threads/:id/reply');
+  expect(switchRoute('/agents/791d2810-a179-4333-a887-ec7b04f701fb/ops/load_internal_documents')).toBe('/agents/:id/ops/load_internal_documents');
   const lines: string[] = [];
   const original = console.error;
   console.error = (line: string) => lines.push(line);
