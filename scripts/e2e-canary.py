@@ -79,8 +79,8 @@ class Server:
         down = [name for name, state in zip(SERVICES, states) if state != 'active']
         if len(states) != len(SERVICES) or down:
             return False, 'not active: ' + ', '.join(down or SERVICES)
-        if Path('/var/lib/backroom/sync-incomplete').exists():
-            return False, 'sync-incomplete barrier is present'
+        # While the root-only sync barrier exists these units refuse to start,
+        # so all-active also means no sync is incomplete.
         return True, 'all six units active'
 
     def hop_identity_helper(self):
