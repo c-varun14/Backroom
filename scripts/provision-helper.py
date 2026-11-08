@@ -14,8 +14,10 @@ import socketserver
 import stat
 import struct
 import subprocess
+import sys
 import tempfile
 import tomllib
+import traceback
 
 SOCKET = '/run/backroom-provision.sock'
 WORKSPACES = '/srv/backroom/workspaces'
@@ -50,15 +52,21 @@ def directory(path):
     path = Path(path)
     if not path.is_absolute() or '..' in path.parts:
         raise Refused('unsafe-path')
-    fd = os.open('/', DIRECTORY)
     try:
-        for component in path.parts[1:]:
-            next_fd = os.open(component, DIRECTORY, dir_fd=fd)
-            os.close(fd)
-            fd = next_fd
-        yield fd
+        fd = os.open('/', DIRECTORY)
     except OSError:
         raise Refused('unsafe-path') from None
+    try:
+        for component in path.parts[1:]:
+            try:
+                next_fd = os.open(component, DIRECTORY, dir_fd=fd)
+            except OSError:
+                raise Refused('unsafe-path') from None
+            os.close(fd)
+            fd = next_fd
+        # Errors inside the caller's block keep their real type. They are
+        # reported as provision failures, never as a misleading path refusal.
+        yield fd
     finally:
         os.close(fd)
 
@@ -248,6 +256,19 @@ def dispatch(request, uid, gid):
     return doctor(slug)
 
 
+def failure_summary(error):
+    """Error type, errno and the helper line only: no paths, values or input."""
+    frames = traceback.extract_tb(error.__traceback__)
+    where = next((f'{frame.name}:{frame.lineno}' for frame in reversed(frames)
+                  if frame.filename == __file__), 'unknown')
+    code = getattr(error, 'errno', None)
+    return type(error).__name__ + (f' errno={code}' if code else '') + ' at ' + where
+
+
+def log(message):
+    print('provision: ' + message, file=sys.stderr, flush=True)
+
+
 class Handler(socketserver.StreamRequestHandler):
     def handle(self):
         self.connection.settimeout(5)
@@ -259,8 +280,10 @@ class Handler(socketserver.StreamRequestHandler):
             result = dispatch(json.loads(line), uid, gid)
         except Refused as error:
             result = {'ok': False, 'category': str(error), 'output': ''}
-        except Exception:
+            log('refused: ' + str(error))
+        except Exception as error:
             result = {'ok': False, 'category': 'provision-failed', 'output': ''}
+            log('failed: ' + failure_summary(error))
         self.wfile.write(json.dumps(result).encode() + b'\n')
 
 

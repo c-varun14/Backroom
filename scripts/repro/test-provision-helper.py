@@ -220,6 +220,46 @@ class ProvisionTests(unittest.TestCase):
                 script.write_text('print("x" * 20000)\n')
                 self.assertEqual(helper.doctor('sample', str(root / 'workspaces'), timeout=2)['category'], 'doctor-output-limit')
 
+    def test_error_inside_pinned_directory_is_a_failure_not_a_path_refusal(self):
+        # Live 2026-11-08: the service sandbox refused a setgid chmod, and the
+        # helper reported it as unsafe-path, which hid the real cause.
+        with self.fixture() as (root, workspace, home, _):
+            with patch.object(helper.os, 'fchmod', side_effect=PermissionError(1, 'Operation not permitted')):
+                with self.assertRaises(PermissionError):
+                    self.prepare(root, home)
+
+    def test_socket_reports_and_logs_failure_without_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = str(Path(temporary) / 'socket')
+            with helper.Server(path, helper.Handler) as server:
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                errors = io.StringIO()
+                try:
+                    def fail(_slug):
+                        raise PermissionError(1, 'Operation not permitted', '/srv/fictional/secret-path')
+                    with patch.object(helper, 'authorized', return_value=True), patch.object(helper, 'prepare', side_effect=fail), patch.object(helper.sys, 'stderr', errors):
+                        with socket.socket(socket.AF_UNIX) as connection:
+                            connection.connect(path)
+                            connection.sendall(b'{"operation":"prepare-builder","project":"sample"}\n')
+                            data = json.loads(connection.recv(20000))
+                finally:
+                    server.shutdown()
+                    thread.join()
+                self.assertEqual(data, {'ok': False, 'category': 'provision-failed', 'output': ''})
+                self.assertIn('PermissionError errno=1 at dispatch:', errors.getvalue())
+                self.assertNotIn('/srv/fictional', errors.getvalue())
+
+    def test_provision_unit_can_keep_setgid_workspace_modes(self):
+        nix = (ROOT / 'deploy/nixos/dev.nix').read_text()
+        provision = nix.split('systemd.services.backroom-provision', 1)[1]
+        identity = nix.split('systemd.services.backroom-identity', 1)[1].split('systemd.services.', 1)[0]
+        self.assertNotIn('RestrictSUIDSGID = true', provision)
+        self.assertIn('RestrictSUIDSGID = true', identity)
+        source = (ROOT / 'scripts/provision-helper.py').read_text()
+        self.assertNotIn('S_ISUID', source)
+        self.assertNotIn('0o4', source)
+
     def test_socket_uses_peer_credentials_and_bounds_input(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = str(Path(temporary) / 'socket')

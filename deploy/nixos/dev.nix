@@ -201,7 +201,8 @@ in {
       ProtectKernelTunables = true;
       ProtectKernelModules = true;
       ProtectControlGroups = true;
-      RestrictSUIDSGID = true;
+      # No RestrictSUIDSGID here: the helper must keep the setgid bit on shared
+      # workspace directories (2770, plus sticky). It never sets setuid.
       LockPersonality = true;
       StandardOutput = "journal";
       StandardError = "journal";
