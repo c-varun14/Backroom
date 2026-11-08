@@ -325,6 +325,23 @@ class ProvisionTests(unittest.TestCase):
         self.assertLess(source.index('prepare_builder('), source.index('refresh_instructions('))
         self.assertLess(source.index('refresh_instructions('), source.index("'desired_state':'running'"))
 
+    def test_forum_instructions_build_for_every_role(self):
+        # Live 2026-11-08: real_instructions used re without importing it, so a
+        # forum project could not create its fresh reviewer.
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        previous = os.umask(0o022)
+        try:
+            setup = load('real_setup_roles', 'scripts/real_setup.py')
+        finally:
+            os.umask(previous)
+        config = {'clientSurface': 'forum', 'workRoomId': 'room', 'workspace': '/srv/fictional', 'projectId': 'sample',
+                  'leadName': 'lead-sample', 'builderName': 'builder-sample', 'reviewChecklistDocument': 'checklist'}
+        for role in ('front', 'lead', 'builder', 'reviewer'):
+            with self.subTest(role=role):
+                text = setup.real_instructions(role, config)
+                self.assertGreater(len(text), 100)
+                self.assertNotRegex(text, r'\bSAMPLE\b')
+
     def test_socket_uses_peer_credentials_and_bounds_input(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = str(Path(temporary) / 'socket')
