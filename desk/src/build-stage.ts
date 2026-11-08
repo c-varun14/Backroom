@@ -25,17 +25,18 @@ export function formatHandoffFailures(failures: string[]): string {
 /** Pure implementation of every build-ready rule. */
 export function checkBuildHandoff(input: HandoffCheckInput): string[] {
   const failures: string[] = [];
-  if (input.reportName !== 'build-report.md') failures.push('Report path must be build-report.md at the workspace root.');
+  if (input.reportName !== 'build-report.md') failures.push(`Report path must be build-report.md at the workspace root; read "${input.reportName.slice(0, 80)}". Send: build-ready build-report.md`);
   if (input.reportContent === null) failures.push('Missing build-report.md at the workspace root.');
   const report = input.reportContent ?? '';
   const lines = report.split(/\r?\n/);
-  for (const criterion of input.criteria) {
+  // Without a readable report every criterion would also fail; that hides the cause.
+  for (const criterion of input.reportContent === null ? [] : input.criteria) {
     const matches = lines.filter(line => line.startsWith(`${criterion}:`));
     if (matches.length !== 1 || !new RegExp(`^${criterion}: PASS - \\S.*$`).test(matches[0] ?? '')) {
       failures.push(`${criterion} must have exactly one "${criterion}: PASS - <evidence>" line.`);
     }
   }
-  if (input.bug && !/^Reproduction test:\s*\S/im.test(report)) failures.push('Bug report must name a Reproduction test.');
+  if (input.bug && input.reportContent !== null && !/^Reproduction test:\s*\S/im.test(report)) failures.push('Bug report must name a Reproduction test.');
   if (input.verificationFailure) failures.push(input.verificationFailure);
   if (input.gitStatus === undefined) failures.push('Unable to check clean worktree.');
   else if (input.gitStatus.trim()) failures.push('Worktree is not clean.');

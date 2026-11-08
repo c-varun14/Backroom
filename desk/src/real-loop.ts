@@ -771,7 +771,8 @@ export class RealStagesLoop extends StagesLoop {
           if(this.real.clientSurface==='forum'){
             const criteria=this.get('specCriteria') as string[]??[];
             const bug=this.get('ticketKind')==='bug';
-            const relative=body.match(/^build-ready ([^\r\n]+)/)?.[1]?.trim()??'';
+            // The first word is the report path; builders often add a summary after it.
+            const relative=body.match(/^build-ready (\S+)/)?.[1]??'';
             const report=readBuildReport(this.real.workspace,relative);
             if(report!==null&&bug&&/cannot reproduce|could not reproduce|not reproducible/i.test(report)){
               const ticket=this.latestTicket();this.set('builderQuestion',{ticket:ticket?.n??0,post:ticket?.post,generation:this.get('assignmentGeneration'),spec:this.get('specDocument'),waitingClient:false});

@@ -7,9 +7,8 @@ test('shared handoff check reports all contract failures from workspace root', (
   const root = mkdtempSync('/tmp/backroom-handoff-');
   try {
     expect(inspectBuildHandoff({workspace: root, reportName:'build-report.md', criteria: ['AC-1'], bug: true, gitStatus: ' M app.ts'})).toEqual([
+      // Report-content rules wait until the report exists, so the cause is not buried.
       'Missing build-report.md at the workspace root.',
-      'AC-1 must have exactly one "AC-1: PASS - <evidence>" line.',
-      'Bug report must name a Reproduction test.',
       'Missing build-verification.json.',
       'Worktree is not clean.'
     ]);

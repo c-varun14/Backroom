@@ -15,3 +15,11 @@ test('desk errors name the type and desk source line, never the message', () => 
   expect(lines[0]).not.toContain('fake.ts');
   expect(errorWhere('plain string')).toBe('');
 });
+
+test('desk errors keep the HTTP status code, which carries no secret', () => {
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (line: string) => lines.push(line);
+  try { logDeskError('operation', new Error('Switch HTTP 409; response withheld')); } finally { console.error = original; }
+  expect(lines[0]).toStartWith('desk error [operation]: remote service error (HTTP 409)');
+});

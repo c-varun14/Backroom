@@ -405,3 +405,16 @@ test('builder dispatch is the approval record and asks for the CI-parity test co
  expect(dispatch).toContain('pnpm test:ci, which runs the tests on a disposable local Postgres exactly as CI does');
  expect(dispatch).not.toContain('..');
 });
+
+test('build-ready may carry a summary after the report path',async()=>{
+ // Live 2026-11-08: "build-ready build-report.md — report-only commit …" was read as
+ // a report path and refused with nine failures that hid the cause.
+ const f=fixture();await ready(f);
+ await f.loop.handle(f.event('builder','build-ready build-report.md — report-only commit abc, handoff check exited 0'));
+ expect(f.loop.get('reviewer').round).toBe(1);
+ const g=fixture();await ready(g);
+ await g.loop.handle(g.event('builder','build-ready reports/other.md'));
+ const refusal=g.posts.filter(p=>p.room==='work').map(p=>p.text).find(t=>t.includes('build-ready refused'))!;
+ expect(refusal).toContain('read "reports/other.md". Send: build-ready build-report.md');
+ expect(refusal).not.toContain('AC-1 must have');
+});
