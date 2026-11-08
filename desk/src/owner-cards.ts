@@ -9,6 +9,9 @@ const verifiedCard=Symbol("verified owner card");
 type Button={label:string;command:string};
 type Row={request:string;payload:string;buttons:string;binding:string;status:string};
 /** Only code creates command mappings. Answers and labels never become commands. */
+/** Longest card body that still renders with its buttons on Discord. */
+export const CARD_DETAIL_LIMIT=1200;
+
 export class OwnerCards {
   readonly session:string;
   private polling=Promise.resolve();
@@ -22,9 +25,12 @@ export class OwnerCards {
   async offer(title:string,detail:string,buttons:Button[],identity?:string,force=false,questions:any[]=[],requestId?:string){
     if(title.length>500||buttons.length>9)throw new Error('Owner card exceeds Switch limits');
     let fullDetail:string|undefined;
-    if(detail.length>4000){
+    // Discord allows 2000 characters per message and the bridge adds a header,
+    // mention and options. A longer card loses its buttons ("cannot be answered
+    // from this message"), so long text goes above and the card stays short.
+    if(detail.length>CARD_DETAIL_LIMIT){
       fullDetail=detail;
-      detail=`Full details were posted above.\n\n${detail.slice(0,3700)}\n\nUse a button below to continue.`;
+      detail=`Full details are in the message above.\n\n${detail.slice(0,900)}…\n\nUse a button below to continue.`;
     }
     // Switch refuses an approval with no options, so an information card still gets one.
     if(!buttons.length&&!questions.length)buttons=[{label:'Got it',command:'__ack'}];

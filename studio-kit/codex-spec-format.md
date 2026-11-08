@@ -28,3 +28,4 @@ State exact success and failure cases, expected statuses/state, and the evidence
 
 Test files allowed to change: <path>, <path>
 Lead uses this exact line only when the ticket requires changes to existing test files, CI files or packages/db/test files; list exact paths, or omit the line and add new test files.
+On the app-base template, two existing test files are shared registries that features must extend: every new API route needs its access case in `packages/api/test/support/fixtures.ts`, and every new admin section changes the expected count in `packages/api/test/guards/operations-http.test.ts`. When the ticket adds routes or admin sections, name those paths on the line. If the handoff check later refuses a protected path the ticket really needs, post a revised spec document with the corrected line; desk re-sends it to the builder. Name an earlier change to a protected test only after the owner approves that exact path.

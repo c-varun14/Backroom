@@ -1,6 +1,6 @@
 import {expect,test} from 'bun:test';
 import {fixture,protocol} from './switch.test';
-import {OwnerCards} from '../src/owner-cards';
+import {CARD_DETAIL_LIMIT, OwnerCards} from '../src/owner-cards';
 
 async function setup(){
  const f=fixture(true),c=f.config;
@@ -86,15 +86,17 @@ test('a rejected team answer creates a fresh question without notifying lead',as
  await f.loop.ownerCards.poll();expect(f.card().request_id).not.toBe(old.request_id);expect(f.card().questions).toEqual(old.questions);
  expect(f.sent.slice(before).filter(m=>m.room===f.config.workRoomId)).toHaveLength(0);
 });
-test('medium outgoing text fits verbatim in the card; oversized text names its attachment',async()=>{
+test('the owner sees exact outgoing text before Send, and the card keeps its buttons',async()=>{
  for(const length of [1200,5000]){
   const f=fixture(true),text='SAMPLE '+ 'bread '.repeat(length/6);
   await f.loop.handle(f.event(f.config.clientRoomId,'verified-client','request: SAMPLE form'));
   await f.loop.handle(f.event(f.config.workRoomId!,'verified-lead',protocol(1,'reply',text)));
-  const detail=f.cards.at(-1).detail;
-  expect(detail.length).toBeLessThanOrEqual(4000);
-  if(length<4000)expect(detail).toContain('Exact client text:\nUpdate from Varun:\n\n'+text.trim());
-  else expect(detail).toContain('Attachment: ticket-1-outgoing.md');
+  const card=f.cards.at(-1);
+  expect(card.detail.length).toBeLessThanOrEqual(CARD_DETAIL_LIMIT);
+  expect(card.options.map((o:any)=>o.label)).toContain('Send');
+  const studio=f.sent.filter(m=>m.room===f.config.studioRoomId).map(m=>m.text).join('\n');
+  if(length<4000)expect(studio).toContain('Exact client text:\nUpdate from Varun:\n\n'+text.trim());
+  else expect(studio+card.detail).toContain('ticket-1-outgoing.md');
  }
 });
 
