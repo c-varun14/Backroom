@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 import pwd
 import re
-import signal
 import socket
 import socketserver
 import stat
@@ -16,6 +15,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 import traceback
 
@@ -26,6 +26,17 @@ DOCTOR = '/srv/backroom/scripts/agent-doctor.py'
 PYTHON = '/run/current-system/sw/bin/python3'
 MAX_OUTPUT = 16384
 TIMEOUT = 180
+KILL_GRACE = 30
+SYSTEMD_RUN = '/run/current-system/sw/bin/systemd-run'
+SYSTEMCTL = '/run/current-system/sw/bin/systemctl'
+# Must match the agent controller serviceConfig in deploy/nixos/dev.nix.
+AGENT_SANDBOX = [
+    'NoNewPrivileges=yes', 'PrivateDevices=yes', 'ProtectSystem=strict',
+    'ReadWritePaths=/var/lib/backroom-agent /srv/backroom/workspaces /tmp',
+    'InaccessiblePaths=/srv/backroom/.secrets /srv/backroom/.switch-runtime /root /home/studio /run/docker.sock',
+    'ProtectKernelTunables=yes', 'ProtectKernelModules=yes', 'ProtectControlGroups=yes',
+    'RestrictSUIDSGID=yes', 'UMask=0007',
+]
 LOCK = '/run/backroom-provision.lock'
 SLUG = re.compile(r'[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?')
 DIRECTORY = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
@@ -200,6 +211,18 @@ def prepare(slug, workspaces=WORKSPACES, agent_home=AGENT_HOME):
                              stat.S_IMODE(info.st_mode) if info else 0o600)
 
 
+def doctor_command(unit, workspace, timeout):
+    """Fixed transient unit: agent user, controller sandbox, no shell."""
+    env = {'PATH': '/run/current-system/sw/bin:/opt/backroom/tools/bin', 'HOME': AGENT_HOME,
+           'LANG': 'C.UTF-8', 'BACKROOM_REVIEW_BACKEND': 'local'}
+    properties = [*AGENT_SANDBOX, f'RuntimeMaxSec={timeout}', 'WorkingDirectory=/', 'KillMode=control-group']
+    return [SYSTEMD_RUN, '--quiet', '--wait', '--pipe', '--collect', '--service-type=exec',
+            '--unit=' + unit, '--uid=agent', '--gid=backroom',
+            *[part for value in properties for part in ('-p', value)],
+            *[part for key, value in env.items() for part in ('-E', key + '=' + value)],
+            PYTHON, '-I', '-u', DOCTOR, '--workspace', workspace]
+
+
 def doctor(slug, workspaces=WORKSPACES, timeout=TIMEOUT):
     workspace = str(Path(workspaces) / slug)
     with directory(workspace):
@@ -207,23 +230,28 @@ def doctor(slug, workspaces=WORKSPACES, timeout=TIMEOUT):
     agent = pwd.getpwnam('agent')
     if agent.pw_uid == 0 or agent.pw_uid == pwd.getpwnam('studio').pw_uid:
         raise Refused('agent-identity')
-    group = grp.getgrnam('backroom').gr_gid
-    env = {'PATH': '/run/current-system/sw/bin:/opt/backroom/tools/bin', 'HOME': AGENT_HOME,
-           'LANG': 'C.UTF-8', 'BACKROOM_REVIEW_BACKEND': 'local'}
-    # Output goes to a temporary file, never an unbounded in-memory pipe. Kill
-    # the complete process group on timeout, including temporary DB/browser jobs.
+    # The doctor runs as its own transient unit with the agent controllers'
+    # sandbox, so it checks what builders really see. A root process here cannot
+    # drop to agent itself: with NoNewPrivileges and seccomp, systemd starts this
+    # service without CAP_SETUID. Output goes to a temporary file, never an
+    # unbounded pipe. RuntimeMaxSec stops the whole unit, including temporary
+    # database and browser processes; a late systemd-run is killed by unit name.
+    unit = 'backroom-doctor-' + os.urandom(6).hex()
     with tempfile.TemporaryFile() as output:
-        process = subprocess.Popen([PYTHON, '-I', '-u', DOCTOR, '--workspace', workspace],
-            user=agent.pw_uid, group=group, extra_groups=os.getgrouplist('agent', group),
-            cwd='/', env=env, stdin=subprocess.DEVNULL, stdout=output,
-            stderr=subprocess.DEVNULL, start_new_session=True)
-        timed_out = False
+        started = time.monotonic()
+        process = subprocess.Popen(doctor_command(unit, workspace, timeout),
+            cwd='/', env={'PATH': '/run/current-system/sw/bin', 'LANG': 'C.UTF-8'},
+            stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.DEVNULL)
         try:
-            code = process.wait(timeout=timeout)
+            code = process.wait(timeout=timeout + KILL_GRACE)
         except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
+            for action in (['kill', '--signal=SIGKILL'], ['stop']):
+                subprocess.run([SYSTEMCTL, *action, unit + '.service'], stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+            process.kill()
             process.wait()
-            timed_out = True
+            code = None
+        timed_out = code is None or (code != 0 and time.monotonic() - started >= timeout)
         output.seek(0)
         text = output.read(MAX_OUTPUT + 1)
         if len(text) > MAX_OUTPUT:

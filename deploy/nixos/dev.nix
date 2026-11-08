@@ -52,6 +52,9 @@ in {
   nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 14d"; };
   programs.nix-ld.enable = true;
   programs.git.enable = true;
+  # initdb in /run/current-system/sw/bin looks for its data files here. Without
+  # this link, the agent doctor and `pnpm test:ci` cannot start a local Postgres.
+  environment.pathsToLink = [ "/share/postgresql" ];
   virtualisation.docker.enable = true; # Switch only; neither studio nor agent joins docker.
   environment.systemPackages = tools;
   environment.extraInit = ''

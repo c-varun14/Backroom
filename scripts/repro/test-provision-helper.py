@@ -188,28 +188,38 @@ class ProvisionTests(unittest.TestCase):
             self.assertTrue(helper.authorized(1001, 1234))
             self.assertTrue(helper.authorized(0, 0))
 
-    def test_doctor_fixed_argv_user_and_timeout_with_real_process(self):
+    def test_doctor_runs_as_agent_unit_with_controller_sandbox(self):
         with self.fixture() as (root, workspace, home, _):
             script = root / 'fixed-doctor.py'
             script.write_text('import time\ntime.sleep(5)\n')
             actual_popen = subprocess.Popen
-            calls = []
-            def unprivileged_process(args, **options):
+            calls, stops = [], []
+            def transient_unit(args, **options):
                 calls.append((args, dict(options)))
-                # The non-root test records the requested user transition, then
-                # runs the fixed program as the already-unprivileged test user.
-                for key in ['user', 'group', 'extra_groups']: options.pop(key)
-                return actual_popen(args, **options)
-            with patch.object(helper, 'PYTHON', sys.executable), patch.object(helper, 'DOCTOR', str(script)), patch.object(helper.os, 'getgrouplist', return_value=[os.getgid()]), patch.object(helper.subprocess, 'Popen', side_effect=unprivileged_process):
+                # The non-root test records the fixed systemd-run request, then
+                # runs only the fixed doctor program as the test user.
+                return actual_popen(args[args.index(sys.executable):], **options)
+            with patch.object(helper, 'PYTHON', sys.executable), patch.object(helper, 'DOCTOR', str(script)), \
+                 patch.object(helper, 'KILL_GRACE', 0), patch.object(helper.subprocess, 'Popen', side_effect=transient_unit), \
+                 patch.object(helper.subprocess, 'run', side_effect=lambda args, **_: stops.append(args)):
                 result = helper.doctor('sample', str(root / 'workspaces'), timeout=.05)
                 self.assertEqual(result['category'], 'doctor-timeout')
                 self.assertFalse(result['ok'])
                 args, options = calls[0]
-                self.assertEqual(args, [sys.executable, '-I', '-u', str(script), '--workspace', str(workspace)])
-                self.assertEqual(options['user'], os.getuid() + 1)
-                self.assertEqual(options['group'], os.getgid())
-                self.assertEqual(options['cwd'], '/')
-                self.assertTrue(options['start_new_session'])
+                unit = next(a for a in args if a.startswith('--unit='))[len('--unit='):]
+                self.assertRegex(unit, r'^backroom-doctor-[0-9a-f]{12}$')
+                self.assertEqual(stops, [[helper.SYSTEMCTL, 'kill', '--signal=SIGKILL', unit + '.service'],
+                                         [helper.SYSTEMCTL, 'stop', unit + '.service']])
+                self.assertEqual(args[0], helper.SYSTEMD_RUN)
+                self.assertIn('--uid=agent', args)
+                self.assertIn('--gid=backroom', args)
+                self.assertIn('--wait', args)
+                properties = [args[i + 1] for i, a in enumerate(args) if a == '-p']
+                for value in helper.AGENT_SANDBOX:
+                    self.assertIn(value, properties)
+                self.assertIn('RuntimeMaxSec=0.05', properties)
+                self.assertEqual(args[-6:], [sys.executable, '-I', '-u', str(script), '--workspace', str(workspace)])
+                self.assertNotIn('user', options)
                 self.assertNotIn('shell', options)
                 script.write_text('print("FAIL bun — fix: install bun for the agent user")\nraise SystemExit(1)\n')
                 result = helper.doctor('sample', str(root / 'workspaces'), timeout=2)
@@ -219,6 +229,27 @@ class ProvisionTests(unittest.TestCase):
                 self.assertTrue(helper.doctor('sample', str(root / 'workspaces'), timeout=2)['ok'])
                 script.write_text('print("x" * 20000)\n')
                 self.assertEqual(helper.doctor('sample', str(root / 'workspaces'), timeout=2)['category'], 'doctor-output-limit')
+
+    def test_doctor_sandbox_matches_agent_controllers(self):
+        # Live 2026-11-08: the doctor ran in the root helper's namespace, and a
+        # root service with NoNewPrivileges plus seccomp cannot drop to agent.
+        nix = (ROOT / 'deploy/nixos/dev.nix').read_text()
+        controller = nix.split('controller = name: after:', 1)[1].split('\nin {', 1)[0]
+        expected = {
+            'NoNewPrivileges=yes': 'NoNewPrivileges = true', 'PrivateDevices=yes': 'PrivateDevices = true',
+            'ProtectSystem=strict': 'ProtectSystem = "strict"',
+            'ReadWritePaths=/var/lib/backroom-agent /srv/backroom/workspaces /tmp':
+                'ReadWritePaths = [ "/var/lib/backroom-agent" "/srv/backroom/workspaces" "/tmp" ]',
+            'InaccessiblePaths=/srv/backroom/.secrets /srv/backroom/.switch-runtime /root /home/studio /run/docker.sock':
+                'InaccessiblePaths = [ "/srv/backroom/.secrets" "/srv/backroom/.switch-runtime" "/root" "/home/studio" "/run/docker.sock" ]',
+            'ProtectKernelTunables=yes': 'ProtectKernelTunables = true', 'ProtectKernelModules=yes': 'ProtectKernelModules = true',
+            'ProtectControlGroups=yes': 'ProtectControlGroups = true', 'RestrictSUIDSGID=yes': 'RestrictSUIDSGID = true',
+            'UMask=0007': 'UMask = "0007"',
+        }
+        self.assertEqual(sorted(helper.AGENT_SANDBOX), sorted(expected))
+        for nix_line in expected.values():
+            self.assertIn(nix_line, controller)
+        self.assertIn('"/share/postgresql"', nix)
 
     def test_error_inside_pinned_directory_is_a_failure_not_a_path_refusal(self):
         # Live 2026-11-08: the service sandbox refused a setgid chmod, and the
