@@ -37,7 +37,7 @@ async function helper(args:string[]) {
   const [out,,code]=await Promise.all([new Response(p.stdout).text(),new Response(p.stderr).text(),p.exited]);
   // real_setup.py prints only its own fixed error lines; pass that one line on.
   const line=out.trim().split("\n").at(-1)??"";
-  if(code)throw new Error("Real stage management failed"+(/^[A-Z][\w ,.;()'-]{0,160}$/.test(line)?": "+line:"; details withheld"));return out.trim();
+  if(code)throw new Error("Real stage management failed"+(/^[A-Z][\w ,.;:()'\/-]{0,200}$/.test(line)?": "+line:"; details withheld"));return out.trim();
 }
 function identities(){
   const c=JSON.parse(readFileSync(configPath,"utf8"));

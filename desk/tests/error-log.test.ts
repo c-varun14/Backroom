@@ -43,7 +43,9 @@ test('a stage management failure keeps the setup script\'s own fixed line', () =
   try {
     logDeskError('poll', new Error('Real stage management failed: Real setup failed (KeyError); sensitive details withheld'));
     logDeskError('poll', new Error('Real stage management failed; details withheld'));
+    logDeskError('poll', new Error('Real stage management failed: Switch POST /gateway/management/agents HTTP 422; error code invalid_definition; response withheld'));
   } finally { console.error = original; }
   expect(lines[0]).toStartWith('desk error [poll]: stage management failed: Real setup failed (KeyError); sensitive details withheld');
   expect(lines[1]).toStartWith('desk error [poll]: operation failed');
+  expect(lines[2]).toStartWith('desk error [poll]: stage management failed: Switch POST /gateway/management/agents HTTP 422; error code invalid_definition');
 });
