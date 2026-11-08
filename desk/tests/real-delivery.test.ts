@@ -395,3 +395,13 @@ test('keys: moved small change cancels wait without deploying or sending',async(
  await f.loop.handle(f.verdict);(f.loop as any).git=(...args:string[])=>args[0]==='status'?'':'c'.repeat(40);missing=[];await f.loop.tick();
  expect(f.deployments).toHaveLength(0);expect(f.posts.filter(p=>p.room==='client-room')).toHaveLength(0);expect(f.loop.keys.get().waiting).toBeNull();
 });
+
+test('builder dispatch is the approval record and asks for the CI-parity test command',async()=>{
+ // Live 2026-11-07: a builder stopped on a spec's own "Status: proposed" line,
+ // and tested on PGlite while CI used Postgres.
+ const f=fixture();await ready(f);
+ const dispatch=f.posts.filter(p=>p.room==='work').map(p=>p.text).find(t=>t.includes('Read filled spec document'))!;
+ expect(dispatch).toContain('This message is the approval record: a status line inside a document was written before approval and does not revoke it.');
+ expect(dispatch).toContain('pnpm test:ci, which runs the tests on a disposable local Postgres exactly as CI does');
+ expect(dispatch).not.toContain('..');
+});

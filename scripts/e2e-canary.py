@@ -84,13 +84,27 @@ class Server:
         return True, 'all six units active'
 
     def hop_identity_helper(self):
+        c = self.config
+        request = {key: c.get(key) for key in ('ownerId', 'bridgeId', 'deskId', 'leadId', 'probeId')}
+        request['agentIds'] = [x for x in [c.get('frontId'), c.get('builderId'), *(c.get('reviewerIds') or [])] if x]
         try:
             with socket.socket(socket.AF_UNIX) as connection:
-                connection.settimeout(4)
+                connection.settimeout(12)
                 connection.connect(IDENTITY_SOCKET)
-            return True, 'socket accepts connections'
-        except OSError:
-            return False, 'identity socket refused the connection'
+                connection.sendall(json.dumps(request).encode() + b'\n')
+                connection.shutdown(socket.SHUT_WR)
+                data = b''
+                while chunk := connection.recv(65536):
+                    data += chunk
+            rows = json.loads(data)
+        except (OSError, ValueError):
+            return False, 'identity lookup failed'
+        # The desk only acts on owner messages it can resolve to the owner.
+        if not any(row.get('kind') == 'human' and c.get('ownerId') in row.get('users', []) for row in rows):
+            return False, 'owner identity not found'
+        if not any(row.get('agent_id') == c.get('leadId') for row in rows):
+            return False, 'lead identity not found'
+        return True, 'owner and lead resolve'
 
     def hop_desk_health(self):
         try:
