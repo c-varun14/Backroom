@@ -19,4 +19,15 @@ class PublicationPaths(unittest.TestCase):
   cleaned=copy.normalize(source,self.root);value=json.loads(cleaned)
   self.assertEqual(value['status'],'PASS');self.assertEqual(value['count'],3)
   self.assertIn('${BACKROOM_ROOT}',value['body']);self.assertIn(self.home,source)
+ def test_curated_docs_media_is_published_and_other_media_is_not(self):
+  # README images live in docs/media/blog; the export used to drop them.
+  from unittest.mock import patch
+  import tempfile
+  with tempfile.TemporaryDirectory() as temporary:
+   root=Path(temporary)
+   names=['docs/media/blog/workflow.png','docs/media/keys-page.png','reports/screen.png','demo/recording.mp4','README.md']
+   for name in names:(root/name).parent.mkdir(parents=True,exist_ok=True);(root/name).write_bytes(b'fictional')
+   with patch.object(copy,'listed',return_value=names):
+    chosen={path.as_posix() for path in copy.selected(root)}
+  self.assertEqual(chosen,{'docs/media/blog/workflow.png','docs/media/keys-page.png','README.md'})
 if __name__=='__main__':unittest.main(verbosity=2)

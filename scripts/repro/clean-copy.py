@@ -16,7 +16,7 @@ def selected(source):
  def add(repo,prefix):
   for name in listed(repo):
    rel=Path(prefix)/name
-   if rel.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.mp4','.webm','.wav'} and rel.as_posix() != 'docs/media/keys-page.png':continue
+   if rel.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.mp4','.webm','.wav'} and not rel.as_posix().startswith('docs/media/'):continue  # curated docs media only
    if any(x in EXCLUDED for x in rel.parts) or rel.name in {'auth.json','.credentials.json'} or rel.name=='.env' or rel.name.endswith('.env') or re.search(r'\.(?:sqlite3?|db)(?:-(?:wal|shm))?$',rel.name):continue
    path=source/rel
    if path.is_symlink():raise ValueError('Symlink must be reviewed before publication: '+rel.as_posix())
