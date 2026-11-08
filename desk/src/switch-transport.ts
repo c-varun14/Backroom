@@ -5,6 +5,11 @@ import type { Delivery, Draft, PreparedContent, Transport } from "./types";
 import { approvalTextParts } from "./cards";
 
 /** No response bodies, authorization headers, or exceptions reach logs. */
+/** Endpoint shape for logs: ids become :id and the query string is dropped. */
+export const switchRoute = (path: string) => path.split('?')[0]
+  .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ':id')
+  .replace(/\b(?:sw_|\$)?[A-Za-z0-9_-]{20,}/g, ':id');
+
 export class SwitchAPI {
   constructor(readonly base: string, readonly agentId: string, private key: string) {}
   async request(path: string, init: RequestInit = {}): Promise<Response> {
@@ -12,7 +17,7 @@ export class SwitchAPI {
     try {
       response = await fetch(this.base + path, { ...init, headers: { ...init.headers, Authorization: `Bearer ${this.key}` }, signal: AbortSignal.timeout(30000) });
     } catch { throw new Error("Switch request failed; response withheld"); }
-    if (!response.ok) throw new Error(`Switch HTTP ${response.status}; response withheld`);
+    if (!response.ok) throw new Error(`Switch HTTP ${response.status} ${(init.method ?? "GET").toUpperCase()} ${switchRoute(path)}; response withheld`);
     return response;
   }
   async json(path: string, body?: unknown) {

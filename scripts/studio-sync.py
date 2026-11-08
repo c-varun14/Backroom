@@ -15,8 +15,8 @@ HOST = 'backroom-dev'
 PRESERVE = {'.secrets', '.switch-runtime', 'workspaces', '.handoff-contracts', '.git'}
 
 
-def run(args, *, cwd=None, input=None, capture=True):
-    return subprocess.run(args, cwd=cwd, input=input,
+def run(args, *, cwd=None, input=None, capture=True, timeout=None):
+    return subprocess.run(args, cwd=cwd, input=input, timeout=timeout,
                           stdout=subprocess.PIPE if capture else None,
                           stderr=subprocess.PIPE if capture else None, check=True)
 
@@ -67,7 +67,10 @@ def sync(commit, dry=False):
     command = 'python3 -c ' + shlex.quote(remote_script) + ' ' + shlex.quote(manifest)
     # The fixed remote program validates/stages first, stops all source consumers,
     # replaces only managed files, verifies, then starts the complete source tree.
-    result = run(['ssh', '-o', 'BatchMode=yes', HOST, command], input=archive, capture=True)
+    # A stalled transfer must not hold the remote sync lock forever. The remote
+    # program changes nothing until the whole archive has arrived.
+    result = run(['ssh', '-o', 'BatchMode=yes', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=4', HOST, command],
+                 input=archive, capture=True, timeout=600)
     print(result.stdout.decode().strip())
 
 

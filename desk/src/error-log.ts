@@ -2,8 +2,8 @@ const safeDetail = (value: unknown) => {
   const raw = value instanceof Error ? `${value.name}: ${value.message}` : String(value);
   if (/timeout|timed out|ETIMEDOUT/i.test(raw)) return 'operation timed out';
   if (/ECONN|network|fetch failed|connection reset/i.test(raw)) return 'network unavailable';
-  const status = /\bHTTP (\d{3})\b/.exec(raw)?.[1];
-  if (status) return `remote service error (HTTP ${status})`;
+  const http = /\bHTTP (\d{3})(?: (GET|POST|PUT|PATCH|DELETE) (\/[\w:\/.-]{0,120}))?/.exec(raw);
+  if (http) return `remote service error (HTTP ${http[1]}${http[2] ? ' ' + http[2] + ' ' + http[3] : ''})`;
   if (/\b5\d\d\b/i.test(raw)) return 'remote service error';
   if (/invalid|malformed|parse/i.test(raw)) return 'invalid response or input';
   if (/permission|refused|unauthori[sz]ed|forbidden/i.test(raw)) return 'operation refused';

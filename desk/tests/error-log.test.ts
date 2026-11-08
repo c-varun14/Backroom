@@ -1,5 +1,6 @@
 import {expect, test} from 'bun:test';
 import {errorWhere, logDeskError} from '../src/error-log';
+import {switchRoute} from '../src/switch-transport';
 
 test('desk errors name the type and desk source line, never the message', () => {
   // Live 2026-11-08: "desk error [poll]: operation failed" gave no way to find the cause.
@@ -22,4 +23,14 @@ test('desk errors keep the HTTP status code, which carries no secret', () => {
   console.error = (line: string) => lines.push(line);
   try { logDeskError('operation', new Error('Switch HTTP 409; response withheld')); } finally { console.error = original; }
   expect(lines[0]).toStartWith('desk error [operation]: remote service error (HTTP 409)');
+});
+
+test('Switch errors name the endpoint shape without ids or query', () => {
+  expect(switchRoute('/gateway/rooms/206c5581-6b7e-4964-af40-57ec7b8384ed/messages?token=fictional')).toBe('/gateway/rooms/:id/messages');
+  expect(switchRoute('/v1/threads/sw_0566fb2c41c958817d13d15a5a138bce/reply')).toBe('/v1/threads/:id/reply');
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (line: string) => lines.push(line);
+  try { logDeskError('operation', new Error('Switch HTTP 409 POST /gateway/rooms/:id/messages; response withheld')); } finally { console.error = original; }
+  expect(lines[0]).toStartWith('desk error [operation]: remote service error (HTTP 409 POST /gateway/rooms/:id/messages)');
 });
