@@ -35,3 +35,15 @@ test('Switch errors name the endpoint shape without ids or query', () => {
   try { logDeskError('operation', new Error('Switch HTTP 409 POST /gateway/rooms/:id/messages; response withheld')); } finally { console.error = original; }
   expect(lines[0]).toStartWith('desk error [operation]: remote service error (HTTP 409 POST /gateway/rooms/:id/messages)');
 });
+
+test('a stage management failure keeps the setup script\'s own fixed line', () => {
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (line: string) => lines.push(line);
+  try {
+    logDeskError('poll', new Error('Real stage management failed: Real setup failed (KeyError); sensitive details withheld'));
+    logDeskError('poll', new Error('Real stage management failed; details withheld'));
+  } finally { console.error = original; }
+  expect(lines[0]).toStartWith('desk error [poll]: stage management failed: Real setup failed (KeyError); sensitive details withheld');
+  expect(lines[1]).toStartWith('desk error [poll]: operation failed');
+});

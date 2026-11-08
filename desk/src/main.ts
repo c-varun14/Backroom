@@ -35,7 +35,9 @@ const transport = new SwitchTransport(api,config.filesPath ?? join(secretRoot,"d
 async function helper(args:string[]) {
   const p=Bun.spawn(["python3",join(root,"scripts/real_setup.py"),...args],{cwd:root,env:{...process.env,BACKROOM_CLIENT_CONFIG:configPath},stdout:"pipe",stderr:"pipe"});
   const [out,,code]=await Promise.all([new Response(p.stdout).text(),new Response(p.stderr).text(),p.exited]);
-  if(code)throw new Error("Real stage management failed; details withheld");return out.trim();
+  // real_setup.py prints only its own fixed error lines; pass that one line on.
+  const line=out.trim().split("\n").at(-1)??"";
+  if(code)throw new Error("Real stage management failed"+(/^[A-Z][\w ,.;()'-]{0,160}$/.test(line)?": "+line:"; details withheld"));return out.trim();
 }
 function identities(){
   const c=JSON.parse(readFileSync(configPath,"utf8"));

@@ -1,5 +1,8 @@
 const safeDetail = (value: unknown) => {
   const raw = value instanceof Error ? `${value.name}: ${value.message}` : String(value);
+  // real_setup.py prints only fixed lines it wrote itself (see scripts/real_setup.py).
+  const setup = /^Real stage management failed: ([A-Z][\w ,.;()'-]{0,160})$/.exec(raw.replace(/^Error: /, ''));
+  if (setup) return 'stage management failed: ' + setup[1];
   if (/timeout|timed out|ETIMEDOUT/i.test(raw)) return 'operation timed out';
   if (/ECONN|network|fetch failed|connection reset/i.test(raw)) return 'network unavailable';
   const http = /\bHTTP (\d{3})(?: (GET|POST|PUT|PATCH|DELETE) (\/[\w:\/.-]{0,120}))?/.exec(raw);
